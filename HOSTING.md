@@ -33,6 +33,8 @@ Run these 4 commands one by one. After each command, paste the value from your S
 3.  **Service Role Key:** `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY`
 4.  **Gemini API Key:** `npx wrangler secret put GEMINI_API_KEY`
 
+**🔍 Quick Check:** Visit `https://your-worker.workers.dev/debug/env`. If it returns `{"hasSupabaseUrl":true, ...}`, you did it right!
+
 ---
 
 ## 2. Database Setup (Supabase)
@@ -42,6 +44,8 @@ Run these 4 commands one by one. After each command, paste the value from your S
 3.  Open the `schema.sql` file in your project folder, copy all the text.
 4.  Paste it into the Supabase SQL Editor and click **Run**.
     *   *This creates your tables, indexes, and security rules.*
+
+**🔍 Quick Check:** Click on **Table Editor** in Supabase. If you see tables like `profiles` and `scraped_jobs`, the SQL ran correctly.
 
 ---
 
@@ -53,6 +57,8 @@ Run these 4 commands one by one. After each command, paste the value from your S
     *   `SUPABASE_URL`: (Your Supabase Project URL)
     *   `SUPABASE_SERVICE_ROLE_KEY`: (Your Service Role Key)
 4.  Go to the **Actions** tab in GitHub, select the **SnipeJob** workflow, and click **Run workflow** to test it immediately.
+
+**🔍 Quick Check:** Go to the **Actions** tab. If the latest run has a green checkmark ✅, your scraper is alive and working.
 
 ---
 
