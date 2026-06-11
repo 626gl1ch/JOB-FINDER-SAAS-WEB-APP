@@ -1,75 +1,83 @@
 # 🚀 Hosting & Deployment Guide: SnipeJob SAAS
 
-This guide explains how to take your project live and how to push updates whenever you change the code.
+This guide explains how to take your project live from scratch and how to push updates.
 
 ---
 
-## 1. The Architecture (How it works)
-Your project has three main parts:
-1.  **Database (Supabase):** Stores jobs and user profiles.
-2.  **API/Backend (Cloudflare Worker):** Handles requests from the website.
-3.  **Scraper (GitHub Actions):** Automatically finds new jobs every 15 minutes.
+## 1. Initial Setup: The "Live" Backend (Cloudflare)
+
+Follow these exact steps in your PowerShell to deploy the Worker.
+
+### Step 1: Navigate to the Worker Folder
+```powershell
+cd "C:\Users\DANIEL\JOB FINDER SAAS WEB APP\my-sniper-worker"
+```
+
+### Step 2: Login to Cloudflare
+```powershell
+npx wrangler login
+```
+*A browser window will open. Click **Allow** to give your computer permission to deploy to your account.*
+
+### Step 3: Deploy the Code
+```powershell
+npx wrangler deploy
+```
+*This uploads the `src/index.js` file to Cloudflare. Once finished, it will give you a URL (e.g., `https://my-sniper-worker.daniellancce1.workers.dev`).*
+
+### Step 4: Add your Database & AI Secrets
+Run these 4 commands one by one. After each command, paste the value from your Supabase/Gemini dashboard when prompted:
+
+1.  **Supabase URL:** `npx wrangler secret put SUPABASE_URL`
+2.  **Anon Key:** `npx wrangler secret put SUPABASE_ANON_KEY`
+3.  **Service Role Key:** `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY`
+4.  **Gemini API Key:** `npx wrangler secret put GEMINI_API_KEY`
 
 ---
 
-## 2. Initial Hosting (Going Live)
+## 2. Database Setup (Supabase)
 
-### A. Database (Supabase)
-1.  Create a project at [supabase.com](https://supabase.com).
-2.  Go to **SQL Editor** -> **New Query**.
-3.  Paste the contents of `schema.sql` and click **Run**.
-
-### B. Backend (Cloudflare Worker)
-1.  Open PowerShell in the `my-sniper-worker` folder.
-2.  Run `npx wrangler deploy`.
-3.  Set your secrets (only do this once):
-    ```powershell
-    npx wrangler secret put SUPABASE_URL
-    npx wrangler secret put SUPABASE_ANON_KEY
-    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-    npx wrangler secret put GEMINI_API_KEY
-    ```
-
-### C. Scraper (GitHub Actions)
-1.  Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**.
-2.  Add two secrets:
-    *   `SUPABASE_URL`: Your Supabase Project URL.
-    *   `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role Key.
-3.  The scraper will now run automatically every 15 minutes.
+1.  Go to [Supabase Dashboard](https://supabase.com).
+2.  Open your project and click on **SQL Editor** (left sidebar).
+3.  Open the `schema.sql` file in your project folder, copy all the text.
+4.  Paste it into the Supabase SQL Editor and click **Run**.
+    *   *This creates your tables, indexes, and security rules.*
 
 ---
 
-## 3. How to Update the Live Bot
+## 3. Automated Scraper Setup (GitHub)
 
-Whenever you make changes to your code, follow these steps to "push" them to the live version:
-
-### Step 1: Update the Backend (API)
-If you changed `worker.js` (or `src/index.js` inside the worker folder):
-1.  Open PowerShell in the `my-sniper-worker` folder.
-2.  Run:
-    ```powershell
-    npx wrangler deploy
-    ```
-    *Cloudflare will immediately switch to the new code.*
-
-### Step 2: Update the Scraper
-If you changed `scraper.js`:
-1.  Commit and push your changes to GitHub:
-    ```powershell
-    git add scraper.js
-    git commit -m "Update scraper logic"
-    git push origin main
-    ```
-    *GitHub Actions will automatically use the new version of the file on the next 15-minute run.*
-
-### Step 3: Update the Frontend
-If you changed `index (1).html`:
-1.  Since your frontend is just an HTML file, you can host it on **GitHub Pages**, **Vercel**, or **Netlify**.
-2.  Simply upload/push the new `index (1).html` to your hosting provider.
+1.  Push your code to your GitHub repo.
+2.  Go to **Settings** -> **Secrets and variables** -> **Actions**.
+3.  Click **New repository secret** and add:
+    *   `SUPABASE_URL`: (Your Supabase Project URL)
+    *   `SUPABASE_SERVICE_ROLE_KEY`: (Your Service Role Key)
+4.  Go to the **Actions** tab in GitHub, select the **SnipeJob** workflow, and click **Run workflow** to test it immediately.
 
 ---
 
-## 4. Verification (Is it working?)
-*   **Check API:** Visit `https://your-worker.workers.dev/debug/env` (should show `true` for all keys).
-*   **Check Scraper:** Go to **GitHub Actions** tab -> Select the workflow -> See if the last run was successful.
-*   **Check Database:** Go to your Supabase **Table Editor** -> `scraped_jobs` to see if new jobs are appearing.
+## 4. How to Update the Live Bot Anytime
+
+Whenever you make changes to your code, follow these steps:
+
+### Update the API (Backend)
+If you edit `my-sniper-worker/src/index.js`:
+1.  `cd "C:\Users\DANIEL\JOB FINDER SAAS WEB APP\my-sniper-worker"`
+2.  `npx wrangler deploy`
+
+### Update the Scraper
+If you edit `scraper.js`:
+1.  `git add scraper.js`
+2.  `git commit -m "Updated scraper"`
+3.  `git push origin main`
+
+### Update the Website (Frontend)
+If you edit `index (1).html`:
+1.  Upload the new `index (1).html` to your web host (GitHub Pages, Netlify, etc.).
+
+---
+
+## 5. Verification Checklist
+*   ✅ **API Health:** Visit `https://your-worker.workers.dev/debug/env`.
+*   ✅ **Scraper Check:** View the **Actions** tab in GitHub to see if the "SnipeJob" runs are green.
+*   ✅ **Data Check:** Look at the `scraped_jobs` table in Supabase to see the jobs found.
