@@ -25,7 +25,7 @@ CREATE TABLE public.scraped_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     company TEXT NOT NULL,
-    sector TEXT CHECK (sector IN ('web', 'data', 'video', 'design', 'ai', 'other')) NOT NULL,
+    sector TEXT CHECK (sector IN ('web', 'data', 'video', 'design', 'ai', 'writing', 'mobile', 'cyber', 'marketing', 'other')) NOT NULL,
     listing_source TEXT NOT NULL,
     job_url TEXT UNIQUE NOT NULL,
     payload_description TEXT NOT NULL,

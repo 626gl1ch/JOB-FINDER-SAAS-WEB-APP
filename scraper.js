@@ -1,19 +1,25 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const Parser = require('rss-parser');
+const parser = new Parser();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const SECTORS = {
-  web: ['frontend', 'backend', 'fullstack', 'react', 'wordpress', 'website', 'node', 'php', 'javascript'],
-  data: ['data science', 'analytics', 'python', 'machine learning', 'sql', 'excel scraper', 'data analyst'],
-  video: ['editor', 'premiere', 'after effects', 'da vinci', 'thumbnail', 'tiktok video', 'video editor'],
-  design: ['ui', 'ux', 'figma', 'graphic design', 'logo', 'branding'],
-  ai: ['ai', 'automation', 'gpt', 'llm', 'langchain', 'openai']
+  web: ['frontend', 'backend', 'fullstack', 'react', 'wordpress', 'website', 'node', 'php', 'javascript', 'nextjs', 'vue'],
+  data: ['data science', 'analytics', 'python', 'machine learning', 'sql', 'excel scraper', 'data analyst', 'big data'],
+  video: ['editor', 'premiere', 'after effects', 'da vinci', 'thumbnail', 'tiktok video', 'video editor', 'motion graphics'],
+  design: ['ui', 'ux', 'figma', 'graphic design', 'logo', 'branding', 'illustrator', 'photoshop'],
+  ai: ['ai', 'automation', 'gpt', 'llm', 'langchain', 'openai', 'anthropic', 'stable diffusion'],
+  writing: ['copywriting', 'content writer', 'blog', 'technical writer', 'editing', 'proofreading', 'ghostwriter'],
+  mobile: ['ios', 'android', 'react native', 'flutter', 'swift', 'kotlin', 'mobile app'],
+  cyber: ['security', 'pentest', 'hacker', 'cybersecurity', 'soc', 'compliance'],
+  marketing: ['seo', 'ads', 'google ads', 'facebook ads', 'social media marketing', 'growth', 'marketing']
 };
 
 async function scrapeReddit() {
-  const subreddits = ['forhire', 'freelance_jobs', 'remotejs'];
+  const subreddits = ['forhire', 'freelance_jobs', 'remotejs', 'designjobs', 'videoteditingjobs'];
   const jobs = [];
 
   for (const sub of subreddits) {
@@ -41,14 +47,45 @@ async function scrapeReddit() {
             sector: sector,
             listing_source: 'Reddit',
             job_url: 'https://reddit.com' + post.permalink,
-            payload_description: post.selftext.substring(0, 500),
+            payload_description: post.selftext.substring(0, 800),
             internal_labels: ['new']
           });
         }
       }
     } catch (e) {
-      console.error(`Error scraping ${sub}:`, e.message);
+      console.error(`Error scraping Reddit ${sub}:`, e.message);
     }
+  }
+  return jobs;
+}
+
+async function scrapeRSS(url, sourceName) {
+  const jobs = [];
+  try {
+    const feed = await parser.parseURL(url);
+    for (const item of feed.items) {
+      const content = (item.title + ' ' + (item.contentSnippet || '')).toLowerCase();
+      let sector = 'other';
+
+      for (const [key, keywords] of Object.entries(SECTORS)) {
+        if (keywords.some(k => content.includes(k))) {
+          sector = key;
+          break;
+        }
+      }
+
+      jobs.push({
+        title: item.title,
+        company: sourceName,
+        sector: sector,
+        listing_source: sourceName,
+        job_url: item.link,
+        payload_description: (item.contentSnippet || '').substring(0, 800),
+        internal_labels: ['new']
+      });
+    }
+  } catch (e) {
+    console.error(`Error scraping RSS ${sourceName}:`, e.message);
   }
   return jobs;
 }
@@ -67,24 +104,49 @@ async function syncToSupabase(jobs) {
         }
       });
     } catch (e) {
-      // Ignore duplicates
+      // Ignore duplicates or errors
     }
   }
 
   // Cleanup old jobs (> 48h)
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  await axios.delete(`${SUPABASE_URL}/rest/v1/scraped_jobs?indexed_at=lt.${cutoff}`, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`
-    }
-  });
+  try {
+    await axios.delete(`${SUPABASE_URL}/rest/v1/scraped_jobs?indexed_at=lt.${cutoff}`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+  } catch (e) {
+    console.error("Cleanup error:", e.message);
+  }
 }
 
 async function run() {
-  const jobs = await scrapeReddit();
-  // Add other sources here (RSS, etc)
-  await syncToSupabase(jobs);
+  let allJobs = [];
+  
+  console.log("Starting scraping cycle...");
+  
+  const redditJobs = await scrapeReddit();
+  allJobs = allJobs.concat(redditJobs);
+
+  const wwrJobs = await scrapeRSS('https://weworkremotely.com/remote-jobs.rss', 'We Work Remotely');
+  allJobs = allJobs.concat(wwrJobs);
+
+  const remotiveJobs = await scrapeRSS('https://remotive.com/remote-jobs/feed', 'Remotive');
+  allJobs = allJobs.concat(remotiveJobs);
+
+  const himalayasJobs = await scrapeRSS('https://himalayas.app/jobs/rss', 'Himalayas');
+  allJobs = allJobs.concat(himalayasJobs);
+
+  const upworkJobs = await scrapeRSS('https://www.upwork.com/ab/feed/jobs/rss?q=remote', 'Upwork');
+  allJobs = allJobs.concat(upworkJobs);
+
+  const freelancerJobs = await scrapeRSS('https://www.freelancer.com/rss.xml', 'Freelancer.com');
+  allJobs = allJobs.concat(freelancerJobs);
+
+  console.log(`Scraping complete. Found ${allJobs.length} total jobs.`);
+  await syncToSupabase(allJobs);
 }
 
 run();

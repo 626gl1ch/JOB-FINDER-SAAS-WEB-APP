@@ -38,6 +38,16 @@ export default {
 
     // --- ROUTES ---
 
+    // 0. GET /debug/env (Hosting Verification)
+    if (url.pathname === "/debug/env" && method === "GET") {
+        return new Response(JSON.stringify({
+            hasSupabaseUrl: !!env.SUPABASE_URL,
+            hasSupabaseAnonKey: !!env.SUPABASE_ANON_KEY,
+            hasSupabaseServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
+            hasGeminiApiKey: !!env.GEMINI_API_KEY
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // 1. GET /api/jobs (Tier-Enforced Job Delivery)
     if (url.pathname === "/api/jobs" && method === "GET") {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
@@ -60,13 +70,14 @@ export default {
         query += `&sector=eq.${sector}`;
       } else if (profile.current_tier === "free") {
         // Free users only see their selected sectors (max 3)
-        const sectors = profile.tracks_selected.slice(0, 3).join(",");
+        // If they haven't selected any, show them 'web' by default
+        const sectors = profile.tracks_selected.length > 0 ? profile.tracks_selected.slice(0, 3).join(",") : "web";
         query += `&sector=in.(${sectors})`;
       }
 
       // Tier limits
       if (profile.current_tier === "free") {
-        query += "&limit=20";
+        query += "&limit=30"; // Increased limit slightly
       }
 
       const jobsRes = await supabase(query);
@@ -76,6 +87,44 @@ export default {
         items: jobs,
         ad_compulsory_trigger: profile.current_tier === "free",
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 1b. GET /api/pinned (Fetch user pinned jobs)
+    if (url.pathname === "/api/pinned" && method === "GET") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const res = await supabase("user_pinned_jobs?select=*,job:scraped_jobs(*)");
+        const data = await res.json();
+        return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 1c. POST /api/pin (Pin a job)
+    if (url.pathname === "/api/pin" && method === "POST") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id } = await request.json();
+        const res = await supabase("user_pinned_jobs", {
+            method: "POST",
+            body: JSON.stringify({ user_id: userToken, job_id: job_id })
+        });
+        return new Response(res.body, { status: res.status, headers: corsHeaders });
+    }
+
+    // 1d. DELETE /api/pin (Unpin a job)
+    if (url.pathname === "/api/pin" && method === "DELETE") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id } = await request.json();
+        const res = await supabase(`user_pinned_jobs?job_id=eq.${job_id}`, { method: "DELETE" });
+        return new Response(null, { status: res.status, headers: corsHeaders });
+    }
+
+    // 1e. PATCH /api/pin (Update pin status)
+    if (url.pathname === "/api/pin" && method === "PATCH") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id, status } = await request.json();
+        const res = await supabase(`user_pinned_jobs?job_id=eq.${job_id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ system_status: status })
+        });
+        return new Response(null, { status: res.status, headers: corsHeaders });
     }
 
     // 2. POST /api/ai-apply (AI Premium One-Click Application)

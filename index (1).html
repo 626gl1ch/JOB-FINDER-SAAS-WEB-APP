@@ -1295,6 +1295,8 @@ select.form-input option{background:#1A1726;color:#fff}
         <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Copywriting</label>
         <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> AI & Automation</label>
         <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Digital Marketing</label>
+        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Cybersecurity</label>
+        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Writing / Translation</label>
       </div>
     </div>
     <button class="auth-btn" onclick="go('dashboard')"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
@@ -1390,6 +1392,10 @@ select.form-input option{background:#1A1726;color:#fff}
 
     <!-- ─── JOB FEED ─── -->
     <div class="tab-pane act" id="tp-feed">
+      <div style="margin-bottom:18px;position:relative">
+        <i class="ti ti-search" style="position:absolute;left:14px;top:13px;color:var(--t3);font-size:18px"></i>
+        <input type="text" id="job-search-input" class="form-input" placeholder="Search jobs by title, company or keywords..." style="padding-left:42px;border-radius:12px" onkeyup="handleSearch(this.value)">
+      </div>
       <div class="filter-row">
         <span class="fc on" id="fc-all" onclick="filterJobs('all')">All sectors</span>
         <span class="fc" id="fc-web" onclick="filterJobs('web')">Web Dev</span>
@@ -1694,6 +1700,7 @@ const API_URL = 'https://my-sniper-worker.daniellancce1.workers.dev/api'; // UPD
 
 /* ─── DATA ─── */
 let JOBS = [];
+let PINNED_JOBS = [];
 let TASKS = [
   {ico:'ti-clipboard-check',bg:'rgba(184,255,60,.12)',col:'var(--lime)',name:'Product survey – 3 min',sub:'Nigeria · Available now',rew:'$1.40',st:'available'},
   {ico:'ti-device-desktop',bg:'rgba(124,92,252,.15)',col:'var(--vlight)',name:'App beta feedback trial',sub:'Nigeria · In progress',rew:'$3.50',st:'in_progress'},
@@ -1704,31 +1711,31 @@ let TASKS = [
 ];
 
 let curFilter='all';
-let userProfile = { current_tier: 'free', tracks_selected: [] };
+let userProfile = { current_tier: 'free', tracks_selected: [], id_status: 'unverified' };
 
-/* ─── UTILS ─── */
-function toast(msg, icon = 'ti-info-circle') {
-  const container = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<i class="ti ${icon}"></i><div class="toast-msg">${msg}</div>`;
-  container.appendChild(t);
-  setTimeout(() => {
-    t.style.animation = 'toastOut 0.3s forwards';
-    setTimeout(() => t.remove(), 300);
-  }, 4000);
-}
-
-// Timer State
+/* ─── TIMERS ─── */
 let adTimer = 30 * 60; // 30 min
 let quotaTimer = 104 * 60; // 1h 44m
 
 function startTimers() {
     setInterval(() => {
-        if (adTimer > 0) adTimer--;
+        if (adTimer > 0) {
+            adTimer--;
+        } else {
+            if (userProfile.current_tier === 'free') {
+                showCompulsoryAd();
+                adTimer = 30 * 60; // Reset
+            }
+        }
         if (quotaTimer > 0) quotaTimer--;
         updateTimerDisplay();
     }, 1000);
+}
+
+function showCompulsoryAd() {
+    toast("Ad Break: QuickWork Pro – The #1 tool for freelancers", "ti-advertiser");
+    const banner = document.getElementById('ad-banner');
+    if (banner) banner.style.display = 'flex';
 }
 
 function updateTimerDisplay() {
@@ -1739,9 +1746,115 @@ function updateTimerDisplay() {
         return h > 0 ? `${h}h ${m}m` : `${m}m ${sec}s`;
     };
     
-    // Update labels if they exist
     const qEl = document.getElementById('quota-timer-label');
     if (qEl) qEl.innerText = format(quotaTimer);
+}
+
+/* ─── OTP LOGIC ─── */
+function openOtp() { document.getElementById('otp-modal').classList.add('open'); }
+function closeOtp() { document.getElementById('otp-modal').classList.remove('open'); }
+function moveOtp(el, dir) {
+    if (el.value.length === 1 && dir === 'next') {
+        const next = el.nextElementSibling;
+        if (next) next.focus();
+    }
+}
+function verifyOtp() {
+    toast("Phone verified successfully!", "ti-check");
+    closeOtp();
+    go('kyc');
+}
+
+/* ─── PINNED JOBS ─── */
+async function fetchPinned() {
+    try {
+        const res = await fetch(`${API_URL}/pinned`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` }
+        });
+        PINNED_JOBS = await res.json();
+        renderPinned();
+    } catch (e) { console.error(e); }
+}
+
+async function pinJob(id) {
+    try {
+        await fetch(`${API_URL}/pin`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('user_token')}`
+            },
+            body: JSON.stringify({ job_id: id })
+        });
+        toast("Job pinned to your board!", "ti-bookmark");
+        fetchPinned();
+    } catch (e) { console.error(e); }
+}
+
+async function unpinJob(id) {
+    try {
+        await fetch(`${API_URL}/pin`, {
+            method: 'DELETE',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('user_token')}`
+            },
+            body: JSON.stringify({ job_id: id })
+        });
+        toast("Job removed from pins.", "ti-trash");
+        fetchPinned();
+    } catch (e) { console.error(e); }
+}
+
+async function updatePinStatus(id, status) {
+    try {
+        await fetch(`${API_URL}/pin`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('user_token')}`
+            },
+            body: JSON.stringify({ job_id: id, status: status })
+        });
+        toast(`Status updated to ${status}`, "ti-check");
+    } catch (e) { console.error(e); }
+}
+
+function renderPinned() {
+    const el = document.getElementById('tp-pinned');
+    if (!el) return;
+    
+    let container = el.querySelector('.pinned-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'pinned-container';
+        el.appendChild(container);
+    }
+    
+    if (PINNED_JOBS.length === 0) {
+        container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--t3);border:1px dashed var(--border);border-radius:14px">No pinned jobs yet. Browse the feed to save jobs you like.</div>`;
+    } else {
+        container.innerHTML = PINNED_JOBS.map(p => `
+            <div class="jcard">
+                <div class="jcard-ico" style="background:rgba(124,92,252,.18);color:var(--vlight)">${p.job.title[0]}</div>
+                <div style="flex:1;min-width:0">
+                    <div class="jcard-title">${p.job.title}</div>
+                    <div class="jcard-meta">${p.job.company} · ${p.job.listing_source} · Pinned ${new Date(p.created_at).toLocaleDateString()}</div>
+                    <div class="jcard-tags">
+                        <select class="badge b-sec" onchange="updatePinStatus('${p.job_id}', this.value)" style="background:var(--bg3);border:none;color:var(--t2);padding:2px 8px;cursor:pointer">
+                            <option value="pinned" ${p.system_status==='pinned'?'selected':''}>Pinned</option>
+                            <option value="in_progress" ${p.system_status==='in_progress'?'selected':''}>Applying</option>
+                            <option value="completed" ${p.system_status==='completed'?'selected':''}>Hired</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="jcard-actions">
+                    <button class="jbtn jbtn-v" onclick="openAiApply('${p.job_id}')">AI Apply</button>
+                    <button class="jbtn jbtn-g" onclick="unpinJob('${p.job_id}')"><i class="ti ti-trash" style="font-size:13px"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
 /* ─── SECTOR ENFORCEMENT ─── */
@@ -1884,27 +1997,9 @@ function renderJobs(f){
     </div>`).join('');
 }
 
-function renderTasks(){
-  const el=document.getElementById('tasks-list');
-  if(!el)return;
-  el.innerHTML=TASKS.map(t=>`
-    <div class="trow">
-      <div class="trow-l">
-        <div class="trow-ico" style="background:${t.bg}"><i class="ti ${t.ico}" style="color:${t.col}"></i></div>
-        <div><div class="trow-name">${t.name}</div><div class="trow-sub">${t.sub}</div></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-        <div class="trow-rew">${t.rew}</div>
-        ${t.st==='available'?'<button class="trow-start" onclick="toast(\'Task started! Complete the external action to earn.\', \'ti-player-play\')">Start</button>':''}
-        ${t.st==='in_progress'?'<span class="badge b-wait">In progress</span>':''}
-        ${t.st==='completed'?'<span class="badge b-done"><i class="ti ti-check" style="font-size:10px"></i> Done</span>':''}
-      </div>
-    </div>`).join('');
-}
-
 function filterJobs(f){
   curFilter=f;
-  ['all','web','data','video','ai','design'].forEach(x=>{
+  ['all','web','data','video','ai','design','writing','mobile','cyber','marketing'].forEach(x=>{
     const el=document.getElementById('fc-'+x);
     if(!el)return;
     el.className='fc'+(x===f?' on':'');
@@ -1922,6 +2017,7 @@ function dTab(tab){
     if(sn)sn.className='snav'+(t===tab?' act':'');
   });
   if(tab==='feed')fetchJobs(curFilter);
+  if(tab==='pinned')fetchPinned();
   if(tab==='sidetask')fetchTasks();
 }
 
@@ -1929,6 +2025,7 @@ function go(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const pg=document.getElementById('pg-'+page);
   if(pg){pg.classList.add('active');window.scrollTo(0,0);}
+  
   if(page==='dashboard'){
       setTimeout(()=>{
           fetchJobs('all');
@@ -1936,13 +2033,41 @@ function go(page){
           document.getElementById('mob-bottom-nav').style.display = 'flex';
       },50);
   } else {
-      document.getElementById('mob-bottom-nav').style.display = 'none';
+      const bnav = document.getElementById('mob-bottom-nav');
+      if (bnav) bnav.style.display = 'none';
   }
 }
 
-/* ─── PIN & PROJECT ─── */
-function pinJob(id) {
-    toast("Job pinned to your board!", "ti-bookmark");
+/* ─── TASK COMPLETION SIM ─── */
+function startTask(name, reward) {
+    toast(`Task "${name}" started! Follow external instructions.`, "ti-player-play");
+    // Simulate completion after 5s
+    setTimeout(() => {
+        toast(`Task confirmed! ${reward} added to your balance.`, "ti-coin");
+        const balEls = document.querySelectorAll('.st-bal-val, .sb-bal-val, .d-stat-num[style*="lime"]');
+        balEls.forEach(el => {
+            let cur = parseFloat(el.innerText.replace('$',''));
+            el.innerText = `$${(cur + parseFloat(reward.replace('$',''))).toFixed(2)}`;
+        });
+    }, 5000);
+}
+
+function renderTasks(){
+  const el=document.getElementById('tasks-list');
+  if(!el)return;
+  el.innerHTML=TASKS.map(t=>`
+    <div class="trow">
+      <div class="trow-l">
+        <div class="trow-ico" style="background:${t.bg}"><i class="ti ${t.ico}" style="color:${t.col}"></i></div>
+        <div><div class="trow-name">${t.name}</div><div class="trow-sub">${t.sub}</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div class="trow-rew">${t.rew}</div>
+        ${t.st==='available'?`<button class="trow-start" onclick="startTask('${t.name}', '${t.rew}')">Start</button>`:''}
+        ${t.st==='in_progress'?'<span class="badge b-wait">In progress</span>':''}
+        ${t.st==='completed'?'<span class="badge b-done"><i class="ti ti-check" style="font-size:10px"></i> Done</span>':''}
+      </div>
+    </div>`).join('');
 }
 
 function submitWithdrawal() {

@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: 20
       - name: Core Dependencies Resolution Execution
-        run: npm install axios cheerio
+        run: npm install axios cheerio rss-parser
       - name: Fire Scraping Automation Engine
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
