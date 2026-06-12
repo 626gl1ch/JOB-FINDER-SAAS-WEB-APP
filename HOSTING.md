@@ -86,4 +86,19 @@ If you edit `index (1).html`:
 ## 5. Verification Checklist
 *   ✅ **API Health:** Visit `https://your-worker.workers.dev/debug/env`.
 *   ✅ **Scraper Check:** View the **Actions** tab in GitHub to see if the "SnipeJob" runs are green.
-*   ✅ **Data Check:** Look at the `scraped_jobs` table in Supabase to see the jobs found.
+---
+
+## 6. Troubleshooting Common Issues
+
+### ❌ Error: "You need to verify your email address to use Workers"
+**Cause:** Cloudflare requires email verification before allowing your first deployment.
+**Solution:**
+1. Check your email inbox for a message from Cloudflare and click the verification link.
+2. If you don't see it, log in to the [Cloudflare Dashboard](https://dash.cloudflare.com).
+3. Go to **My Profile** -> **Email Address** and click **Resend Verification Email**.
+4. Once verified, run `npx wrangler deploy` again.
+
+### ❌ Error: "Timed out waiting for authorization code"
+**Cause:** The browser login took too long or was blocked.
+**Solution:** Run `npx wrangler login` again and click "Allow" immediately when the browser window opens.
+
