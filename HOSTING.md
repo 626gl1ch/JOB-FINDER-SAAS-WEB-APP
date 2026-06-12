@@ -14,10 +14,22 @@ cd "C:\Users\DANIEL\JOB FINDER SAAS WEB APP\my-sniper-worker"
 ```
 
 ### Step 2: Login to Cloudflare
+There are two ways to do this. If the browser login fails, use the **API Token Method**.
+
+#### Option A: Browser Login (Standard)
 ```powershell
 npx wrangler login
 ```
-*A browser window will open. Click **Allow** to give your computer permission to deploy to your account.*
+
+#### Option B: API Token Method (More Reliable)
+1. Go to **[Cloudflare Dashboard > API Tokens](https://dash.cloudflare.com/profile/api-tokens)**.
+2. Click **Create Token** -> Use the **"Edit Cloudflare Workers"** template.
+3. Follow the steps and **Copy the Token**.
+4. In PowerShell, run:
+```powershell
+$env:CLOUDFLARE_API_TOKEN="your_token_here"
+npx wrangler deploy
+```
 
 ### Step 3: Deploy the Code
 ```powershell
