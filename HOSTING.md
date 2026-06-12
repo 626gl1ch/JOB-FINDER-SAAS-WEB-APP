@@ -27,7 +27,8 @@ npx wrangler login
 3. Follow the steps and **Copy the Token**.
 4. In PowerShell, run:
 ```powershell
-$env:CLOUDFLARE_API_TOKEN="your_token_here"
+$env:CLOUDFLARE_API_TOKEN = "cfut_ZKXaqS3Ps7ktnRemrOdTac7nBKxQfCrWyH7oN1S96d6a5def"
+cd "C:\Users\DANIEL\JOB FINDER SAAS WEB APP\my-sniper-worker"
 npx wrangler deploy
 ```
 
