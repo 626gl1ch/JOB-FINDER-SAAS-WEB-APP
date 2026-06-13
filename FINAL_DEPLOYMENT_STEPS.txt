@@ -75,58 +75,68 @@ Decide if you want users to verify their email before they can log in.
 ===============================================================================
 💰 MONETIZATION & PAYMENT CONFIGURATION STRATEGY
 ===============================================================================
+Designing the monetization and payment configuration strategy for SnipeJob.
 
-To handle payments, affiliate revenue, and AdSense, you must configure external 
-platforms to communicate with your Cloudflare Worker via Webhooks.
+To handle payments, affiliate revenue, and AdSense, you need to configure 
+External Platforms to talk to your Cloudflare Worker. Since your backend is 
+"Zero-Cost," it relies on Webhooks (automated notifications) to know when 
+money has changed hands.
 
 -------------------------------------------------------------------------------
-1. USER PAYMENTS (SUBSCRIPTION REVENUE)
+1. User Payments (Subscription Revenue)
 -------------------------------------------------------------------------------
-To get paid when users upgrade to "Pro":
-* RECOMMENDED: NOWPayments (Crypto) or LemonSqueezy (Cards/PayPal).
+To get paid when users upgrade to "Pro," you need a payment processor. 
+* RECOMMENDED: NOWPayments (for Crypto) or LemonSqueezy (for Cards/PayPal).
 * ACTION: 
     1. Create an account on the platform.
     2. Set the Webhook URL to: 
        https://your-worker.workers.dev/api/payment/webhook
-    3. The system will automatically update users to "paid" status upon confirmation.
+    3. When a user pays, the platform sends a "Confirmed" signal to your worker, 
+       which automatically updates the user's current_tier to paid in Supabase.
 
 -------------------------------------------------------------------------------
-2. AFFILIATE REVENUE (CPALEAD, OFFERTORO, ETC.)
+2. Affiliate Revenue (CPALead, OfferToro, etc.)
 -------------------------------------------------------------------------------
-This is how YOU make money when users complete "Side Tasks":
+This is how you make money when users complete "Side Tasks."
 * ACTION:
-    1. In your CPALead/OfferToro dashboard, find Postback/Webhook settings.
+    1. In your CPALead/OfferToro dashboard, find the Postback/Webhook settings.
     2. Set the Postback URL to:
        https://your-worker.workers.dev/api/postback?subid={subid}&payout={payout}&country={country}&click_ip={click_ip}
-* THE FLOW: The network pays YOU (e.g., $1.00). Your worker gives the user 
-  their "cut" (e.g., $0.30) in their virtual wallet and keeps the rest for you.
+    3. THE FLOW: When a user finishes a task, the network pays you $1.00. 
+       They ping your worker. Your worker then gives the user their "cut" 
+       (e.g., $0.30) in their virtual wallet and keeps $0.70 for you in 
+       the affiliate network balance.
 
 -------------------------------------------------------------------------------
-3. GOOGLE ADSENSE (DISPLAY ADS)
+3. Google AdSense (Display Ads)
 -------------------------------------------------------------------------------
-Your frontend (index.html) has pre-designed ad slots.
+Your frontend (index.html) is already designed with ad slots.
 * ACTION:
-    1. Apply for AdSense using your GitHub Pages URL once the site is live.
-    2. Once approved, get your 'Ad Client ID' (ca-pub-XXXXXXXXXXXX).
-    3. Replace the placeholder <ins> tags in 'index.html' with your real code.
+    1. Apply for Google AdSense for your domain (once you have your GitHub Pages URL).
+    2. Once approved, Google will give you an Ad Client ID (e.g., ca-pub-XXXXXXXXXXXXXXXX).
+    3. Replace the placeholder ins tags in index.html with your real AdSense code.
+    4. How you get paid: Google pays you directly into your bank account based 
+       on the impressions/clicks on your website.
 
 -------------------------------------------------------------------------------
-4. USER WITHDRAWALS (PAYING YOUR USERS)
+4. User Withdrawals (Paying your Users)
 -------------------------------------------------------------------------------
-When a user requests a withdrawal (Minimum $2):
-* HOW IT WORKS: Your worker logs the request in the 'withdrawal_requests' table.
-* ACTION: You (the Admin) must check this table in Supabase regularly and 
-  manually send the funds (PayPal/USDT) to the user's target address.
-  * NOTE: Keeping this manual prevents automated bot fraud from draining funds.
+When a user hits $2 in their wallet and clicks "Withdraw":
+* HOW IT WORKS: Your worker creates a row in the withdrawal_requests table 
+  in Supabase and deducts the balance from the user.
+* ACTION: You (the Admin) must check this table once a week and manually send 
+  the money (PayPal/USDT) to the target_address listed. 
+  * NOTE: I recommend keeping this manual at first to prevent fraud/bots 
+    from draining your funds.
 
 -------------------------------------------------------------------------------
-📊 SUMMARY OF MANUAL CONNECTIONS
--------------------------------------------------------------------------------
-+------------------+----------------------+-----------------------------------+
-| Feature          | Provider             | Setup Location                    |
-+------------------+----------------------+-----------------------------------+
-| Upgrade to Pro   | NOWPayments / Stripe | Webhook to /api/payment/webhook   |
-| Side Task Income | CPALead / AdGate     | Postback to /api/postback         |
-| Banner Ads       | Google AdSense       | Paste Snippet into index.html     |
-| User Payouts     | Your Wallet / PayPal | Manual via 'withdrawal_requests'  |
-+------------------+----------------------+-----------------------------------+
+📝 Summary of Manual Connections Needed:
+
+┌──────────────────┬──────────────────────┬──────────────────────────────────────────────┐
+│ Feature          │ Provider             │ Setup Location                               │
+├──────────────────┼──────────────────────┼──────────────────────────────────────────────┤
+│ Upgrade to Pro   │ NOWPayments / Stripe │ Set Webhook to /api/payment/webhook          │
+│ Side Task Income │ CPALead / AdGate     │ Set Postback to /api/postback                │
+│ Banner Ads       │ Google AdSense       │ Paste Snippet into index.html                │
+│ User Payouts     │ Your Wallet / PayPal │ Manual payment via withdrawal_requests table │
+└──────────────────┴──────────────────────┴──────────────────────────────────────────────┘
