@@ -44,10 +44,70 @@ export default {
           ...options.headers,
         },
       });
+      if (!res.ok) {
+          const err = await res.text();
+          console.error(`Supabase Error [${res.status}]: ${err}`);
+      }
       return res;
     };
 
     // --- ROUTES ---
+
+    // 0. GET /api/profile (Fetch authenticated user profile)
+    if (url.pathname === "/api/profile" && method === "GET") {
+      if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      const res = await supabase("profiles?select=*");
+      const profiles = await res.json();
+      
+      if (profiles.length === 0) {
+          return new Response(JSON.stringify({ error: "Profile not found" }), { status: 404, headers: corsHeaders });
+      }
+      
+      return new Response(JSON.stringify(profiles[0]), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // --- NEW: PINNED JOBS ENDPOINTS ---
+
+    // GET /api/pinned (Fetch user's pinned jobs)
+    if (url.pathname === "/api/pinned" && method === "GET") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const res = await supabase("user_pinned_jobs?select=*,job:scraped_jobs(*)");
+        const pinned = await res.json();
+        return new Response(JSON.stringify(pinned), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // POST /api/pin (Pin a job)
+    if (url.pathname === "/api/pin" && method === "POST") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id } = await request.json();
+        const res = await supabase("user_pinned_jobs", {
+            method: "POST",
+            body: JSON.stringify({ job_id })
+        });
+        return new Response("Pinned", { status: 201, headers: corsHeaders });
+    }
+
+    // DELETE /api/pin (Unpin a job)
+    if (url.pathname === "/api/pin" && method === "DELETE") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id } = await request.json();
+        await supabase(`user_pinned_jobs?job_id=eq.${job_id}`, { method: "DELETE" });
+        return new Response("Unpinned", { headers: corsHeaders });
+    }
+
+    // PATCH /api/pin (Update pinned job status)
+    if (url.pathname === "/api/pin" && method === "PATCH") {
+        if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+        const { job_id, status } = await request.json();
+        await supabase(`user_pinned_jobs?job_id=eq.${job_id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ system_status: status })
+        });
+        return new Response("Updated", { headers: corsHeaders });
+    }
 
     // 1. GET /api/jobs (Tier-Enforced Job Delivery)
     if (url.pathname === "/api/jobs" && method === "GET") {

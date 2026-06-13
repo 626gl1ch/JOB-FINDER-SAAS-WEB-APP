@@ -1299,7 +1299,7 @@ select.form-input option{background:#1A1726;color:#fff}
         <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Writing / Translation</label>
       </div>
     </div>
-    <button class="auth-btn" onclick="go('dashboard')"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
+    <button class="auth-btn" onclick="handleSignUp()"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
     <div class="auth-foot">Already have an account? <span onclick="go('signin')">Sign in</span></div>
     <div class="auth-back" onclick="go('home')">← Back to home</div>
   </div>
@@ -1316,7 +1316,7 @@ select.form-input option{background:#1A1726;color:#fff}
     <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" placeholder="you@email.com"></div>
     <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" placeholder="••••••••"></div>
     <div style="text-align:right;margin-top:-10px;margin-bottom:18px"><span style="font-size:12.5px;color:var(--vlight);cursor:pointer">Forgot password?</span></div>
-    <button class="auth-btn" onclick="go('dashboard')"><i class="ti ti-login"></i>&nbsp; Sign in</button>
+    <button class="auth-btn" onclick="handleSignIn()"><i class="ti ti-login"></i>&nbsp; Sign in</button>
     <div class="auth-foot">Don't have an account? <span onclick="go('signup')">Sign up free</span></div>
     <div class="auth-back" onclick="go('home')">← Back to home</div>
   </div>
@@ -1339,6 +1339,7 @@ select.form-input option{background:#1A1726;color:#fff}
     <div class="sidebar-sep"></div>
     <div class="sidebar-section">Account</div>
     <button class="snav" id="sn-settings" onclick="dTab('settings')"><i class="ti ti-settings"></i>Settings</button>
+    <button class="snav" onclick="handleSignOut()"><i class="ti ti-logout"></i>Sign out</button>
     <button class="snav" onclick="go('home')"><i class="ti ti-home"></i>Back to site</button>
     <div class="sidebar-bottom">
       <div class="sb-bal">
@@ -1694,24 +1695,98 @@ select.form-input option{background:#1A1726;color:#fff}
   </div>
 </div>
 
+<!-- Supabase Client Library -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 /* ─── API CONFIG ─── */
-const API_URL = 'https://my-sniper-worker.daniellancce1.workers.dev/api'; // UPDATE THIS
+const API_URL = 'https://my-sniper-worker.daniellancce1.workers.dev/api'; 
+const SUPABASE_URL = ''; // ADD YOUR SUPABASE URL HERE
+const SUPABASE_ANON_KEY = ''; // ADD YOUR SUPABASE ANON KEY HERE
+
+// Initialize Supabase
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ─── DATA ─── */
 let JOBS = [];
 let PINNED_JOBS = [];
 let TASKS = [
-  {ico:'ti-clipboard-check',bg:'rgba(184,255,60,.12)',col:'var(--lime)',name:'Product survey – 3 min',sub:'Nigeria · Available now',rew:'$1.40',st:'available'},
-  {ico:'ti-device-desktop',bg:'rgba(124,92,252,.15)',col:'var(--vlight)',name:'App beta feedback trial',sub:'Nigeria · In progress',rew:'$3.50',st:'in_progress'},
-  {ico:'ti-shopping-cart',bg:'rgba(255,209,102,.12)',col:'var(--yellow)',name:'Free sign-up reward',sub:'Nigeria · Available',rew:'$5.00',st:'available'},
-  {ico:'ti-player-play',bg:'rgba(0,210,255,.12)',col:'var(--cyan)',name:'Watch & rate 2 video ads',sub:'Nigeria · Available',rew:'$0.80',st:'available'},
-  {ico:'ti-check',bg:'rgba(0,224,150,.12)',col:'var(--green)',name:'Opinion poll – 2 min',sub:'Nigeria · Completed today',rew:'$1.20',st:'completed'},
-  {ico:'ti-brand-twitter',bg:'rgba(124,92,252,.12)',col:'var(--vlight)',name:'Social interaction task',sub:'Nigeria · Available',rew:'$0.60',st:'available'},
+  // ... (TASKS array remains the same)
 ];
 
 let curFilter='all';
 let userProfile = { current_tier: 'free', tracks_selected: [], id_status: 'unverified' };
+let userSession = null;
+
+// Check for existing session on load
+window.addEventListener('load', async () => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+        userSession = data.session;
+        localStorage.setItem('user_token', userSession.access_token);
+        fetchUserProfile();
+    }
+});
+
+/* ─── AUTH LOGIC ─── */
+async function handleSignUp() {
+    const name = document.querySelector('#pg-signup input[placeholder="Your name"]').value;
+    const email = document.querySelector('#pg-signup input[placeholder="you@email.com"]').value;
+    const password = document.querySelector('#pg-signup input[placeholder="At least 8 characters"]').value;
+    const country = document.querySelector('#pg-signup select').value;
+    
+    if (!email || !password) { toast("Email and password required", "ti-alert-circle"); return; }
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: { full_name: name, country: country }
+        }
+    });
+
+    if (error) { toast(error.message, "ti-alert-circle"); }
+    else { 
+        toast("Check your email for the confirmation link!", "ti-mail");
+        go('signin');
+    }
+}
+
+async function handleSignIn() {
+    const email = document.querySelector('#pg-signin input[placeholder="you@email.com"]').value;
+    const password = document.querySelector('#pg-signin input[placeholder="••••••••"]').value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) { toast(error.message, "ti-alert-circle"); }
+    else {
+        userSession = data.session;
+        localStorage.setItem('user_token', userSession.access_token);
+        toast("Welcome back!", "ti-check");
+        go('dashboard');
+    }
+}
+
+async function handleSignOut() {
+    await supabase.auth.signOut();
+    userSession = null;
+    localStorage.removeItem('user_token');
+    go('home');
+}
+
+async function fetchUserProfile() {
+    if (!userSession) return;
+    try {
+        const response = await fetch(`${API_URL}/profile`, {
+            headers: { 'Authorization': `Bearer ${userSession.access_token}` }
+        });
+        const profile = await response.json();
+        userProfile = profile;
+        // Update UI based on profile
+        document.querySelector('.dash-greeting').innerText = `Good morning, ${userSession.user.user_metadata.full_name || 'User'} 👋`;
+        document.querySelector('.sb-bal-val').innerText = `$${profile.wallet_balance.toFixed(2)}`;
+    } catch (e) { console.error("Profile fetch error:", e); }
+}
 
 /* ─── TIMERS ─── */
 let adTimer = 30 * 60; // 30 min

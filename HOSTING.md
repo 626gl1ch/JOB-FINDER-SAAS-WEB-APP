@@ -75,7 +75,45 @@ Run these 4 commands one by one. After each command, paste the value from your S
 
 ---
 
-## 4. How to Update the Live Bot Anytime
+## 4. Website Hosting (GitHub Pages)
+
+1.  **Prepare your file:** Rename `index (1).html` to `index.html`. (Done for you).
+2.  **Configure Frontend API:** Open `index.html` and find lines 1699–1701. You **MUST** fill these in:
+    *   `API_URL`: Your Cloudflare Worker URL.
+    *   `SUPABASE_URL`: Your Supabase Project URL.
+    *   `SUPABASE_ANON_KEY`: Your Supabase Anon/Public Key.
+3.  **Push to GitHub:** 
+    ```powershell
+    git add index.html
+    git commit -m "Configure frontend API"
+    git push origin main
+    ```
+4.  **Enable Hosting:**
+    *   Go to your GitHub Repository **Settings** > **Pages**.
+    *   Select `main` branch and `/ (root)`. Click **Save**.
+
+---
+
+## 5. Critical Database & Auth Configuration
+
+To make sure the "Sign Up" button works, you must configure Supabase:
+
+### Step 1: Enable Auth Providers
+1.  Go to **Supabase Dashboard** > **Authentication** > **Providers**.
+2.  Ensure **Email** is enabled.
+3.  *(Optional for testing)*: Disable **Confirm Email** if you want users to log in immediately without checking their inbox.
+
+### Step 2: Set Site URL
+1.  Go to **Authentication** > **URL Configuration**.
+2.  Set **Site URL** to your GitHub Pages URL (e.g., `https://your-user.github.io/your-repo/`).
+
+### Step 3: Configure CORS
+1.  Go to **Settings** > **API**.
+2.  In **CORS Proxy**, add your GitHub Pages URL to the list of allowed origins.
+
+---
+
+## 6. How to Update the Live Bot Anytime
 
 Whenever you make changes to your code, follow these steps:
 
@@ -91,17 +129,21 @@ If you edit `scraper.js`:
 3.  `git push origin main`
 
 ### Update the Website (Frontend)
-If you edit `index (1).html`:
-1.  Upload the new `index (1).html` to your web host (GitHub Pages, Netlify, etc.).
+If you edit `index.html`:
+1.  `git add index.html`
+2.  `git commit -m "Updated website"`
+3.  `git push origin main`
+*GitHub will automatically update your live site within 60 seconds.*
 
 ---
 
-## 5. Verification Checklist
+## 7. Verification Checklist
 *   ✅ **API Health:** Visit `https://your-worker.workers.dev/debug/env`.
 *   ✅ **Scraper Check:** View the **Actions** tab in GitHub to see if the "SnipeJob" runs are green.
+*   ✅ **Live Website:** Visit your GitHub Pages URL to ensure the dashboard loads.
 ---
 
-## 7. Final Updates (June 2026)
+## 8. Final Updates (June 2026)
 *   **Sectors:** Ensure your `scraped_jobs` table has the updated `sector` constraint to support: `web, data, video, design, ai, writing, mobile, cyber, marketing, other`.
 *   **Scraper Deps:** The automated scraper now requires `rss-parser`. This is handled in the GitHub Action workflow automatically.
 *   **Verification:** To test your KYC flow, ensure your `profiles` table `identity_status` can handle 'unverified', 'pending', 'verified', and 'flagged'.
