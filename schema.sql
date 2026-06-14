@@ -1,27 +1,27 @@
--- SnipeJob Supabase Database Schema
+-- SnipeJob Supabase Database Schema (Idempotent Version)
 
 -- EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- USER PROFILES TABLE
-CREATE TABLE public.profiles (
+-- 1. USER PROFILES TABLE
+CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     registered_country VARCHAR(2) NOT NULL,
     verified_phone TEXT NOT NULL,
     identity_status TEXT CHECK (identity_status IN ('unverified', 'pending', 'verified', 'flagged')) DEFAULT 'unverified',
-    id_image_url TEXT, -- Path to uploaded ID document
+    id_image_url TEXT,
     current_tier TEXT CHECK (current_tier IN ('free', 'paid')) DEFAULT 'free',
-    subscription_expiry TIMESTAMP WITH TIME ZONE, -- For Pro plan tracking
+    subscription_expiry TIMESTAMP WITH TIME ZONE,
     wallet_balance DECIMAL(12,2) DEFAULT 0.00,
-    preferred_payout_address TEXT, -- Crypto or PayPal address
+    preferred_payout_address TEXT,
     vpn_violation_count INT DEFAULT 0,
-    tracks_selected TEXT[] DEFAULT '{}', -- Max 3 for free tier
+    tracks_selected TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- JOB REPOSITORY TABLE
-CREATE TABLE public.scraped_jobs (
+-- 2. JOB REPOSITORY TABLE
+CREATE TABLE IF NOT EXISTS public.scraped_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     company TEXT NOT NULL,
@@ -33,8 +33,8 @@ CREATE TABLE public.scraped_jobs (
     indexed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- USER ACTIVE MANAGEMENT DASHBOARD SYSTEM
-CREATE TABLE public.user_pinned_jobs (
+-- 3. USER PINNED JOBS
+CREATE TABLE IF NOT EXISTS public.user_pinned_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     job_id UUID REFERENCES public.scraped_jobs(id) ON DELETE CASCADE NOT NULL,
@@ -43,8 +43,8 @@ CREATE TABLE public.user_pinned_jobs (
     UNIQUE(user_id, job_id)
 );
 
--- COMPREHENSIVE AFFILIATE SYSTEM TRACKING LOGS
-CREATE TABLE public.affiliate_logs (
+-- 4. AFFILIATE LOGS
+CREATE TABLE IF NOT EXISTS public.affiliate_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     tracking_subid TEXT UNIQUE NOT NULL,
@@ -55,8 +55,8 @@ CREATE TABLE public.affiliate_logs (
     processing_timestamp TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- LIQUIDITY AND WITHDRAWAL LEDGERS
-CREATE TABLE public.withdrawal_requests (
+-- 5. WITHDRAWAL REQUESTS
+CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     total_amount DECIMAL(12,2) NOT NULL,
@@ -66,12 +66,23 @@ CREATE TABLE public.withdrawal_requests (
     handled_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- CREATE PERFORMANCE TUNING INDEX MARKS
-CREATE INDEX idx_jobs_sector ON public.scraped_jobs(sector);
-CREATE INDEX idx_jobs_indexed_at ON public.scraped_jobs(indexed_at);
-CREATE INDEX idx_profiles_status ON public.profiles(identity_status);
+-- Ensure profiles has all necessary columns if it already existed
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='wallet_balance') THEN
+        ALTER TABLE public.profiles ADD COLUMN wallet_balance DECIMAL(12,2) DEFAULT 0.00;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='current_tier') THEN
+        ALTER TABLE public.profiles ADD COLUMN current_tier TEXT DEFAULT 'free';
+    END IF;
+END $$;
 
--- REVENUE BALANCE ATOMIC SAFEGUARD TRANSACTION ROUTINE
+-- INDEXES
+CREATE INDEX IF NOT EXISTS idx_jobs_sector ON public.scraped_jobs(sector);
+CREATE INDEX IF NOT EXISTS idx_jobs_indexed_at ON public.scraped_jobs(indexed_at);
+CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(identity_status);
+
+-- FUNCTIONS
 CREATE OR REPLACE FUNCTION process_affiliate_credit(
     target_user_id UUID, 
     sub_id TEXT, 
@@ -90,41 +101,50 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ROW LEVEL SECURITY (RLS)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, registered_country, verified_phone)
+  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'country', 'UN'), '');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- TRIGGERS
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- RLS (Safe to run multiple times)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_pinned_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.affiliate_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
 
--- POLICIES
-CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users can view their own pinned jobs" ON public.user_pinned_jobs FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage their own pinned jobs" ON public.user_pinned_jobs FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can create withdrawal requests" ON public.withdrawal_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Public read access for jobs" ON public.scraped_jobs FOR SELECT USING (true);
-
--- AUTOMATIC PROFILE CREATION ON SIGNUP
--- This function inserts a row into public.profiles every time a user signs up
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, registered_country, verified_phone)
-  VALUES (
-    NEW.id, 
-    NEW.email, 
-    COALESCE(NEW.raw_user_meta_data->>'country', 'UN'), 
-    ''
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- POLICIES (Use DO block to prevent "already exists" errors)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own profile') THEN
+        CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update their own profile') THEN
+        CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own pinned jobs') THEN
+        CREATE POLICY "Users can view their own pinned jobs" ON public.user_pinned_jobs FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage their own pinned jobs') THEN
+        CREATE POLICY "Users can manage their own pinned jobs" ON public.user_pinned_jobs FOR ALL USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own withdrawal requests') THEN
+        CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can create withdrawal requests') THEN
+        CREATE POLICY "Users can create withdrawal requests" ON public.withdrawal_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access for jobs') THEN
+        CREATE POLICY "Public read access for jobs" ON public.scraped_jobs FOR SELECT USING (true);
+    END IF;
+END $$;
