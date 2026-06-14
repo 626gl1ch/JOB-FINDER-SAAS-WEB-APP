@@ -7,18 +7,20 @@ Now that the code has been upgraded and pushed to GitHub, you MUST perform
 these manual steps to bridge your local changes with your live services.
 
 -------------------------------------------------------------------------------
-[STEP 1] UPDATE SUPABASE DATABASE SCHEMA (CRITICAL)
+[STEP 1] UPDATE SUPABASE DATABASE SCHEMA (MASTER FIX)
 -------------------------------------------------------------------------------
-The new update includes an automatic profile creation trigger and an atomic 
-credit function for affiliate earnings.
+The latest update includes a "Master Idempotent Schema" that fixes the 
+"Database error saving new user" bug by ensuring the profile trigger 
+is correctly mapped to user metadata.
 
 1. Open 'schema.sql' in your project folder and copy ALL text.
 2. Go to your Supabase Dashboard -> SQL Editor.
 3. Paste the code and click 'Run'.
-   * VERIFY: Check 'Table Editor' for: profiles, scraped_jobs, affiliate_logs, 
-     user_pinned_jobs, and withdrawal_requests.
-   * VERIFY: Check 'Database' -> 'Functions'. You should see 'handle_new_user' 
-     and 'process_affiliate_credit'.
+   * VERIFY: Check 'Table Editor' for 'profiles'. It must have columns: 
+     full_name, country, sectors, and id_status.
+   * TROUBLESHOOTING: If you get a "Database error saving new user" during 
+     signup, it means Step 1 was not run or the trigger is broken. 
+     Rerunning the master 'schema.sql' will fix this automatically.
 
 -------------------------------------------------------------------------------
 [STEP 2] CONFIGURE CLOUDFLARE WORKER SECRETS

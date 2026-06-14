@@ -53,7 +53,7 @@ export default {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       // Get user profile to check tier and sectors
-      const profileRes = await supabase("profiles?select=current_tier,tracks_selected");
+      const profileRes = await supabase("profiles?select=current_tier,sectors");
       const profiles = await profileRes.json();
       const profile = profiles[0];
 
@@ -64,14 +64,14 @@ export default {
 
       if (sector !== "all") {
         // Even if requesting a specific sector, check if free user has access
-        if (profile.current_tier === "free" && !profile.tracks_selected.includes(sector)) {
+        if (profile.current_tier === "free" && !profile.sectors.includes(sector)) {
             return new Response("Upgrade to Pro to access this sector", { status: 403, headers: corsHeaders });
         }
         query += `&sector=eq.${sector}`;
       } else if (profile.current_tier === "free") {
         // Free users only see their selected sectors (max 3)
         // If they haven't selected any, show them 'web' by default
-        const sectors = profile.tracks_selected.length > 0 ? profile.tracks_selected.slice(0, 3).join(",") : "web";
+        const sectors = profile.sectors.length > 0 ? profile.sectors.slice(0, 3).join(",") : "web";
         query += `&sector=in.(${sectors})`;
       }
 
@@ -229,9 +229,9 @@ export default {
       await supabase("profiles?id=eq." + userToken, { // Note: id should be user UUID from auth
         method: "PATCH",
         body: JSON.stringify({
-          identity_status: status,
+          id_status: status,
           verified_phone: phoneNumber,
-          registered_country: edgeCountry
+          country: edgeCountry
         })
       });
 
@@ -246,11 +246,11 @@ export default {
       const country = url.searchParams.get("country");
 
       // Verify user and country
-      const profileRes = await supabase(`profiles?select=registered_country,vpn_violation_count&id=eq.${subid}`);
+      const profileRes = await supabase(`profiles?select=country,vpn_violation_count&id=eq.${subid}`);
       const profiles = await profileRes.json();
       const profile = profiles[0];
 
-      if (!profile || profile.registered_country !== country) {
+      if (!profile || profile.country !== country) {
         // VPN Violation
         if (profile) {
             await supabase(`profiles?id=eq.${subid}`, {

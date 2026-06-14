@@ -1,24 +1,53 @@
--- SnipeJob Supabase Database Schema (Idempotent Version)
+-- SnipeJob Supabase Database Schema (Master Idempotent Version)
 
 -- EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. USER PROFILES TABLE
+-- Unified with latest troubleshooting naming: full_name, country, sectors, id_status
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
-    registered_country VARCHAR(2) NOT NULL,
-    verified_phone TEXT NOT NULL,
-    identity_status TEXT CHECK (identity_status IN ('unverified', 'pending', 'verified', 'flagged')) DEFAULT 'unverified',
+    full_name TEXT,
+    country TEXT,
+    sectors TEXT[] DEFAULT '{}',
+    verified_phone TEXT DEFAULT '',
+    id_status TEXT CHECK (id_status IN ('unverified', 'pending', 'verified', 'flagged')) DEFAULT 'unverified',
     id_image_url TEXT,
     current_tier TEXT CHECK (current_tier IN ('free', 'paid')) DEFAULT 'free',
     subscription_expiry TIMESTAMP WITH TIME ZONE,
     wallet_balance DECIMAL(12,2) DEFAULT 0.00,
     preferred_payout_address TEXT,
     vpn_violation_count INT DEFAULT 0,
-    tracks_selected TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Ensure profiles has all necessary columns if it already existed (Migration)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN
+        ALTER TABLE public.profiles ADD COLUMN full_name TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='country') THEN
+        ALTER TABLE public.profiles ADD COLUMN country TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='sectors') THEN
+        ALTER TABLE public.profiles ADD COLUMN sectors TEXT[] DEFAULT '{}';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='id_status') THEN
+        ALTER TABLE public.profiles ADD COLUMN id_status TEXT DEFAULT 'unverified';
+    END IF;
+    -- Cleanup old names (Optional but keeps it clean)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='tracks_selected') THEN
+        UPDATE public.profiles SET sectors = tracks_selected WHERE sectors = '{}' OR sectors IS NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='registered_country') THEN
+        UPDATE public.profiles SET country = registered_country WHERE country IS NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='identity_status') THEN
+        UPDATE public.profiles SET id_status = identity_status WHERE id_status = 'unverified';
+    END IF;
+END $$;
 
 -- 2. JOB REPOSITORY TABLE
 CREATE TABLE IF NOT EXISTS public.scraped_jobs (
@@ -66,23 +95,34 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
     handled_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Ensure profiles has all necessary columns if it already existed
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='wallet_balance') THEN
-        ALTER TABLE public.profiles ADD COLUMN wallet_balance DECIMAL(12,2) DEFAULT 0.00;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='current_tier') THEN
-        ALTER TABLE public.profiles ADD COLUMN current_tier TEXT DEFAULT 'free';
-    END IF;
-END $$;
-
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_jobs_sector ON public.scraped_jobs(sector);
 CREATE INDEX IF NOT EXISTS idx_jobs_indexed_at ON public.scraped_jobs(indexed_at);
-CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(identity_status);
+CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(id_status);
 
--- FUNCTIONS
+-- FUNCTIONS & TRIGGERS
+-- Fix for "Database error saving new user"
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, country, sectors)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'country',
+    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[])
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Atomic Credit Function
 CREATE OR REPLACE FUNCTION process_affiliate_credit(
     target_user_id UUID, 
     sub_id TEXT, 
@@ -101,42 +141,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, registered_country, verified_phone, tracks_selected)
-  VALUES (
-    NEW.id, 
-    NEW.email, 
-    COALESCE(NEW.raw_user_meta_data->>'country', 'UN'), 
-    '',
-    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[])
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- TRIGGERS
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- RLS (Safe to run multiple times)
+-- RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_pinned_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.affiliate_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
 
--- POLICIES (Use DO block to prevent "already exists" errors)
+-- POLICIES
 DO $$ 
 BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own profile') THEN
-        CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own profile') THEN
+        CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update their own profile') THEN
-        CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update own profile') THEN
+        CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own pinned jobs') THEN
         CREATE POLICY "Users can view their own pinned jobs" ON public.user_pinned_jobs FOR SELECT USING (auth.uid() = user_id);
