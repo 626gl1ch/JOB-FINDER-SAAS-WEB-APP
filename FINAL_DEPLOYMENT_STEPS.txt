@@ -4,139 +4,106 @@
 ===============================================================================
 
 Now that the code has been upgraded and pushed to GitHub, you MUST perform 
-these 5 manual steps to bridge your local changes with your live services.
+these manual steps to bridge your local changes with your live services.
 
 -------------------------------------------------------------------------------
-[STEP 1] UPDATE SUPABASE DATABASE SCHEMA
+[STEP 1] UPDATE SUPABASE DATABASE SCHEMA (CRITICAL)
 -------------------------------------------------------------------------------
-I added a "Smart Trigger" that automatically creates a user profile upon 
-signup. You must update your Supabase database to include this logic.
+The new update includes an automatic profile creation trigger and an atomic 
+credit function for affiliate earnings.
 
-1. Open your 'schema.sql' file in your project folder and copy ALL text.
+1. Open 'schema.sql' in your project folder and copy ALL text.
 2. Go to your Supabase Dashboard -> SQL Editor.
 3. Paste the code and click 'Run'.
-   * VERIFY: Go to 'Table Editor'. You should see a 'profiles' and 'scraped_jobs' 
-     table. If they already existed, this update adds the necessary Triggers 
-     and Row Level Security (RLS) policies.
+   * VERIFY: Check 'Table Editor' for: profiles, scraped_jobs, affiliate_logs, 
+     user_pinned_jobs, and withdrawal_requests.
+   * VERIFY: Check 'Database' -> 'Functions'. You should see 'handle_new_user' 
+     and 'process_affiliate_credit'.
 
 -------------------------------------------------------------------------------
-[STEP 2] REDEPLOY CLOUDFLARE WORKER
+[STEP 2] CONFIGURE CLOUDFLARE WORKER SECRETS
 -------------------------------------------------------------------------------
-I added new API routes (Profile, Pinning, and Status updates) that are not yet 
-on your live Cloudflare Worker.
+Your worker will fail to connect to the database or AI without these secrets.
 
-1. Open PowerShell and navigate to your worker folder:
-   cd "C:\Users\DANIEL\JOB FINDER SAAS WEB APP\my-sniper-worker"
-2. Run the deployment command:
-   npx wrangler deploy
-   * VERIFY: Visit https://your-worker.workers.dev/debug/env. Ensure it loads 
-     without errors.
+1. Open PowerShell in your project folder.
+2. Run these commands one by one (replace with your real keys):
+   npx wrangler secret put SUPABASE_URL
+   npx wrangler secret put SUPABASE_ANON_KEY
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+   npx wrangler secret put GEMINI_API_KEY
 
 -------------------------------------------------------------------------------
-[STEP 3] UPDATE FRONTEND API KEYS & PUSH
+[STEP 3] REDEPLOY CLOUDFLARE WORKER
 -------------------------------------------------------------------------------
-Your website (index.html) needs to know exactly which Backend to talk to.
+Upload the latest API logic (Profile, Pinning, Payments, and AI).
 
-1. Open 'index.html' in your editor.
-2. Search for the section labeled "/* ─── API CONFIG ─── */" (Lines 1700-1702).
-3. Fill in your credentials:
-   const API_URL = 'https://your-worker.your-subdomain.workers.dev/api';
-   const SUPABASE_URL = 'https://your-project.supabase.co';
-   const SUPABASE_ANON_KEY = 'your-anon-key-here';
-4. Save the file and push to GitHub:
-   git add index.html
-   git commit -m "chore: setup live api keys"
+1. Navigate to your worker folder:
+   cd "my-sniper-worker"
+2. Run: npx wrangler deploy
+   * VERIFY: Visit https://your-worker.workers.dev/debug/env to see 'true' for all.
+
+-------------------------------------------------------------------------------
+[STEP 4] UPDATE FRONTEND & GITHUB REPO
+-------------------------------------------------------------------------------
+Ensure your website knows where to talk and your scraper has access.
+
+1. In 'index.html', update the API_URL (around line 1700) to your live Worker URL.
+2. Push all changes to GitHub:
+   git add .
+   git commit -m "feat: full monetization & api update"
    git push origin main
+3. Go to GitHub Repo -> Settings -> Secrets and variables -> Actions.
+4. Add these Repository Secrets:
+   - SUPABASE_URL
+   - SUPABASE_SERVICE_ROLE_KEY
+   (This allows the cron-job scraper to push jobs to your DB).
 
 -------------------------------------------------------------------------------
-[STEP 4] CONFIGURE AUTHENTICATION & CORS (SUPABASE)
+[STEP 5] CONFIGURE AUTHENTICATION & CORS
 -------------------------------------------------------------------------------
-Supabase security will block your "Sign Up" requests unless it trusts your 
-GitHub Pages domain.
-
-1. Go to Supabase Dashboard -> Authentication -> URL Configuration.
-2. Set 'Site URL' to your GitHub Pages link (e.g., https://youruser.github.io/repo/).
-3. Go to Settings -> API -> CORS Allowed Origins.
-4. Add your GitHub Pages URL to the list.
-
--------------------------------------------------------------------------------
-[STEP 5] TOGGLE EMAIL CONFIRMATION (OPTIONAL)
--------------------------------------------------------------------------------
-Decide if you want users to verify their email before they can log in.
-
-1. Go to Supabase Dashboard -> Authentication -> Providers -> Email.
-2. Toggle "Confirm email" OFF if you want users to log in instantly after signup.
-3. Toggle "Confirm email" ON if you want a professional verification flow.
+1. Supabase Dashboard -> Authentication -> URL Configuration:
+   Set 'Site URL' to your GitHub Pages link.
+2. Settings -> API -> CORS: Add your GitHub Pages link to 'Allowed Origins'.
 
 ===============================================================================
-🎉 ONCE THESE STEPS ARE DONE, YOUR SAAS IS FULLY FUNCTIONAL AND LIVE!
+💰 MONETIZATION & PAYMENT CONFIGURATION (DETAILED)
 ===============================================================================
 
-===============================================================================
-💰 MONETIZATION & PAYMENT CONFIGURATION STRATEGY
-===============================================================================
-Designing the monetization and payment configuration strategy for SnipeJob.
-
-To handle payments, affiliate revenue, and AdSense, you need to configure 
-External Platforms to talk to your Cloudflare Worker. Since your backend is 
-"Zero-Cost," it relies on Webhooks (automated notifications) to know when 
-money has changed hands.
-
 -------------------------------------------------------------------------------
-1. User Payments (Subscription Revenue)
+1. User Payments (Subscriptions)
 -------------------------------------------------------------------------------
-To get paid when users upgrade to "Pro," you need a payment processor. 
-* RECOMMENDED: NOWPayments (for Crypto) or LemonSqueezy (for Cards/PayPal).
-* ACTION: 
-    1. Create an account on the platform.
-    2. Set the Webhook URL to: 
-       https://your-worker.workers.dev/api/payment/webhook
-    3. When a user pays, the platform sends a "Confirmed" signal to your worker, 
-       which automatically updates the user's current_tier to paid in Supabase.
+To sell "Pro" plans ($9.99/mo) and automate the upgrade:
+* PROVIDER: NOWPayments (Crypto) or Stripe/LemonSqueezy (Fiat).
+* WEBHOOK SETUP:
+  - Find the "Webhook" section in your provider's dashboard.
+  - Set the URL to: https://your-worker.workers.dev/api/payment/webhook
+  - Method: POST
+  - When a user pays, your worker automatically updates their 'current_tier' to 'paid'.
 
 -------------------------------------------------------------------------------
-2. Affiliate Revenue (CPALead, OfferToro, etc.)
+2. Affiliate Revenue (Postbacks)
 -------------------------------------------------------------------------------
-This is how you make money when users complete "Side Tasks."
-* ACTION:
-    1. In your CPALead/OfferToro dashboard, find the Postback/Webhook settings.
-    2. Set the Postback URL to:
-       https://your-worker.workers.dev/api/postback?subid={subid}&payout={payout}&country={country}&click_ip={click_ip}
-    3. THE FLOW: When a user finishes a task, the network pays you $1.00. 
-       They ping your worker. Your worker then gives the user their "cut" 
-       (e.g., $0.30) in their virtual wallet and keeps $0.70 for you in 
-       the affiliate network balance.
+To get paid when users complete "Side Tasks" (CPALead, OfferToro, etc.):
+* POSTBACK SETUP:
+  - Set your Postback/Global Postback URL in their dashboard to:
+    https://your-worker.workers.dev/api/postback?subid={subid}&payout={payout}&country={country}&click_ip={ip}
+  - IMPORTANT: The {subid} placeholder ensures the money goes to the specific user's wallet.
+  - Your worker keeps 70% of the payout and gives 30% to the user automatically.
 
 -------------------------------------------------------------------------------
 3. Google AdSense (Display Ads)
 -------------------------------------------------------------------------------
-Your frontend (index.html) is already designed with ad slots.
-* ACTION:
-    1. Apply for Google AdSense for your domain (once you have your GitHub Pages URL).
-    2. Once approved, Google will give you an Ad Client ID (e.g., ca-pub-XXXXXXXXXXXXXXXX).
-    3. Replace the placeholder ins tags in index.html with your real AdSense code.
-    4. How you get paid: Google pays you directly into your bank account based 
-       on the impressions/clicks on your website.
+1. Get your AdSense "Auto Ads" or "Display Ad" snippet from Google.
+2. In 'index.html', find the div with id="ad-banner" (Line 1357).
+3. Replace the placeholder <span>...</span> with your <ins class="adsbygoogle" ...></ins> tag.
+4. Ensure you also include the AdSense <script> in the <head> of index.html.
 
 -------------------------------------------------------------------------------
-4. User Withdrawals (Paying your Users)
+4. How YOU Get Paid (The Revenue Flow)
 -------------------------------------------------------------------------------
-When a user hits $2 in their wallet and clicks "Withdraw":
-* HOW IT WORKS: Your worker creates a row in the withdrawal_requests table 
-  in Supabase and deducts the balance from the user.
-* ACTION: You (the Admin) must check this table once a week and manually send 
-  the money (PayPal/USDT) to the target_address listed. 
-  * NOTE: I recommend keeping this manual at first to prevent fraud/bots 
-    from draining your funds.
+* FROM ADSENSE: Google pays your bank account directly.
+* FROM AFFILIATES: CPALead/OfferToro pays your PayPal/Crypto wallet.
+* FROM PRO USERS: NOWPayments/Stripe pays your wallet/bank.
+* PAYING USERS: When users request a withdrawal (>$2), check the 
+  'withdrawal_requests' table in Supabase and manually send them their cut.
 
--------------------------------------------------------------------------------
-📝 Summary of Manual Connections Needed:
-
-┌──────────────────┬──────────────────────┬──────────────────────────────────────────────┐
-│ Feature          │ Provider             │ Setup Location                               │
-├──────────────────┼──────────────────────┼──────────────────────────────────────────────┤
-│ Upgrade to Pro   │ NOWPayments / Stripe │ Set Webhook to /api/payment/webhook          │
-│ Side Task Income │ CPALead / AdGate     │ Set Postback to /api/postback                │
-│ Banner Ads       │ Google AdSense       │ Paste Snippet into index.html                │
-│ User Payouts     │ Your Wallet / PayPal │ Manual payment via withdrawal_requests table │
-└──────────────────┴──────────────────────┴──────────────────────────────────────────────┘
