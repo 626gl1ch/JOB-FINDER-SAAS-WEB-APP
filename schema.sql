@@ -104,8 +104,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, registered_country, verified_phone)
-  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'country', 'UN'), '');
+  INSERT INTO public.profiles (id, email, registered_country, verified_phone, tracks_selected)
+  VALUES (
+    NEW.id, 
+    NEW.email, 
+    COALESCE(NEW.raw_user_meta_data->>'country', 'UN'), 
+    '',
+    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[])
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -1287,16 +1287,16 @@ select.form-input option{background:#1A1726;color:#fff}
     <div class="form-group">
       <label class="form-label">Choose up to 3 job sectors (free plan)</label>
       <div class="sector-picker">
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Web Development</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Data Science</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Video Editing</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> UI/UX Design</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> App Development</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Copywriting</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> AI & Automation</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Digital Marketing</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Cybersecurity</label>
-        <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Writing / Translation</label>
+        <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
+        <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data Science</label>
+        <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
+        <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
+        <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
+        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Copywriting</label>
+        <label class="sec-opt"><input type="checkbox" value="ai" onchange="handleSectorCheck(this)"> AI & Automation</label>
+        <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
+        <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
+        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Writing / Translation</label>
       </div>
     </div>
     <button class="auth-btn" onclick="handleSignUp()"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
@@ -1735,20 +1735,38 @@ async function handleSignUp() {
     const password = document.querySelector('#pg-signup input[placeholder="At least 8 characters"]').value;
     const country = document.querySelector('#pg-signup select').value;
     
+    // Capture selected sectors
+    const sectors = Array.from(document.querySelectorAll('.sector-picker input:checked')).map(el => el.value);
+
     if (!email || !password) { toast("Email and password required", "ti-alert-circle"); return; }
+    if (sectors.length === 0) { toast("Please select at least one job sector", "ti-alert-circle"); return; }
 
     const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: {
-            data: { full_name: name, country: country }
+            data: { 
+                full_name: name, 
+                country: country,
+                sectors: sectors
+            }
         }
     });
 
     if (error) { toast(error.message, "ti-alert-circle"); }
     else { 
-        toast("Check your email for the confirmation link!", "ti-mail");
-        go('signin');
+        if (data.session) {
+            // Instant Login (Email Confirmation is likely OFF in Supabase)
+            userSession = data.session;
+            localStorage.setItem('user_token', userSession.access_token);
+            await fetchUserProfile();
+            toast("Account created! Redirecting...", "ti-circle-check");
+            go('dashboard');
+        } else {
+            // Email Confirmation is ON
+            toast("Check your email for the confirmation link!", "ti-mail");
+            go('signin');
+        }
     }
 }
 
