@@ -1730,15 +1730,17 @@ window.addEventListener('load', async () => {
 
 /* ─── AUTH LOGIC ─── */
 async function handleSignUp() {
-    const name = document.querySelector('#pg-signup input[placeholder="Your name"]').value;
-    const email = document.querySelector('#pg-signup input[placeholder="you@email.com"]').value;
+    const name = document.querySelector('#pg-signup input[placeholder="Your name"]').value.trim();
+    const email = document.querySelector('#pg-signup input[placeholder="you@email.com"]').value.trim();
     const password = document.querySelector('#pg-signup input[placeholder="At least 8 characters"]').value;
     const country = document.querySelector('#pg-signup select').value;
     
-    // Capture selected sectors
-    const sectors = Array.from(document.querySelectorAll('.sector-picker input:checked')).map(el => el.value);
+    // Capture selected sectors (using slugs for DB consistency)
+    const sectors = Array.from(document.querySelectorAll('#pg-signup .sector-picker input:checked')).map(el => el.value);
 
+    if (!name) { toast("Please enter your name", "ti-alert-circle"); return; }
     if (!email || !password) { toast("Email and password required", "ti-alert-circle"); return; }
+    if (password.length < 8) { toast("Password must be at least 8 characters", "ti-alert-circle"); return; }
     if (sectors.length === 0) { toast("Please select at least one job sector", "ti-alert-circle"); return; }
 
     const { data, error } = await sb.auth.signUp({
@@ -1753,18 +1755,19 @@ async function handleSignUp() {
         }
     });
 
-    if (error) { toast(error.message, "ti-alert-circle"); }
-    else { 
+    if (error) { 
+        toast(error.message, "ti-alert-circle"); 
+    } else { 
         if (data.session) {
             // Instant Login (Email Confirmation is likely OFF in Supabase)
             userSession = data.session;
             localStorage.setItem('user_token', userSession.access_token);
             await fetchUserProfile();
-            toast("Account created! Redirecting...", "ti-circle-check");
+            toast("Welcome to SnipeJob! 🎉", "ti-check");
             go('dashboard');
         } else {
             // Email Confirmation is ON
-            toast("Check your email for the confirmation link!", "ti-mail");
+            toast("Check your email to confirm your account, then sign in.", "ti-mail");
             go('signin');
         }
     }
@@ -1794,16 +1797,41 @@ async function handleSignOut() {
 
 async function fetchUserProfile() {
     if (!userSession) return;
+
+    // 1. Load from Metadata first (instant)
+    const meta = userSession.user.user_metadata || {};
+    const displayName = meta.full_name || userSession.user.email.split('@')[0];
+    const sectors = meta.sectors || [];
+
+    // Update greeting
+    const greetEl = document.querySelector('.dash-greeting');
+    if (greetEl) greetEl.innerText = `Good morning, ${displayName} 👋`;
+
+    // Update user avatar initials
+    const avEl = document.querySelector('.user-av');
+    if (avEl) avEl.innerText = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+
+    // Reflect saved sectors in dashboard settings (if any)
+    document.querySelectorAll('#pg-dashboard .sector-picker input').forEach(cb => {
+        cb.checked = sectors.includes(cb.value);
+    });
+
+    // 2. Fetch extended profile from API (non-blocking)
     try {
         const response = await fetch(`${API_URL}/profile`, {
             headers: { 'Authorization': `Bearer ${userSession.access_token}` }
         });
-        const profile = await response.json();
-        userProfile = profile;
-        // Update UI based on profile
-        document.querySelector('.dash-greeting').innerText = `Good morning, ${userSession.user.user_metadata.full_name || 'User'} 👋`;
-        document.querySelector('.sb-bal-val').innerText = `$${profile.wallet_balance.toFixed(2)}`;
-    } catch (e) { console.error("Profile fetch error:", e); }
+        if (response.ok) {
+            const profile = await response.json();
+            userProfile = { ...userProfile, ...profile };
+            const balEl = document.querySelector('.sb-bal-val');
+            if (balEl && profile.wallet_balance !== undefined) {
+                balEl.innerText = `$${profile.wallet_balance.toFixed(2)}`;
+            }
+        }
+    } catch (e) {
+        console.warn("Profile API not available, using metadata only:", e.message);
+    }
 }
 
 /* ─── TIMERS ─── */
@@ -2114,21 +2142,29 @@ function dTab(tab){
   if(tab==='sidetask')fetchTasks();
 }
 
-function go(page){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const pg=document.getElementById('pg-'+page);
-  if(pg){pg.classList.add('active');window.scrollTo(0,0);}
-  
-  if(page==='dashboard'){
-      setTimeout(()=>{
-          fetchJobs('all');
-          startTimers();
-          document.getElementById('mob-bottom-nav').style.display = 'flex';
-      },50);
-  } else {
-      const bnav = document.getElementById('mob-bottom-nav');
-      if (bnav) bnav.style.display = 'none';
-  }
+function go(page) {
+    // Guard: redirect unauthenticated users away from protected pages
+    const protectedPages = ['dashboard', 'kyc', 'upgrade', 'withdrawal'];
+    if (protectedPages.includes(page) && !userSession) {
+        toast("Please sign in to access your dashboard", "ti-lock");
+        page = 'signin';
+    }
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pg = document.getElementById('pg-' + page);
+    if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
+
+    if (page === 'dashboard') {
+        setTimeout(() => {
+            fetchUserProfile(); // Ensure dashboard always refreshes user data
+            fetchJobs('all');
+            startTimers();
+            document.getElementById('mob-bottom-nav').style.display = 'flex';
+        }, 50);
+    } else {
+        const bnav = document.getElementById('mob-bottom-nav');
+        if (bnav) bnav.style.display = 'none';
+    }
 }
 
 /* ─── TASK COMPLETION SIM ─── */
