@@ -1705,7 +1705,7 @@ const SUPABASE_URL = ''; // ADD YOUR SUPABASE URL HERE
 const SUPABASE_ANON_KEY = ''; // ADD YOUR SUPABASE ANON KEY HERE
 
 // Initialize Supabase
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ─── DATA ─── */
 let JOBS = [];
@@ -1720,7 +1720,7 @@ let userSession = null;
 
 // Check for existing session on load
 window.addEventListener('load', async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await sb.auth.getSession();
     if (data.session) {
         userSession = data.session;
         localStorage.setItem('user_token', userSession.access_token);
@@ -1737,7 +1737,7 @@ async function handleSignUp() {
     
     if (!email || !password) { toast("Email and password required", "ti-alert-circle"); return; }
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: {
@@ -1756,7 +1756,7 @@ async function handleSignIn() {
     const email = document.querySelector('#pg-signin input[placeholder="you@email.com"]').value;
     const password = document.querySelector('#pg-signin input[placeholder="••••••••"]').value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
     if (error) { toast(error.message, "ti-alert-circle"); }
     else {
@@ -1768,7 +1768,7 @@ async function handleSignIn() {
 }
 
 async function handleSignOut() {
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     userSession = null;
     localStorage.removeItem('user_token');
     go('home');
