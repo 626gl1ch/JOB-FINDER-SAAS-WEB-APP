@@ -1526,12 +1526,16 @@ select.form-input option{background:#1A1726;color:#fff}
         <div class="settings-card">
           <div class="settings-sect">Job sectors <span style="font-weight:400;color:var(--t3);font-size:11px;text-transform:none;letter-spacing:0">(3/3 selected — Free plan)</span></div>
           <div class="sector-picker">
-            <label class="sec-opt"><input type="checkbox" checked onchange="handleSectorCheck(this)"> Web Development</label>
-            <label class="sec-opt"><input type="checkbox" checked onchange="handleSectorCheck(this)"> Data Science</label>
-            <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> Video Editing</label>
-            <label class="sec-opt"><input type="checkbox" checked onchange="handleSectorCheck(this)"> AI & Automation</label>
-            <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> UI/UX Design</label>
-            <label class="sec-opt"><input type="checkbox" onchange="handleSectorCheck(this)"> App Development</label>
+            <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
+            <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data Science</label>
+            <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
+            <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
+            <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
+            <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Copywriting</label>
+            <label class="sec-opt"><input type="checkbox" value="ai" onchange="handleSectorCheck(this)"> AI & Automation</label>
+            <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
+            <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
+            <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Writing / Translation</label>
           </div>
           <div class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer"><i class="ti ti-lock"></i>Upgrade to Pro to unlock all job sectors and unlimited alerts</div>
         </div>
@@ -1706,6 +1710,16 @@ const SUPABASE_ANON_KEY = ''; // ADD YOUR SUPABASE ANON KEY HERE
 
 // Initialize Supabase
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function toast(msg, icon = 'ti-info-circle') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<i class="ti ${icon}" style="font-size:15px;flex-shrink:0"></i><span class="toast-msg">${msg}</span>`;
+    container.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
 
 /* ─── DATA ─── */
 let JOBS = [];
