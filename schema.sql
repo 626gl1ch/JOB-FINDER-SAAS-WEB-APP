@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     verified_phone TEXT DEFAULT '',
     id_status TEXT CHECK (id_status IN ('unverified', 'pending', 'verified', 'flagged')) DEFAULT 'unverified',
     id_image_url TEXT,
+    exp_level TEXT CHECK (exp_level IN ('junior', 'mid', 'senior', 'expert')) DEFAULT 'mid',
+    primary_skill TEXT DEFAULT '',
+    bio TEXT DEFAULT '',
+    education TEXT DEFAULT '',
     current_tier TEXT CHECK (current_tier IN ('free', 'paid')) DEFAULT 'free',
     subscription_expiry TIMESTAMP WITH TIME ZONE,
     wallet_balance DECIMAL(12,2) DEFAULT 0.00,
@@ -37,6 +41,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='id_status') THEN
         ALTER TABLE public.profiles ADD COLUMN id_status TEXT DEFAULT 'unverified';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='exp_level') THEN
+        ALTER TABLE public.profiles ADD COLUMN exp_level TEXT DEFAULT 'mid';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='primary_skill') THEN
+        ALTER TABLE public.profiles ADD COLUMN primary_skill TEXT DEFAULT '';
+    END IF;
     -- Cleanup old names (Optional but keeps it clean)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='tracks_selected') THEN
         UPDATE public.profiles SET sectors = tracks_selected WHERE sectors = '{}' OR sectors IS NULL;
@@ -54,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.scraped_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     company TEXT NOT NULL,
-    sector TEXT CHECK (sector IN ('web', 'data', 'video', 'design', 'ai', 'writing', 'mobile', 'cyber', 'marketing', 'other')) NOT NULL,
+    sector TEXT CHECK (sector IN ('web', 'data', 'video', 'design', 'ai', 'writing', 'mobile', 'cyber', 'marketing', 'support', 'va', 'sales', 'mgmt', 'finance', 'legal', 'other')) NOT NULL,
     listing_source TEXT NOT NULL,
     job_url TEXT UNIQUE NOT NULL,
     payload_description TEXT NOT NULL,
@@ -105,13 +115,15 @@ CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(id_status);
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, country, sectors)
+  INSERT INTO public.profiles (id, email, full_name, country, sectors, exp_level, primary_skill)
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
     NEW.raw_user_meta_data->>'country',
-    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[])
+    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[]),
+    NEW.raw_user_meta_data->>'exp_level',
+    NEW.raw_user_meta_data->>'primary_skill'
   );
   RETURN NEW;
 END;

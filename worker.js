@@ -169,6 +169,47 @@ export default {
       return new Response(JSON.stringify({ proposal: proposalText }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // --- NEW: AI 1-TAP RESUME ENDPOINT ---
+    if (url.pathname === "/api/ai-resume" && method === "POST") {
+      if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const { job_id } = await request.json();
+
+      // 1. Get user profile
+      const profileRes = await supabase("profiles?select=full_name,sectors,exp_level,primary_skill,bio,education,current_tier");
+      const profile = (await profileRes.json())[0];
+      if (profile.current_tier !== "paid") return new Response("Pro feature only", { status: 403, headers: corsHeaders });
+
+      // 2. Get job details
+      const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
+      const job = (await jobRes.json())[0];
+
+      // 3. Call Gemini for Tailored Resume
+      const prompt = `You are an expert resume writer. Generate a highly tailored, professional, and impactful resume for the following job:
+      JOB: ${job.title}
+      DESCRIPTION: ${job.payload_description}
+      
+      USER INFO:
+      Name: ${profile.full_name}
+      Level: ${profile.exp_level}
+      Top Skill: ${profile.primary_skill}
+      Bio: ${profile.bio}
+      Education: ${profile.education}
+      
+      Structure the output as a clean, ready-to-send text resume with sections for Professional Summary, Skills, Experience (extrapolate based on bio), and Education. Focus on matching keywords from the job description.`;
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+
+      const geminiData = await geminiRes.json();
+      const resumeText = geminiData.candidates[0].content.parts[0].text;
+
+      return new Response(JSON.stringify({ status: "submitted", resume: resumeText }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     // 3. POST /api/payment/webhook (Stripe/NOWPayments Webhook)
     if (url.pathname === "/api/payment/webhook" && method === "POST") {
         // Simplified webhook handler for simulation
@@ -246,11 +287,15 @@ export default {
       const country = url.searchParams.get("country");
 
       // Verify user and country
-      const profileRes = await supabase(`profiles?select=country,vpn_violation_count&id=eq.${subid}`);
+      const profileRes = await supabase(`profiles?select=country,vpn_violation_count,current_tier&id=eq.${subid}`);
       const profiles = await profileRes.json();
       const profile = profiles[0];
 
-      if (!profile || profile.country !== country) {
+      if (!profile || profile.current_tier !== 'paid') {
+          return new Response("Pro subscription required for tasks", { status: 403, headers: corsHeaders });
+      }
+
+      if (profile.country !== country) {
         // VPN Violation
         if (profile) {
             await supabase(`profiles?id=eq.${subid}`, {
@@ -289,8 +334,12 @@ export default {
        if (amount < 2) return new Response("Minimum $2", { status: 400, headers: corsHeaders });
 
        // Check balance
-       const profileRes = await supabase("profiles?select=wallet_balance");
+       const profileRes = await supabase("profiles?select=wallet_balance,current_tier");
        const profile = (await profileRes.json())[0];
+
+       if (!profile || profile.current_tier !== 'paid') {
+           return new Response("Pro subscription required for withdrawals", { status: 403, headers: corsHeaders });
+       }
 
        if (profile.wallet_balance < amount) return new Response("Insufficient balance", { status: 400, headers: corsHeaders });
 

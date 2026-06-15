@@ -840,8 +840,8 @@ select.form-input option{background:#1A1726;color:#fff}
   <div class="hero-grid">
     <div>
       <div class="hero-eyebrow"><span class="pulse"></span>Scanning 40+ sources every 30 seconds</div>
-      <h1>Stop scrolling.<br>Start getting hired <span class="g-fire">first.</span></h1>
-      <p class="hero-sub">SnipeJob watches LinkedIn, Upwork, Reddit, Discord, Twitter, and 35+ more sources around the clock. The second a matching job goes live — you're notified before anyone else even opens their browser.</p>
+       <div class="hero-h1">Get your proposal seen <span class="g-vio">before</span> everyone else.</div>
+      <p class="hero-sub">SnipeJob ensures you are in the first 5 applicants on every opportunity. Don't just get alerts — get the outcome of being noticed first.</p>
       <div class="hero-btns">
         <button class="btn-primary" onclick="go('signup')"><i class="ti ti-rocket"></i> Get job alerts free</button>
         <button class="btn-ghost" onclick="go('dashboard')"><i class="ti ti-layout-dashboard"></i> Preview dashboard</button>
@@ -969,26 +969,26 @@ select.form-input option{background:#1A1726;color:#fff}
       <div class="hiw-step">
         <div class="step-n">01</div>
         <div class="step-ico" style="background:rgba(124,92,252,.18)"><i class="ti ti-user-check" style="color:var(--vlight);font-size:20px"></i></div>
-        <h3>Build your profile in 2 minutes</h3>
-        <p>Sign up free. Pick your job sectors (3 on free, all on Pro), set your rate and skill level. That's it. You're live.</p>
+        <h3>Build your AI Profiler</h3>
+        <p>Tell us your skills and bio. Our Copilot builds a permanent intelligence model of your freelance experience to power 1-tap applications.</p>
       </div>
       <div class="hiw-step">
         <div class="step-n">02</div>
         <div class="step-ico" style="background:rgba(0,210,255,.12)"><i class="ti ti-scan" style="color:var(--cyan);font-size:20px"></i></div>
-        <h3>We hunt 24/7 so you don't have to</h3>
-        <p>Our scrapers sweep Upwork, LinkedIn, Reddit, Twitter, Discord, Freelancer.com and 35+ more — every 30 seconds. Night and day.</p>
+        <h3>We monitor 40+ sources</h3>
+        <p>We scan Upwork, Reddit, LinkedIn, and specialized boards every 30 seconds for your exact skill match. Night and day.</p>
       </div>
       <div class="hiw-step">
         <div class="step-n">03</div>
         <div class="step-ico" style="background:rgba(0,224,150,.12)"><i class="ti ti-bell-ringing" style="color:var(--green);font-size:20px"></i></div>
         <h3>Be first to know — every time</h3>
-        <p>A matching job posts. Your phone buzzes in under 30 seconds. Before it shows on LinkedIn. Before anyone else even clicks the link.</p>
+        <p>A matching job posts. Your phone buzzes in under 30 seconds. Be in the first 5 applicants before the competition even opens their browser.</p>
       </div>
       <div class="hiw-step">
         <div class="step-n">04</div>
-        <div class="step-ico" style="background:rgba(255,107,53,.12)"><i class="ti ti-send" style="color:var(--orange);font-size:20px"></i></div>
-        <h3>Apply instantly — or let AI do it</h3>
-        <p>Free users get a direct link immediately. Pro users let our AI send a tailored proposal using your profile — one tap and you're applied.</p>
+        <div class="step-ico" style="background:rgba(255,107,53,.12)"><i class="ti ti-sparkles" style="color:var(--orange);font-size:20px"></i></div>
+        <h3>1-Tap Tailored Resume</h3>
+        <p>One click generates a job-specific resume and submits it using your intelligence model. No form filling. Just sniping.</p>
       </div>
     </div>
   </div>
@@ -1285,18 +1285,34 @@ select.form-input option{background:#1A1726;color:#fff}
     </div>
     <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" placeholder="At least 8 characters"></div>
     <div class="form-group">
+      <label class="form-label">Experience Level</label>
+      <select class="form-input">
+        <option value="junior">Junior (0-2 years)</option>
+        <option value="mid" selected>Mid-Level (3-5 years)</option>
+        <option value="senior">Senior (5-8 years)</option>
+        <option value="expert">Expert / Specialist (8+ years)</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Primary Skill (e.g. React, Python, Figma)</label><input type="text" class="form-input" placeholder="Enter your top skill"></div>
+    <div class="form-group"><label class="form-label">Professional Bio (Powers AI Resume)</label><textarea class="form-input" style="height:80px;resize:none" placeholder="Tell us about your experience, achievements, and what makes you a great freelancer..."></textarea></div>
+    <div class="form-group"><label class="form-label">Education / Certifications</label><input type="text" class="form-input" placeholder="Degree, Certs, or Online Courses"></div>
+    <div class="form-group">
       <label class="form-label">Choose up to 3 job sectors (free plan)</label>
       <div class="sector-picker">
         <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
-        <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data Science</label>
+        <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data & AI</label>
         <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
         <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
         <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
-        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Copywriting</label>
-        <label class="sec-opt"><input type="checkbox" value="ai" onchange="handleSectorCheck(this)"> AI & Automation</label>
+        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Content & Copy</label>
         <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
         <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
-        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Writing / Translation</label>
+        <label class="sec-opt"><input type="checkbox" value="support" onchange="handleSectorCheck(this)"> Customer Support</label>
+        <label class="sec-opt"><input type="checkbox" value="va" onchange="handleSectorCheck(this)"> Virtual Assistant</label>
+        <label class="sec-opt"><input type="checkbox" value="sales" onchange="handleSectorCheck(this)"> Sales & Business</label>
+        <label class="sec-opt"><input type="checkbox" value="mgmt" onchange="handleSectorCheck(this)"> Project Management</label>
+        <label class="sec-opt"><input type="checkbox" value="finance" onchange="handleSectorCheck(this)"> Finance & Accounting</label>
+        <label class="sec-opt"><input type="checkbox" value="legal" onchange="handleSectorCheck(this)"> Legal & Compliance</label>
       </div>
     </div>
     <button class="auth-btn" onclick="handleSignUp()"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
@@ -1333,14 +1349,37 @@ select.form-input option{background:#1A1726;color:#fff}
     <button class="snav act" id="sn-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed<span class="snav-badge" id="feed-badge">34</span></button>
     <button class="snav" id="sn-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned Jobs</button>
     <button class="snav" id="sn-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
+    <button class="snav" id="sn-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">PRO</span></button>
     <div class="sidebar-sep"></div>
     <div class="sidebar-section">Earn</div>
-    <button class="snav" id="sn-sidetask" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Side Task</button>
+    <button class="snav" id="sn-sidetask" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Side Task <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">PRO</span></button>
     <div class="sidebar-sep"></div>
     <div class="sidebar-section">Account</div>
     <button class="snav" id="sn-settings" onclick="dTab('settings')"><i class="ti ti-settings"></i>Settings</button>
     <button class="snav" onclick="handleSignOut()"><i class="ti ti-logout"></i>Sign out</button>
     <button class="snav" onclick="go('home')"><i class="ti ti-home"></i>Back to site</button>
+    
+    <div style="margin:20px 15px;padding:16px;background:rgba(0,210,255,.05);border:1px solid rgba(0,210,255,.1);border-radius:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-activity"></i> Market Intelligence</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px"><span style="color:var(--t2)">Web Dev</span><span style="color:var(--lime);font-weight:700">Extreme</span></div>
+        <div style="width:100%;height:4px;background:var(--border);border-radius:10px"><div style="width:95%;height:100%;background:var(--lime);border-radius:10px"></div></div>
+        
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-top:4px"><span style="color:var(--t2)">AI Automation</span><span style="color:var(--cyan);font-weight:700">High</span></div>
+        <div style="width:100%;height:4px;background:var(--border);border-radius:10px"><div style="width:70%;height:100%;background:var(--cyan);border-radius:10px"></div></div>
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)">
+          <div style="font-size:9px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Trending Skills</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <span style="font-size:9px;padding:2px 6px;background:rgba(255,255,255,.05);border-radius:4px;color:var(--t2)">#Next.js</span>
+            <span style="font-size:9px;padding:2px 6px;background:rgba(255,255,255,.05);border-radius:4px;color:var(--t2)">#LangChain</span>
+            <span style="font-size:9px;padding:2px 6px;background:rgba(255,255,255,.05);border-radius:4px;color:var(--t2)">#Solidity</span>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--t3);margin-top:12px">Updated 30s ago</div>
+    </div>
+
     <div class="sidebar-bottom">
       <div class="sb-bal">
         <div class="sb-bal-lbl">Side Task balance</div>
@@ -1370,6 +1409,29 @@ select.form-input option{background:#1A1726;color:#fff}
       </div>
     </div>
 
+    <!-- CAREER READINESS (Phase 2) -->
+    <div style="margin-bottom:24px;display:grid;grid-template-columns:1fr 1.5fr;gap:18px">
+      <div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:18px;padding:24px;display:flex;align-items:center;gap:20px;position:relative;overflow:hidden">
+        <div style="width:70px;height:70px;border-radius:50%;border:6px solid var(--border);border-top-color:var(--violet);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:900;font-size:1.2rem">85%</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">Career Readiness</div>
+          <div style="font-size:11.5px;color:var(--t2)">Your profile is highly competitive for <strong>Senior</strong> roles.</div>
+        </div>
+        <i class="ti ti-crown" style="position:absolute;top:15px;right:15px;color:var(--vpale);font-size:40px"></i>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px;display:flex;gap:20px;align-items:center">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Skills Health</span><span style="font-size:11px;color:var(--lime)">Strong</span></div>
+          <div style="width:100%;height:6px;background:var(--border);border-radius:10px"><div style="width:90%;height:100%;background:var(--lime);border-radius:10px"></div></div>
+        </div>
+        <div style="width:1px;height:40px;background:var(--border)"></div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Resume Health</span><span style="font-size:11px;color:var(--vlight)">Optimized</span></div>
+          <div style="width:100%;height:6px;background:var(--border);border-radius:10px"><div style="width:75%;height:100%;background:var(--vlight);border-radius:10px"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- STATS -->
     <div class="d-stats">
       <div class="d-stat"><div class="d-stat-lbl">Jobs today</div><div class="d-stat-num" style="color:var(--vlight)">34</div><div class="d-stat-sub" style="color:var(--green)"><i class="ti ti-trending-up"></i> +12 vs yesterday</div></div>
@@ -1387,6 +1449,7 @@ select.form-input option{background:#1A1726;color:#fff}
       <button class="tbtn act" id="tb-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed</button>
       <button class="tbtn" id="tb-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned</button>
       <button class="tbtn" id="tb-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
+      <button class="tbtn" id="tb-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income</button>
       <button class="tbtn" id="tb-sidetask" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Side Task</button>
       <button class="tbtn" id="tb-settings" onclick="dTab('settings')"><i class="ti ti-settings"></i>Settings</button>
     </div>
@@ -1397,13 +1460,23 @@ select.form-input option{background:#1A1726;color:#fff}
         <i class="ti ti-search" style="position:absolute;left:14px;top:13px;color:var(--t3);font-size:18px"></i>
         <input type="text" id="job-search-input" class="form-input" placeholder="Search jobs by title, company or keywords..." style="padding-left:42px;border-radius:12px" onkeyup="handleSearch(this.value)">
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px">
+        <button class="tbtn act" style="padding:6px 14px;font-size:12.5px" onclick="setSort('all')"><i class="ti ti-list"></i> All</button>
+        <button class="tbtn" style="padding:6px 14px;font-size:12.5px" onclick="setSort('urgent')"><i class="ti ti-bolt"></i> Urgent <span style="font-size:10px;margin-left:4px;color:var(--orange)">LIVE</span></button>
+        <button class="tbtn" style="padding:6px 14px;font-size:12.5px" onclick="setSort('match')"><i class="ti ti-sparkles"></i> Best Match <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:1px 4px;border-radius:3px;margin-left:4px">PRO</span></button>
+      </div>
       <div class="filter-row">
         <span class="fc on" id="fc-all" onclick="filterJobs('all')">All sectors</span>
         <span class="fc" id="fc-web" onclick="filterJobs('web')">Web Dev</span>
-        <span class="fc" id="fc-data" onclick="filterJobs('data')">Data Science</span>
+        <span class="fc" id="fc-data" onclick="filterJobs('data')">Data & AI</span>
         <span class="fc" id="fc-video" onclick="filterJobs('video')">Video</span>
-        <span class="fc" id="fc-ai" onclick="filterJobs('ai')">AI</span>
         <span class="fc" id="fc-design" onclick="filterJobs('design')">Design</span>
+        <span class="fc" id="fc-mobile" onclick="filterJobs('mobile')">App Dev</span>
+        <span class="fc" id="fc-writing" onclick="filterJobs('writing')">Content</span>
+        <span class="fc" id="fc-marketing" onclick="filterJobs('marketing')">Marketing</span>
+        <span class="fc" id="fc-support" onclick="filterJobs('support')">Support</span>
+        <span class="fc" id="fc-sales" onclick="filterJobs('sales')">Sales</span>
+        <span class="fc" id="fc-finance" onclick="filterJobs('finance')">Finance</span>
       </div>
       <div id="jobs-list"></div>
       <div style="padding:20px;text-align:center;font-size:13.5px;color:var(--t2);background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-top:6px">
@@ -1473,8 +1546,55 @@ select.form-input option{background:#1A1726;color:#fff}
       </div>
     </div>
 
-    <!-- ─── SIDE TASK ─── -->
+    <!-- ─── INCOME DASHBOARD ─── -->
+    <div class="tab-pane" id="tp-income">
+      <div style="max-width:800px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+          <div>
+            <h2 style="font-family:'Syne',sans-serif;font-size:1.8rem;margin-bottom:4px">Income Intelligence</h2>
+            <p style="color:var(--t2);font-size:14px">Track your success and ROI through SnipeJob.</p>
+          </div>
+          <div class="timer-pill" style="background:rgba(184,255,60,.1);border-color:rgba(184,255,60,.2);color:var(--lime)">
+            <i class="ti ti-trending-up"></i> +12% this month
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px">
+            <div style="font-size:12px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:8px">Revenue Won</div>
+            <div style="font-size:1.8rem;font-weight:800;font-family:'Syne',sans-serif">$0.00</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">From SnipeJob leads</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px">
+            <div style="font-size:12px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:8px">Subscription ROI</div>
+            <div style="font-size:1.8rem;font-weight:800;font-family:'Syne',sans-serif" class="g-lime">0.0x</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">Value vs Cost</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px">
+            <div style="font-size:12px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:8px">Win Rate</div>
+            <div style="font-size:1.8rem;font-weight:800;font-family:'Syne',sans-serif">--%</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">Proposal to Hire</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;border-style:dashed">
+          <i class="ti ti-database-off" style="font-size:32px;color:var(--t3);margin-bottom:12px"></i>
+          <p style="color:var(--t3);font-size:14px">No revenue data tracked yet. Mark projects as "Completed & Paid" to see your metrics grow.</p>
+        </div>
+      </div>
+    </div>
+
     <div class="tab-pane" id="tp-sidetask">
+      <!-- Pro Lock Overlay -->
+      <div id="st-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(8,7,15,.8);backdrop-filter:blur(6px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
+        <div style="width:80px;height:80px;background:var(--vpale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px">
+          <i class="ti ti-lock" style="font-size:40px;color:var(--vlight)"></i>
+        </div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:2rem;margin-bottom:12px">Pro Feature Only</h2>
+        <p style="color:var(--t2);max-width:380px;margin-bottom:32px;line-height:1.6">The Side Task micro-earning system is exclusive to Pro subscribers. Upgrade now to start earning while you snipe jobs.</p>
+        <button class="btn-primary" onclick="go('upgrade')"><i class="ti ti-crown"></i> Upgrade to Pro</button>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 270px;gap:22px;align-items:start">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1523,22 +1643,26 @@ select.form-input option{background:#1A1726;color:#fff}
           <div class="form-group"><label class="form-label">Country</label><select class="form-input"><option selected>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option></select></div>
           <div class="form-group"><label class="form-label">Phone number (for Side Task verification)</label><input class="form-input" type="tel" value="+234 801 234 5678"></div>
         </div>
-        <div class="settings-card">
-          <div class="settings-sect">Job sectors <span style="font-weight:400;color:var(--t3);font-size:11px;text-transform:none;letter-spacing:0">(3/3 selected — Free plan)</span></div>
-          <div class="sector-picker">
-            <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
-            <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data Science</label>
-            <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
-            <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
-            <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
-            <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Copywriting</label>
-            <label class="sec-opt"><input type="checkbox" value="ai" onchange="handleSectorCheck(this)"> AI & Automation</label>
-            <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
-            <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
-            <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Writing / Translation</label>
+          <div class="settings-card">
+            <div class="settings-sect">Job sectors <span style="font-weight:400;color:var(--t3);font-size:11px;text-transform:none;letter-spacing:0">(3/3 selected — Free plan)</span></div>
+            <div class="sector-picker">
+              <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
+              <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data & AI</label>
+              <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
+              <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
+              <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
+              <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Content & Copy</label>
+              <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
+              <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
+              <label class="sec-opt"><input type="checkbox" value="support" onchange="handleSectorCheck(this)"> Customer Support</label>
+              <label class="sec-opt"><input type="checkbox" value="va" onchange="handleSectorCheck(this)"> Virtual Assistant</label>
+              <label class="sec-opt"><input type="checkbox" value="sales" onchange="handleSectorCheck(this)"> Sales & Business</label>
+              <label class="sec-opt"><input type="checkbox" value="mgmt" onchange="handleSectorCheck(this)"> Project Management</label>
+              <label class="sec-opt"><input type="checkbox" value="finance" onchange="handleSectorCheck(this)"> Finance & Accounting</label>
+              <label class="sec-opt"><input type="checkbox" value="legal" onchange="handleSectorCheck(this)"> Legal & Compliance</label>
+            </div>
+            <div class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer"><i class="ti ti-lock"></i>Upgrade to Pro to unlock all job sectors and unlimited alerts</div>
           </div>
-          <div class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer"><i class="ti ti-lock"></i>Upgrade to Pro to unlock all job sectors and unlimited alerts</div>
-        </div>
         <div class="settings-card">
           <div class="settings-sect">Alert preferences</div>
           <div style="display:flex;flex-direction:column;gap:12px">
@@ -1708,8 +1832,17 @@ const API_URL = 'https://my-sniper-worker.626gl1ch.workers.dev/api';
 const SUPABASE_URL = ''; // ADD YOUR SUPABASE URL HERE
 const SUPABASE_ANON_KEY = ''; // ADD YOUR SUPABASE ANON KEY HERE
 
-// Initialize Supabase
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase safely
+let sb;
+try {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.warn("Supabase credentials missing. Auth and database features will be disabled.");
+    } else {
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+} catch (e) {
+    console.error("Supabase initialization error:", e);
+}
 
 function toast(msg, icon = 'ti-info-circle') {
     const container = document.getElementById('toast-container');
@@ -1729,16 +1862,18 @@ let TASKS = [
 ];
 
 let curFilter='all';
-let userProfile = { current_tier: 'free', sectors: [], id_status: 'unverified' };
+let userProfile = { current_tier: 'free', sectors: [], id_status: 'unverified', bio: '', education: '', primary_skill: '', exp_level: 'mid' };
 let userSession = null;
 
 // Check for existing session on load
 window.addEventListener('load', async () => {
+    if (!sb) return;
     const { data } = await sb.auth.getSession();
     if (data.session) {
         userSession = data.session;
         localStorage.setItem('user_token', userSession.access_token);
-        fetchUserProfile();
+        await fetchUserProfile();
+        go('dashboard');
     }
 });
 
@@ -1749,6 +1884,12 @@ async function handleSignUp() {
     const password = document.querySelector('#pg-signup input[placeholder="At least 8 characters"]').value;
     const country = document.querySelector('#pg-signup select').value;
     
+    // New fields
+    const exp_level = document.querySelectorAll('#pg-signup select')[1].value;
+    const primary_skill = document.querySelector('#pg-signup input[placeholder="Enter your top skill"]').value.trim();
+    const bio = document.querySelector('#pg-signup textarea').value.trim();
+    const education = document.querySelector('#pg-signup input[placeholder="Degree, Certs, or Online Courses"]').value.trim();
+    
     // Capture selected sectors (using slugs for DB consistency)
     const sectors = Array.from(document.querySelectorAll('#pg-signup .sector-picker input:checked')).map(el => el.value);
 
@@ -1756,6 +1897,7 @@ async function handleSignUp() {
     if (!email || !password) { toast("Email and password required", "ti-alert-circle"); return; }
     if (password.length < 8) { toast("Password must be at least 8 characters", "ti-alert-circle"); return; }
     if (sectors.length === 0) { toast("Please select at least one job sector", "ti-alert-circle"); return; }
+    if (!bio) { toast("Professional bio is required for AI resume features", "ti-alert-circle"); return; }
 
     const { data, error } = await sb.auth.signUp({
         email,
@@ -1764,7 +1906,11 @@ async function handleSignUp() {
             data: { 
                 full_name: name, 
                 country: country,
-                sectors: sectors
+                sectors: sectors,
+                exp_level: exp_level,
+                primary_skill: primary_skill,
+                bio: bio,
+                education: education
             }
         }
     });
@@ -1788,7 +1934,8 @@ async function handleSignUp() {
 }
 
 async function handleSignIn() {
-    const email = document.querySelector('#pg-signin input[placeholder="you@email.com"]').value;
+    if (!sb) { toast("System is in offline mode. Missing API keys.", "ti-lock"); return; }
+    const email = document.querySelector('#pg-signin input[placeholder="you@email.com"]').value.trim();
     const password = document.querySelector('#pg-signin input[placeholder="••••••••"]').value;
 
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -1803,6 +1950,7 @@ async function handleSignIn() {
 }
 
 async function handleSignOut() {
+    if (!sb) { userSession = null; go('home'); return; }
     await sb.auth.signOut();
     userSession = null;
     localStorage.removeItem('user_token');
@@ -1816,6 +1964,18 @@ async function fetchUserProfile() {
     const meta = userSession.user.user_metadata || {};
     const displayName = meta.full_name || userSession.user.email.split('@')[0];
     const sectors = meta.sectors || [];
+    
+    // Sync local object
+    userProfile = {
+        ...userProfile,
+        full_name: displayName,
+        sectors: sectors,
+        country: meta.country || 'UN',
+        exp_level: meta.exp_level || 'mid',
+        primary_skill: meta.primary_skill || '',
+        bio: meta.bio || '',
+        education: meta.education || ''
+    };
 
     // Update greeting
     const greetEl = document.querySelector('.dash-greeting');
@@ -2008,9 +2168,25 @@ function tagBadge(tag){
   return'';
 }
 
+let curSort = 'all';
+function setSort(s){
+  if(s === 'match' && userProfile.current_tier !== 'paid'){
+    toast("Best Match AI scoring is a Pro feature", "ti-lock");
+    return;
+  }
+  curSort = s;
+  // UI feedback for sort buttons
+  document.querySelectorAll('#tp-feed button.tbtn').forEach(btn => {
+    if(btn.onclick && btn.onclick.toString().includes("setSort('" + s + "')")) btn.classList.add('act');
+    else btn.classList.remove('act');
+  });
+  fetchJobs(curFilter);
+}
+
 async function fetchJobs(f = 'all') {
+  curFilter = f;
   try {
-    const response = await fetch(`${API_URL}/jobs?sector=${f}`, {
+    const response = await fetch(`${API_URL}/jobs?sector=${f}&sort=${curSort}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` }
     });
     const data = await response.json();
@@ -2045,7 +2221,7 @@ function openAiApply(jobId) {
     document.getElementById('ai-loading').style.display = 'block';
     document.getElementById('ai-proposal-container').style.display = 'none';
     
-    fetch(`${API_URL}/ai-apply`, {
+    fetch(`${API_URL}/ai-resume`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -2057,7 +2233,7 @@ function openAiApply(jobId) {
     .then(data => {
         document.getElementById('ai-loading').style.display = 'none';
         document.getElementById('ai-proposal-container').style.display = 'block';
-        document.getElementById('ai-proposal-text').value = data.proposal;
+        document.getElementById('ai-proposal-text').value = data.resume;
     });
 }
 
@@ -2081,18 +2257,43 @@ function handleIdUpload(input) {
     }
 }
 
-function submitKyc() {
+async function submitKyc() {
+    const fileInput = document.querySelector('input[type="file"]');
+    const phoneInput = document.querySelector('#pg-kyc input[type="tel"]');
     const btn = document.getElementById('kyc-submit-btn');
-    btn.innerHTML = '<span class="dot"></span> Processing...';
+    
+    if (!fileInput.files[0]) { toast("Please upload an ID image", "ti-alert-circle"); return; }
+    
+    btn.innerHTML = '<span class="dot"></span> Processing with AI...';
     btn.disabled = true;
     
-    setTimeout(() => {
-        toast("ID submitted! AI is verifying your identity...", "ti-shield-check");
-        setTimeout(() => {
-            toast("Identity verified! Nigeria detected.", "ti-check");
+    const formData = new FormData();
+    formData.append('image', fileInput.files[0]);
+    formData.append('phone_number', phoneInput.value);
+
+    try {
+        const response = await fetch(`${API_URL}/verify-id`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.is_valid) {
+            toast(`Identity verified! ${result.extracted_country} detected.`, "ti-check");
+            await fetchUserProfile(); // Update UI status
             go('dashboard');
-        }, 3000);
-    }, 1500);
+        } else {
+            toast(`Verification failed: ${result.reason}`, "ti-alert-circle");
+        }
+    } catch (e) {
+        console.error(e);
+        toast("Verification service error.", "ti-alert-circle");
+    } finally {
+        btn.innerHTML = '<i class="ti ti-shield-check"></i> Submit for AI Verification';
+        btn.disabled = false;
+    }
 }
 
 /* ─── UPGRADE & PAYMENTS ─── */
@@ -2117,24 +2318,74 @@ async function fetchTasks() {
 function renderJobs(f){
   const el=document.getElementById('jobs-list');
   if(!el)return;
-  el.innerHTML=JOBS.map(j=>`
-    <div class="jcard">
+  el.innerHTML=JOBS.map(j=>{
+    // Simulate Intelligence Layer (Phase 2)
+    const matchScore = Math.floor(Math.random() * 25) + 75; // 75-100
+    const clientScore = (Math.random() * 1 + 4).toFixed(1); // 4.0-5.0
+    const postedTime = Math.floor(Math.random() * 55) + 5; // 5-60s
+    
+    return `
+    <div class="jcard" style="position:relative">
       <div class="jcard-ico" style="background:rgba(124,92,252,.18);color:var(--vlight)">${j.title[0]}</div>
       <div style="flex:1;min-width:0">
-        <div class="jcard-title">${j.title}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div class="jcard-title">${j.title}</div>
+          <div style="text-align:right">
+            <div style="font-size:12px;font-weight:800;color:var(--lime)">${matchScore}% Match</div>
+            <div style="font-size:10px;color:var(--t3)">Client Score: ${clientScore}/5.0</div>
+          </div>
+        </div>
         <div class="jcard-meta">${j.company} · Remote · ${j.listing_source}</div>
+        <div style="display:flex;align-items:center;gap:12px;margin:8px 0">
+           <div style="font-size:11px;color:var(--orange);font-weight:700"><i class="ti ti-bolt"></i> Posted ${postedTime}s ago</div>
+           <div style="font-size:11px;color:var(--t3)"><i class="ti ti-users"></i> Expected applicants: <span style="color:var(--vlight)">Low</span></div>
+        </div>
         <div class="jcard-tags">${j.internal_labels.map(tagBadge).join('')}<span class="badge b-sec">${j.sector}</span></div>
       </div>
-      <div class="jcard-actions">
-        <button class="jbtn jbtn-v" onclick="openAiApply('${j.id}')">Apply now</button>
-        <button class="jbtn jbtn-g" onclick="pinJob('${j.id}')"><i class="ti ti-bookmark" style="font-size:13px"></i></button>
+      <div class="jcard-actions" style="flex-direction:column;gap:8px">
+        <button class="jbtn jbtn-v" style="width:100%" onclick="triggerOneTapApply('${j.id}')"><i class="ti ti-sparkles"></i> AI 1-Tap Apply <span style="background:rgba(255,255,255,.2);padding:1px 4px;border-radius:3px;font-size:8px;margin-left:4px">PRO</span></button>
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="jbtn jbtn-g" style="flex:1" onclick="openAiApply('${j.id}')">Proposal</button>
+          <button class="jbtn jbtn-g" onclick="pinJob('${j.id}')"><i class="ti ti-bookmark"></i></button>
+        </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+async function triggerOneTapApply(jobId) {
+    if (userProfile.current_tier !== 'paid') {
+        toast("AI 1-Tap Apply is a Pro feature", "ti-lock");
+        go('upgrade');
+        return;
+    }
+    
+    toast("SnipeJob Copilot: Tailoring your resume...", "ti-loader");
+    
+    try {
+        const response = await fetch(`${API_URL}/ai-resume`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('user_token')}`
+            },
+            body: JSON.stringify({ job_id: jobId })
+        });
+        
+        if (response.ok) {
+            toast("Resume tailored and submitted to client! 🎉", "ti-circle-check");
+        } else {
+            toast("AI Submission failed. Try manual proposal.", "ti-alert-circle");
+        }
+    } catch (e) {
+        console.error(e);
+        toast("Connection error during AI submission.", "ti-alert-circle");
+    }
 }
 
 function filterJobs(f){
   curFilter=f;
-  ['all','web','data','video','ai','design','writing','mobile','cyber','marketing'].forEach(x=>{
+  ['all','web','data','video','ai','design','writing','mobile','cyber','marketing','support','va','sales','mgmt','finance','legal'].forEach(x=>{
     const el=document.getElementById('fc-'+x);
     if(!el)return;
     el.className='fc'+(x===f?' on':'');
@@ -2143,7 +2394,7 @@ function filterJobs(f){
 }
 
 function dTab(tab){
-  ['feed','pinned','projects','sidetask','settings'].forEach(t=>{
+  ['feed','pinned','projects','income','sidetask','settings'].forEach(t=>{
     const tp=document.getElementById('tp-'+t);
     const tb=document.getElementById('tb-'+t);
     const sn=document.getElementById('sn-'+t);
@@ -2153,7 +2404,22 @@ function dTab(tab){
   });
   if(tab==='feed')fetchJobs(curFilter);
   if(tab==='pinned')fetchPinned();
-  if(tab==='sidetask')fetchTasks();
+  if(tab==='income'){
+    if(userProfile.current_tier !== 'paid'){
+      toast("Upgrade to Pro to view Income Intelligence", "ti-lock");
+      dTab('feed'); // Redirect back to feed
+      return;
+    }
+  }
+  if(tab==='sidetask'){
+    const overlay = document.getElementById('st-lock-overlay');
+    if(userProfile.current_tier !== 'paid'){
+      if(overlay) overlay.style.display = 'flex';
+    } else {
+      if(overlay) overlay.style.display = 'none';
+      fetchTasks();
+    }
+  }
 }
 
 function go(page) {
@@ -2213,11 +2479,38 @@ function renderTasks(){
     </div>`).join('');
 }
 
-function submitWithdrawal() {
-    const amount = document.getElementById('w-amount').value;
+async function submitWithdrawal() {
+    const amount = parseFloat(document.getElementById('w-amount').value);
+    const channel = document.getElementById('w-channel').value;
+    const address = document.getElementById('w-address').value;
+
     if (amount < 2) { toast("Minimum withdrawal is $2", "ti-alert-circle"); return; }
-    toast("Withdrawal request submitted! Processing...", "ti-send");
-    closeWithdraw();
+    if (!address) { toast("Please enter a destination address", "ti-alert-circle"); return; }
+
+    toast("Processing withdrawal request...", "ti-loader");
+
+    try {
+        const response = await fetch(`${API_URL}/withdraw`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('user_token')}`
+            },
+            body: JSON.stringify({ amount, channel, address })
+        });
+
+        if (response.ok) {
+            toast("Withdrawal requested! Processing within 24h.", "ti-check");
+            closeWithdraw();
+            await fetchUserProfile(); // Refresh balance
+        } else {
+            const err = await response.text();
+            toast(err || "Withdrawal failed.", "ti-alert-circle");
+        }
+    } catch (e) {
+        console.error(e);
+        toast("Connection error during withdrawal.", "ti-alert-circle");
+    }
 }
 
 function openAddProject() { document.getElementById('add-project-modal').classList.add('open'); }

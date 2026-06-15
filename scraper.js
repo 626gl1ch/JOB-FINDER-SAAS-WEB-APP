@@ -15,7 +15,13 @@ const SECTORS = {
   writing: ['copywriting', 'content writer', 'blog', 'technical writer', 'editing', 'proofreading', 'ghostwriter'],
   mobile: ['ios', 'android', 'react native', 'flutter', 'swift', 'kotlin', 'mobile app'],
   cyber: ['security', 'pentest', 'hacker', 'cybersecurity', 'soc', 'compliance'],
-  marketing: ['seo', 'ads', 'google ads', 'facebook ads', 'social media marketing', 'growth', 'marketing']
+  marketing: ['seo', 'ads', 'google ads', 'facebook ads', 'social media marketing', 'growth', 'marketing'],
+  support: ['support', 'customer service', 'help desk', 'ticket', 'cx', 'client success'],
+  va: ['virtual assistant', 'admin assistant', 'personal assistant', 'data entry', 'scheduling'],
+  sales: ['sales', 'business development', 'bdr', 'sdr', 'account executive', 'outreach', 'cold call'],
+  mgmt: ['project manager', 'product manager', 'scrum', 'agile', 'operations', 'team lead'],
+  finance: ['finance', 'accounting', 'bookkeeping', 'audit', 'tax', 'payroll', 'crypto', 'trader'],
+  legal: ['legal', 'lawyer', 'paralegal', 'compliance', 'contract', 'attorney']
 };
 
 async function scrapeReddit() {
