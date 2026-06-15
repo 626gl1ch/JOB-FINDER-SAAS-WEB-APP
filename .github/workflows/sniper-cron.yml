@@ -1,0 +1,23 @@
+name: SnipeJob 15-Min Automated Cron Finder
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Codebase Extraction Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node Environment Engine
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Core Dependencies Resolution Execution
+        run: npm install axios cheerio rss-parser
+      - name: Fire Scraping Automation Engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scraper.js
