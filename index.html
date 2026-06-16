@@ -651,7 +651,7 @@ select.form-input option{background:#1A1726;color:#fff}
 .sb-withdraw:hover{opacity:.85}
 
 /* DASH MAIN */
-.dash-main{background:var(--bg);padding:28px 32px;overflow-y:auto;min-height:calc(100vh - 62px)}
+.dash-main{background:var(--bg);padding:28px 32px 90px 32px;overflow-y:auto;min-height:calc(100vh - 62px)}
 .dash-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
 .dash-greeting{font-family:'Syne',sans-serif;font-size:1.45rem;font-weight:800;color:#fff;letter-spacing:-.035em}
 .dash-date{font-size:13px;color:var(--t3);margin-top:3px}
@@ -1537,7 +1537,7 @@ select.form-input option{background:#1A1726;color:#fff}
   <!-- SIDEBAR -->
   <div class="dash-sidebar">
     <div class="sidebar-section">Main</div>
-    <button class="snav act" id="sn-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed<span class="snav-badge" id="feed-badge">34</span></button>
+    <button class="snav act" id="sn-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed<span class="snav-badge" id="feed-badge">0</span></button>
     <button class="snav" id="sn-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned Jobs</button>
     <button class="snav" id="sn-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
     <button class="snav" id="sn-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">PRO</span></button>
@@ -1574,7 +1574,7 @@ select.form-input option{background:#1A1726;color:#fff}
     <div class="sidebar-bottom">
       <div class="sb-bal">
         <div class="sb-bal-lbl">Side Task balance</div>
-        <div class="sb-bal-val">$47.20</div>
+        <div class="sb-bal-val" id="sb-bal-val-side">$0.00</div>
         <div class="sb-bal-sub">Your 30% of tasks</div>
         <button class="sb-withdraw" onclick="openWithdraw()">Withdraw funds</button>
       </div>
@@ -1591,12 +1591,12 @@ select.form-input option{background:#1A1726;color:#fff}
 
     <div class="dash-topbar">
       <div>
-        <div class="dash-greeting">Good morning, Adewale 👋</div>
-        <div class="dash-date">Tuesday · 34 new jobs matched in your sectors today</div>
+        <div class="dash-greeting">Welcome back 👋</div>
+        <div class="dash-date" id="dash-date-line">Loading your feed...</div>
       </div>
       <div class="dash-topbar-r">
         <div class="scanning-pill"><span class="dot"></span>Scanning live</div>
-        <div class="user-av" title="Account settings" onclick="dTab('settings')">AO</div>
+        <div class="user-av" title="Account settings" onclick="dTab('settings')">--</div>
       </div>
     </div>
 
@@ -1625,12 +1625,12 @@ select.form-input option{background:#1A1726;color:#fff}
 
     <!-- STATS -->
     <div class="d-stats">
-      <div class="d-stat"><div class="d-stat-lbl">Jobs today</div><div class="d-stat-num" style="color:var(--vlight)">34</div><div class="d-stat-sub" style="color:var(--green)"><i class="ti ti-trending-up"></i> +12 vs yesterday</div></div>
-      <div class="d-stat"><div class="d-stat-lbl">Pinned</div><div class="d-stat-num" style="color:var(--cyan)">7</div><div class="d-stat-sub">3 awaiting reply</div></div>
-      <div class="d-stat"><div class="d-stat-lbl">Active projects</div><div class="d-stat-num" style="color:var(--orange)">2</div><div class="d-stat-sub">1 due soon</div></div>
+      <div class="d-stat"><div class="d-stat-lbl">Jobs today</div><div class="d-stat-num" id="stat-jobs-today" style="color:var(--vlight)">—</div><div class="d-stat-sub" id="stat-jobs-sub" style="color:var(--t3)">Loading...</div></div>
+      <div class="d-stat"><div class="d-stat-lbl">Pinned</div><div class="d-stat-num" id="stat-pinned" style="color:var(--cyan)">—</div><div class="d-stat-sub" id="stat-pinned-sub">—</div></div>
+      <div class="d-stat"><div class="d-stat-lbl">Active projects</div><div class="d-stat-num" id="stat-projects" style="color:var(--orange)">—</div><div class="d-stat-sub" id="stat-projects-sub">—</div></div>
       <div class="d-stat" style="background:linear-gradient(135deg,rgba(184,255,60,.1),rgba(0,224,150,.06));border-color:rgba(184,255,60,.2);cursor:pointer" onclick="dTab('sidetask')">
         <div class="d-stat-lbl" style="color:var(--lime)">Side Task balance</div>
-        <div class="d-stat-num" style="color:var(--lime)">$47.20</div>
+        <div class="d-stat-num" id="stat-balance" style="color:var(--lime)">$0.00</div>
         <div class="d-stat-sub" style="color:rgba(184,255,60,.5)">Tap to withdraw →</div>
       </div>
     </div>
@@ -2249,6 +2249,14 @@ async function fetchUserProfile() {
     const avEl = document.querySelector('.user-av');
     if (avEl) avEl.innerText = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
 
+    // Clear stale fake values
+    ['stat-balance','sb-bal-val-side'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.innerText === '$47.20') el.innerText = '$0.00';
+    });
+    document.getElementById('stat-pinned') && (document.getElementById('stat-pinned').innerText = '—');
+    document.getElementById('stat-projects') && (document.getElementById('stat-projects').innerText = '—');
+
     // Reflect saved sectors in dashboard settings (if any)
     document.querySelectorAll('#pg-dashboard .sector-picker input').forEach(cb => {
         cb.checked = sectors.includes(cb.value);
@@ -2262,9 +2270,18 @@ async function fetchUserProfile() {
         if (response.ok) {
             const profile = await response.json();
             userProfile = { ...userProfile, ...profile };
-            const balEl = document.querySelector('.sb-bal-val');
-            if (balEl && profile.wallet_balance !== undefined) {
-                balEl.innerText = `$${profile.wallet_balance.toFixed(2)}`;
+            
+            // Update balance everywhere
+            const balVal = profile.wallet_balance !== undefined ? `$${profile.wallet_balance.toFixed(2)}` : '$0.00';
+            ['sb-bal-val', 'sb-bal-val-side', 'stat-balance', 'withdraw-bal'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = balVal;
+            });
+
+            // Update pinned count if returned
+            if (profile.pinned_count !== undefined) {
+                const pinnedEl = document.getElementById('stat-pinned');
+                if (pinnedEl) pinnedEl.innerText = profile.pinned_count;
             }
         }
     } catch (e) {
@@ -2470,9 +2487,25 @@ async function fetchJobs(f = 'all') {
     }
     
     renderJobs(f);
+
+    // Update real jobs-today count
+    const jobCount = (data.items || []).length;
+    const jobsEl = document.getElementById('stat-jobs-today');
+    const jobsSubEl = document.getElementById('stat-jobs-sub');
+    const feedBadge = document.getElementById('feed-badge');
+    const dateLine = document.getElementById('dash-date-line');
+    if (jobsEl) jobsEl.innerText = data.total_count || jobCount;
+    if (jobsSubEl) jobsSubEl.innerHTML = '<i class="ti ti-refresh"></i> Just updated';
+    if (feedBadge) feedBadge.innerText = data.total_count || jobCount;
+    if (dateLine) {
+        const day = new Date().toLocaleDateString('en-US',{weekday:'long'});
+        dateLine.innerText = `${day} · ${data.total_count || jobCount} new jobs matched in your sectors today`;
+    }
   } catch (err) {
     console.error("Failed to fetch jobs:", err);
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)">Failed to load jobs. Please try again.</div>';
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)">No jobs loaded yet. Connect the worker API to see live jobs.</div>';
+    const dateLine = document.getElementById('dash-date-line');
+    if (dateLine) dateLine.innerText = 'Job feed unavailable — check API connection';
   }
 }
 
