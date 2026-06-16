@@ -1,10 +1,9 @@
--- SnipeJob Supabase Database Schema (Master Idempotent Version)
+-- SnipeJob Supabase Database Schema (Final Fixed Version)
 
 -- EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. USER PROFILES TABLE
--- Unified with latest troubleshooting naming: full_name, country, sectors, id_status
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Ensure profiles has all necessary columns if it already existed (Migration)
+-- Migration: add missing columns if table already existed
 DO $$ 
 BEGIN 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN
@@ -47,7 +46,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='primary_skill') THEN
         ALTER TABLE public.profiles ADD COLUMN primary_skill TEXT DEFAULT '';
     END IF;
-    -- Cleanup old names (Optional but keeps it clean)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='bio') THEN
+        ALTER TABLE public.profiles ADD COLUMN bio TEXT DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='education') THEN
+        ALTER TABLE public.profiles ADD COLUMN education TEXT DEFAULT '';
+    END IF;
+    -- Remove NOT NULL constraint from country if it exists
+    BEGIN
+        ALTER TABLE public.profiles ALTER COLUMN country DROP NOT NULL;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    -- Migrate old column names
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='tracks_selected') THEN
         UPDATE public.profiles SET sectors = tracks_selected WHERE sectors = '{}' OR sectors IS NULL;
     END IF;
@@ -110,22 +120,60 @@ CREATE INDEX IF NOT EXISTS idx_jobs_sector ON public.scraped_jobs(sector);
 CREATE INDEX IF NOT EXISTS idx_jobs_indexed_at ON public.scraped_jobs(indexed_at);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(id_status);
 
--- FUNCTIONS & TRIGGERS
--- Fix for "Database error saving new user"
+-- ============================================================
+-- THE CRITICAL FIX: handle_new_user trigger with safe NULL handling
+-- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_sectors TEXT[] := '{}';
+    v_sectors_json JSONB;
+    v_exp_level TEXT := 'mid';
+    v_raw_exp TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, country, sectors, exp_level, primary_skill)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'country',
-    COALESCE(ARRAY(SELECT jsonb_array_elements_text(NEW.raw_user_meta_data->'sectors')), '{}'::text[]),
-    NEW.raw_user_meta_data->>'exp_level',
-    NEW.raw_user_meta_data->>'primary_skill'
-  );
-  RETURN NEW;
+    -- Safely parse sectors array — crashes on NULL/invalid JSONB without this guard
+    BEGIN
+        v_sectors_json := NEW.raw_user_meta_data->'sectors';
+        IF v_sectors_json IS NOT NULL AND jsonb_typeof(v_sectors_json) = 'array' THEN
+            SELECT ARRAY(SELECT jsonb_array_elements_text(v_sectors_json)) INTO v_sectors;
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        v_sectors := '{}';
+    END;
+
+    -- Safely validate exp_level against the CHECK constraint
+    v_raw_exp := NEW.raw_user_meta_data->>'exp_level';
+    IF v_raw_exp IN ('junior', 'mid', 'senior', 'expert') THEN
+        v_exp_level := v_raw_exp;
+    ELSE
+        v_exp_level := 'mid';
+    END IF;
+
+    INSERT INTO public.profiles (
+        id,
+        email,
+        full_name,
+        country,
+        sectors,
+        exp_level,
+        primary_skill,
+        bio,
+        education
+    )
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+        COALESCE(NEW.raw_user_meta_data->>'country', NULL),
+        v_sectors,
+        v_exp_level,
+        COALESCE(NEW.raw_user_meta_data->>'primary_skill', ''),
+        COALESCE(NEW.raw_user_meta_data->>'bio', ''),
+        COALESCE(NEW.raw_user_meta_data->>'education', '')
+    )
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
