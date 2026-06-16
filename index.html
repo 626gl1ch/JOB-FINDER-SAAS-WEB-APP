@@ -14,6 +14,7 @@
   .img-avatar{border-radius:50%;object-fit:cover}
   .img-fade{opacity:0;transition:opacity .45s ease}
   .img-fade.loaded{opacity:1}
+  .img-fade.loaded{opacity:1}
 
   /* ─── HIW IMAGE STRIP ─── */
   .hiw-img-strip{
@@ -1414,8 +1415,8 @@ select.form-input option{background:#1A1726;color:#fff}
   <h2>The job you want<br>just got posted.<br><span class="g-vio">Are you first?</span></h2>
   <p>Every minute you wait, someone else is applying. Join 12,000+ freelancers who stopped scrolling and started winning.</p>
   <div class="cta-form">
-    <input class="cta-input" type="email" placeholder="your@email.com">
-    <button class="btn-primary" onclick="go('signup')" style="white-space:nowrap;padding:13px 24px"><i class="ti ti-rocket"></i>Get alerts free</button>
+    <input class="cta-input" id="cta-email-input" placeholder="your@email.com" type="email">
+    <button class="btn-primary" onclick="handleCtaEmail()" style="white-space:nowrap;padding:13px 24px"><i class="ti ti-rocket"></i>Get alerts free</button>
   </div>
   <p style="font-size:12px;color:var(--t3);margin-top:14px">No credit card. No spam. Unsubscribe any time.</p>
 </div>
@@ -2071,6 +2072,15 @@ function toast(msg, icon = 'ti-info-circle') {
     t.innerHTML = `<i class="ti ${icon}" style="font-size:15px;flex-shrink:0"></i><span class="toast-msg">${msg}</span>`;
     container.appendChild(t);
     setTimeout(() => t.remove(), 4000);
+}
+
+function handleCtaEmail() {
+  const val = document.getElementById('cta-email-input').value.trim();
+  if (!val || !val.includes('@')) { toast('Enter a valid email to continue', 'ti-alert-circle'); return; }
+  // Pre-fill the signup form with this email
+  const signupEmailInput = document.querySelector('#pg-signup input[placeholder="you@email.com"]');
+  if (signupEmailInput) signupEmailInput.value = val;
+  go('signup');
 }
 
 /* ─── NAV DROPDOWN ─── */
