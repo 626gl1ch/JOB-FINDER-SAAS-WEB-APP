@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     wallet_balance DECIMAL(12,2) DEFAULT 0.00,
     preferred_payout_address TEXT,
     vpn_violation_count INT DEFAULT 0,
+    avatar_url TEXT,
+    oauth_provider TEXT DEFAULT 'email',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -51,6 +53,12 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='education') THEN
         ALTER TABLE public.profiles ADD COLUMN education TEXT DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='avatar_url') THEN
+        ALTER TABLE public.profiles ADD COLUMN avatar_url TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='oauth_provider') THEN
+        ALTER TABLE public.profiles ADD COLUMN oauth_provider TEXT DEFAULT 'email';
     END IF;
     -- Remove NOT NULL constraint from country if it exists
     BEGIN
@@ -158,18 +166,22 @@ BEGIN
         exp_level,
         primary_skill,
         bio,
-        education
+        education,
+        avatar_url,
+        oauth_provider
     )
     VALUES (
         NEW.id,
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
         COALESCE(NEW.raw_user_meta_data->>'country', NULL),
         v_sectors,
         v_exp_level,
         COALESCE(NEW.raw_user_meta_data->>'primary_skill', ''),
         COALESCE(NEW.raw_user_meta_data->>'bio', ''),
-        COALESCE(NEW.raw_user_meta_data->>'education', '')
+        COALESCE(NEW.raw_user_meta_data->>'education', ''),
+        COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', NULL),
+        COALESCE(NEW.raw_app_meta_data->>'provider', 'email')
     )
     ON CONFLICT (id) DO NOTHING;
 
@@ -233,3 +245,30 @@ BEGIN
         CREATE POLICY "Public read access for jobs" ON public.scraped_jobs FOR SELECT USING (true);
     END IF;
 END $$;
+
+-- 6. ATOMIC WITHDRAWAL FUNCTION
+CREATE OR REPLACE FUNCTION process_withdrawal(
+    p_user_id UUID, p_amount DECIMAL, p_channel TEXT, p_address TEXT
+) RETURNS VOID AS $$
+DECLARE
+    v_tier TEXT;
+    v_updated INT;
+BEGIN
+    SELECT current_tier INTO v_tier FROM public.profiles WHERE id = p_user_id;
+    IF v_tier IS DISTINCT FROM 'paid' THEN
+        RAISE EXCEPTION 'Pro subscription required for withdrawals';
+    END IF;
+
+    UPDATE public.profiles
+    SET wallet_balance = wallet_balance - p_amount
+    WHERE id = p_user_id AND wallet_balance >= p_amount;
+
+    GET DIAGNOSTICS v_updated = ROW_COUNT;
+    IF v_updated = 0 THEN
+        RAISE EXCEPTION 'Insufficient balance';
+    END IF;
+
+    INSERT INTO public.withdrawal_requests (user_id, total_amount, payment_channel, target_address, status)
+    VALUES (p_user_id, p_amount, p_channel, p_address, 'pending');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
