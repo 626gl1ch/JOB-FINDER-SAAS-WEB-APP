@@ -30,6 +30,12 @@
     width:100%;height:100%;object-fit:cover;object-position:center;
     filter:brightness(0.28) saturate(0.6);transition:filter .3s;
   }
+  .hiw-svg{
+    width:100%;height:100%;display:block;
+    filter:brightness(0.85) saturate(0.85);transition:filter .3s;
+  }
+  .hiw-step:hover + .hiw-img-cell .hiw-svg,
+  .hiw-img-cell:hover .hiw-svg{filter:brightness(1.05) saturate(1)}
   .hiw-step:hover + .hiw-img-cell img,
   .hiw-img-cell:hover img{filter:brightness(0.38) saturate(0.8)}
   .hiw-img-label{
@@ -40,17 +46,21 @@
   /* ─── SIDE TASK PANEL IMAGE ─── */
   .st-panel-img{
     position:absolute;inset:0;border-radius:24px;overflow:hidden;z-index:0;
-  }
-  .st-panel-img img{
-    width:100%;height:100%;object-fit:cover;
-    filter:brightness(0.08) saturate(0.5);
+    opacity:.5;
+    background:
+      radial-gradient(circle at 15% 85%, rgba(184,255,60,.16), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(139,114,255,.12), transparent 45%);
   }
   .st-panel > *:not(.st-panel-img){position:relative;z-index:1}
 
   /* ─── CTA BACKGROUND IMAGE ─── */
   .cta-sec{position:relative;overflow:hidden}
-  .cta-bg-img{position:absolute;inset:0;z-index:0}
-  .cta-bg-img img{width:100%;height:100%;object-fit:cover;filter:brightness(0.07) saturate(0.4)}
+  .cta-bg-img{
+    position:absolute;inset:0;z-index:0;
+    background:
+      radial-gradient(circle at 70% 25%, rgba(139,114,255,.14), transparent 45%),
+      radial-gradient(circle at 15% 80%, rgba(0,196,240,.10), transparent 45%);
+  }
   .cta-sec > *:not(.cta-bg-img){position:relative;z-index:1}
 
   /* ─────────────────────────────────────
@@ -1090,35 +1100,61 @@ select.form-input option{background:#fff;color:var(--ink)}
   box-shadow:0 16px 40px rgba(17,15,38,.08);
 }
 
-/* SCROLL REVEAL — sections fade + rise into view as the user scrolls.
-   JS toggles .in-view; respects reduced-motion preference. */
+/* SCROLL REVEAL — sections glide + rise into view as the user scrolls, in
+   either direction. JS toggles .in-view / removes it as elements leave the
+   viewport, so the motion replays every time — slower, heavier easing for a
+   premium, deliberate feel rather than a snappy pop. Respects reduced-motion. */
 .reveal{
   opacity:0;
-  transform:translateY(28px);
-  transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+  transform:translateY(46px) scale(.985);
+  transition:opacity 1.1s cubic-bezier(.19,1,.22,1),
+             transform 1.1s cubic-bezier(.19,1,.22,1);
 }
 .reveal.in-view{
   opacity:1;
-  transform:translateY(0);
+  transform:translateY(0) scale(1);
 }
 .reveal-stagger > *{
   opacity:0;
-  transform:translateY(22px);
-  transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1);
+  transform:translateY(34px) scale(.985);
+  transition:opacity .95s cubic-bezier(.19,1,.22,1),
+             transform .95s cubic-bezier(.19,1,.22,1);
 }
 .reveal-stagger.in-view > *{
   opacity:1;
-  transform:translateY(0);
+  transform:translateY(0) scale(1);
 }
-.reveal-stagger.in-view > *:nth-child(1){transition-delay:.05s}
-.reveal-stagger.in-view > *:nth-child(2){transition-delay:.12s}
-.reveal-stagger.in-view > *:nth-child(3){transition-delay:.19s}
-.reveal-stagger.in-view > *:nth-child(4){transition-delay:.26s}
-.reveal-stagger.in-view > *:nth-child(5){transition-delay:.33s}
-.reveal-stagger.in-view > *:nth-child(6){transition-delay:.4s}
+.reveal-stagger.in-view > *:nth-child(1){transition-delay:.06s}
+.reveal-stagger.in-view > *:nth-child(2){transition-delay:.15s}
+.reveal-stagger.in-view > *:nth-child(3){transition-delay:.24s}
+.reveal-stagger.in-view > *:nth-child(4){transition-delay:.33s}
+.reveal-stagger.in-view > *:nth-child(5){transition-delay:.42s}
+.reveal-stagger.in-view > *:nth-child(6){transition-delay:.51s}
+.reveal-stagger.in-view > *:nth-child(7){transition-delay:.60s}
+.reveal-stagger.in-view > *:nth-child(8){transition-delay:.69s}
+.reveal-stagger.in-view > *:nth-child(9){transition-delay:.78s}
+.reveal-stagger.in-view > *:nth-child(10){transition-delay:.87s}
+
+/* Table rows get the same staggered glide-in treatment as card grids. */
+.compare-table tbody tr{
+  opacity:0;
+  transform:translateY(20px);
+  transition:opacity .8s cubic-bezier(.19,1,.22,1), transform .8s cubic-bezier(.19,1,.22,1);
+}
+.compare-table tbody.in-view tr{ opacity:1; transform:translateY(0); }
+.compare-table tbody.in-view tr:nth-child(1){transition-delay:.05s}
+.compare-table tbody.in-view tr:nth-child(2){transition-delay:.11s}
+.compare-table tbody.in-view tr:nth-child(3){transition-delay:.17s}
+.compare-table tbody.in-view tr:nth-child(4){transition-delay:.23s}
+.compare-table tbody.in-view tr:nth-child(5){transition-delay:.29s}
+.compare-table tbody.in-view tr:nth-child(6){transition-delay:.35s}
+.compare-table tbody.in-view tr:nth-child(7){transition-delay:.41s}
+.compare-table tbody.in-view tr:nth-child(8){transition-delay:.47s}
+.compare-table tbody.in-view tr:nth-child(9){transition-delay:.53s}
+.compare-table tbody.in-view tr:nth-child(10){transition-delay:.59s}
 
 @media (prefers-reduced-motion: reduce){
-  .reveal, .reveal-stagger > *{ opacity:1; transform:none; transition:none; }
+  .reveal, .reveal-stagger > *, .compare-table tbody tr{ opacity:1; transform:none; filter:none; transition:none; }
   .snav, .snav i, .auth-btn, .jbtn-v, .jbtn-g, .tbtn, .nav-cta, .feat-card, .price-card, .test-card, .jcard, .sc-card{
     transition:none !important;
   }
@@ -1305,18 +1341,12 @@ nav{padding-top:env(safe-area-inset-top)}
       </div>
     </div>
     <div class="hero-visual" style="position:relative">
-  <!-- Ambient workspace photo — sits behind the floating UI cards -->
+  <!-- Ambient workspace photo — sits behind the floating UI cards. Self-hosted
+       in /assets so it never depends on a third-party CDN's hotlink policy. -->
   <div class="hv-ambient-photo" aria-hidden="true">
-    <img
-      src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=680&q=75&fm=webp"
-      alt=""
-      class="img-cover img-fade"
-      loading="eager"
-      fetchpriority="high"
-      width="680" height="480"
-      onload="this.classList.add('loaded')"
-      style="border-radius:20px;height:480px;filter:brightness(0.22) saturate(0.7)"
-    >
+    <img src="assets/hero-bg.jpg" alt="" class="img-cover"
+         loading="eager" fetchpriority="high" width="1360" height="960"
+         style="border-radius:20px;height:480px">
     <!-- Purple overlay gradient for brand cohesion -->
     <div style="position:absolute;inset:0;border-radius:20px;background:var(--grad-mesh);pointer-events:none"></div>
   </div>
@@ -1430,28 +1460,47 @@ nav{padding-top:env(safe-area-inset-top)}
     <p class="section-sub">While you manually scroll, our bots are scanning every corner of the internet. Here's the edge that changes everything.</p>
     <!-- Visual strip above How It Works steps -->
     <div class="hiw-img-strip" aria-hidden="true">
-      <div class="hiw-img-cell">
-        <img data-src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=320&q=70&fm=webp" 
-             src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             alt="" class="img-fade" loading="lazy">
+      <div class="hiw-img-cell hiw-img-cell--scan">
+        <svg class="hiw-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="100" fill="#1a1530"/>
+          <circle cx="60" cy="50" r="34" fill="none" stroke="#8B72FF" stroke-width="2" opacity=".5"/>
+          <circle cx="60" cy="50" r="18" fill="none" stroke="#8B72FF" stroke-width="2" opacity=".8"/>
+          <line x1="73" y1="63" x2="96" y2="86" stroke="#8B72FF" stroke-width="3" stroke-linecap="round"/>
+          <g opacity=".55">
+            <rect x="140" y="28" width="150" height="9" rx="4.5" fill="#8B72FF"/>
+            <rect x="140" y="46" width="110" height="9" rx="4.5" fill="#00C4F0"/>
+            <rect x="140" y="64" width="130" height="9" rx="4.5" fill="#8B72FF" opacity=".6"/>
+          </g>
+        </svg>
         <span class="hiw-img-label">Scan</span>
       </div>
-      <div class="hiw-img-cell">
-        <img data-src="https://images.unsplash.com/photo-1483058712412-4245e9b90334?w=320&q=70&fm=webp" 
-             src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             alt="" class="img-fade" loading="lazy">
+      <div class="hiw-img-cell hiw-img-cell--match">
+        <svg class="hiw-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="100" fill="#152832"/>
+          <circle cx="120" cy="50" r="26" fill="none" stroke="#00C4F0" stroke-width="2.5"/>
+          <circle cx="190" cy="50" r="26" fill="none" stroke="#A8F03A" stroke-width="2.5"/>
+          <circle cx="155" cy="50" r="26" fill="#00C4F0" opacity=".18"/>
+          <path d="M148 50l5 5 9-10" fill="none" stroke="#A8F03A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <span class="hiw-img-label">Match</span>
       </div>
-      <div class="hiw-img-cell">
-        <img data-src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=320&q=70&fm=webp" 
-             src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             alt="" class="img-fade" loading="lazy">
+      <div class="hiw-img-cell hiw-img-cell--apply">
+        <svg class="hiw-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="100" fill="#1a2618"/>
+          <rect x="118" y="22" width="84" height="56" rx="8" fill="none" stroke="#A8F03A" stroke-width="2"/>
+          <line x1="132" y1="38" x2="188" y2="38" stroke="#A8F03A" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+          <line x1="132" y1="50" x2="178" y2="50" stroke="#A8F03A" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+          <path d="M132 64l10 10 18-20" fill="none" stroke="#A8F03A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <span class="hiw-img-label">Apply</span>
       </div>
-      <div class="hiw-img-cell">
-        <img data-src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=320&q=70&fm=webp" 
-             src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             alt="" class="img-fade" loading="lazy">
+      <div class="hiw-img-cell hiw-img-cell--paid">
+        <svg class="hiw-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="100" fill="#2a2014"/>
+          <circle cx="160" cy="50" r="28" fill="none" stroke="#F5682A" stroke-width="2.5"/>
+          <text x="160" y="59" font-family="Inter,sans-serif" font-size="26" font-weight="700" fill="#F5682A" text-anchor="middle">$</text>
+          <path d="M196 38l8-8 8 8M204 30v22" fill="none" stroke="#F5682A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+        </svg>
         <span class="hiw-img-label">Get paid</span>
       </div>
     </div>
@@ -1603,11 +1652,7 @@ nav{padding-top:env(safe-area-inset-top)}
         <button class="btn-primary" style="margin-top:32px" onclick="go('signup')"><i class="ti ti-coin"></i> Start earning alongside your job hunt</button>
       </div>
       <div class="st-panel">
-        <div class="st-panel-img" aria-hidden="true">
-          <img data-src="https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=600&q=60&fm=webp"
-               src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-               alt="" class="img-fade" loading="lazy">
-        </div>
+        <div class="st-panel-img" aria-hidden="true"></div>
         <div class="st-balance">
           <div class="st-bal-label">Your Side Task balance</div>
           <div class="st-bal-val">$47.20</div>
@@ -1704,7 +1749,7 @@ nav{padding-top:env(safe-area-inset-top)}
   <div class="section-inner">
     <div class="eyebrow">FAQ</div>
     <h2 class="section-h">Questions we get a lot</h2>
-    <div class="faq-list">
+    <div class="faq-list reveal-stagger">
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">Is SnipeJob really free? <i class="ti ti-plus"></i></button>
         <div class="faq-a">Yes, completely. The free plan gives you real job alerts, a real dashboard, and real Side Task earnings. We monetize through ads on free accounts and the small $9 Pro fee — you never need to pay to get value.</div>
@@ -1735,11 +1780,7 @@ nav{padding-top:env(safe-area-inset-top)}
 
 <!-- CTA -->
 <div class="cta-sec">
-  <div class="cta-bg-img" aria-hidden="true">
-    <img data-src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1400&q=60&fm=webp"
-         src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-         alt="" class="img-fade" loading="lazy">
-  </div>
+  <div class="cta-bg-img" aria-hidden="true"></div>
   <h2>The job you want<br>just got posted.<br><span class="g-vio">Are you first?</span></h2>
   <p>Every minute you wait, someone else is applying. Join 12,000+ freelancers who stopped scrolling and started winning.</p>
   <div class="cta-form">
@@ -2507,7 +2548,13 @@ window.addEventListener('resize', syncMobileNavVisibility);
 function toggleDashSidebar(){ document.querySelector('.dash-sidebar').classList.toggle('open'); }
 
 /* ─── SCROLL & NAV EFFECT ─── */
-window.addEventListener('scroll', () => {
+/* Throttled with rAF: the browser can fire 'scroll' dozens of times per
+   frame. Without throttling, every tick was doing 3 DOM lookups + 3 style
+   writes (progress bar width, back-to-top display, nav height) — runs in
+   lockstep with the reveal animations and is a top cause of scroll jank.
+   rAF collapses that down to once per actual paint frame. */
+let scrollTicking = false;
+function handleScrollEffects(){
     const scroll = window.scrollY;
     const height = document.documentElement.scrollHeight - window.innerHeight;
     const progress = height > 0 ? (scroll / height) * 100 : 0;
@@ -2520,7 +2567,14 @@ window.addEventListener('scroll', () => {
     // Nav shrink effect
     const nav = document.querySelector('nav');
     if (nav) nav.style.height = scroll > 50 ? '50px' : '58px';
-});
+    scrollTicking = false;
+}
+window.addEventListener('scroll', () => {
+    if (!scrollTicking) {
+        requestAnimationFrame(handleScrollEffects);
+        scrollTicking = true;
+    }
+}, { passive: true });
 
 /* ─── API CONFIG ─── */
 const API_URL = 'https://my-sniper-worker.626gl1ch.workers.dev/api'; 
@@ -2662,19 +2716,21 @@ function go(pageName) {
 
   if (prefersReduced) return; // CSS already disables motion; skip the JS work too
 
+  // .in-view toggles BOTH ways as elements cross the viewport edge, so the
+  // glide-in replays every time — scrolling down past a section and back up
+  // re-triggers it, matching a premium "always animates" feel.
   const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
-  if (revealEls.length === 0) return;
+  const tableBodies = document.querySelectorAll('.compare-table tbody');
+  const allTargets = [...revealEls, ...tableBodies];
+  if (allTargets.length === 0) return;
 
-  const revealObserver = new IntersectionObserver((entries, obs) => {
+  const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('in-view');
-        obs.unobserve(entry.target);
-      }
+      entry.target.classList.toggle('in-view', entry.isIntersecting);
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
 
-  revealEls.forEach(el => revealObserver.observe(el));
+  allTargets.forEach(el => revealObserver.observe(el));
 })();
 
 /* ─── SIGNUP WIZARD: STEP NAVIGATION ─── */
