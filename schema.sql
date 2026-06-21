@@ -272,3 +272,19 @@ BEGIN
     VALUES (p_user_id, p_amount, p_channel, p_address, 'pending');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- SnipeJob: Withdrawal payout timing
+-- Free tier withdrawals are queued for monthly batch payout;
+-- Pro tier withdrawals are flagged for immediate processing.
+-- Run this AFTER schema.sql.
+-- ============================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='tier_at_request') THEN
+        ALTER TABLE public.withdrawal_requests ADD COLUMN tier_at_request TEXT DEFAULT 'free';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='scheduled_payout_date') THEN
+        ALTER TABLE public.withdrawal_requests ADD COLUMN scheduled_payout_date DATE;
+    END IF;
+END $$;

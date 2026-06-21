@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="preconnect" href="https://images.unsplash.com">
 <style>
-/* ─── IMAGE UTILITIES ─── */
+  /* ─── IMAGE UTILITIES ─── */
   .img-cover{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
   .img-avatar{border-radius:50%;object-fit:cover}
   .img-fade{opacity:0;transition:opacity .45s ease}
@@ -930,7 +930,6 @@ select.form-input option{background:#fff;color:var(--ink)}
 .ad-close{background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;flex-shrink:0}
 
 /* WITHDRAW MODAL */
-
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
 .modal-bg.open{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:32px;width:100%;max-width:440px;position:relative}
@@ -1048,6 +1047,82 @@ select.form-input option{background:#fff;color:var(--ink)}
   outline-offset:2px;
   border-radius:8px;
 }
+
+/* SIDEBAR — icon shifts right and brightens on hover, settles back on click */
+.snav{ transition:color .18s ease, background .18s ease, transform .18s cubic-bezier(.16,1,.3,1); }
+.snav i{ transition:transform .22s cubic-bezier(.16,1,.3,1), color .18s ease; }
+.snav:hover{ transform:translateX(2px); }
+.snav:hover i{ transform:scale(1.12); color:var(--vlight); }
+.snav.act i{ color:var(--violet); }
+.snav:active{ transform:translateX(2px) scale(.97); }
+
+/* PRIMARY / GRADIENT BUTTONS — soft lift + glow on hover, gentle compress on click */
+.auth-btn, .jbtn-v, .nav-cta, .btn-primary{
+  transition:transform .18s cubic-bezier(.16,1,.3,1), box-shadow .22s ease, background .18s ease;
+}
+.auth-btn:hover, .jbtn-v:hover, .nav-cta:hover, .btn-primary:hover{
+  transform:translateY(-2px);
+}
+.auth-btn:active, .jbtn-v:active, .nav-cta:active, .btn-primary:active{
+  transform:translateY(0) scale(.98);
+  transition-duration:.08s;
+}
+
+/* SECONDARY / GHOST BUTTONS — subtle background swell, no big movement */
+.jbtn-g, .tbtn, .wiz-back-btn, .btn-ghost{
+  transition:all .18s cubic-bezier(.16,1,.3,1);
+}
+.jbtn-g:hover, .wiz-back-btn:hover{ transform:translateY(-1px); }
+.tbtn:active, .jbtn-g:active, .jbtn-v:active, .wiz-back-btn:active{ transform:scale(.97); }
+
+/* CARDS — slightly stronger lift + scale than the baseline above, for
+   the landing page's feature steps, testimonials, and pricing plans */
+.hiw-step, .plan, .tcard{
+  transition:transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease, border-color .2s ease;
+}
+.hiw-step:hover, .tcard:hover{
+  transform:translateY(-4px) scale(1.01);
+  box-shadow:0 16px 40px rgba(17,15,38,.08);
+  border-color:var(--border2);
+}
+.plan:hover{
+  transform:translateY(-4px);
+  box-shadow:0 16px 40px rgba(17,15,38,.08);
+}
+
+/* SCROLL REVEAL — sections fade + rise into view as the user scrolls.
+   JS toggles .in-view; respects reduced-motion preference. */
+.reveal{
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+}
+.reveal.in-view{
+  opacity:1;
+  transform:translateY(0);
+}
+.reveal-stagger > *{
+  opacity:0;
+  transform:translateY(22px);
+  transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1);
+}
+.reveal-stagger.in-view > *{
+  opacity:1;
+  transform:translateY(0);
+}
+.reveal-stagger.in-view > *:nth-child(1){transition-delay:.05s}
+.reveal-stagger.in-view > *:nth-child(2){transition-delay:.12s}
+.reveal-stagger.in-view > *:nth-child(3){transition-delay:.19s}
+.reveal-stagger.in-view > *:nth-child(4){transition-delay:.26s}
+.reveal-stagger.in-view > *:nth-child(5){transition-delay:.33s}
+.reveal-stagger.in-view > *:nth-child(6){transition-delay:.4s}
+
+@media (prefers-reduced-motion: reduce){
+  .reveal, .reveal-stagger > *{ opacity:1; transform:none; transition:none; }
+  .snav, .snav i, .auth-btn, .jbtn-v, .jbtn-g, .tbtn, .nav-cta, .feat-card, .price-card, .test-card, .jcard, .sc-card{
+    transition:none !important;
+  }
+}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 .skeleton{
   background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 37%,var(--bg3) 63%);
@@ -1145,7 +1220,7 @@ nav{padding-top:env(safe-area-inset-top)}
 <!-- ════════════════ NAV ════════════════ -->
 <nav>
   <div class="logo" onclick="go('home')">
-    <div class="logo-mark"><i class="ti ti-crosshair"></i></div>
+    <div class="logo-mark"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/><path d="M19 11.6 L21.4 9.3" stroke="#fff" stroke-width="0.9" stroke-linecap="round" opacity="0.7"/></svg></div>
     SnipeJob
   </div>
 
@@ -1281,7 +1356,7 @@ nav{padding-top:env(safe-area-inset-top)}
       <div class="hv-earn">
         <div style="font-size:10.5px;font-weight:700;color:var(--lime);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Side Task earned</div>
         <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.5rem;color:var(--ink);letter-spacing:-.03em">+$1.40</div>
-        <div style="font-size:10.5px;color:rgba(184,255,60,.5);margin-top:3px">Survey completed · Nigeria</div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:3px">Survey completed · Nigeria</div>
       </div>
       <div class="hv-stat">
         <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Your sectors today</div>
@@ -1348,7 +1423,7 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- HOW IT WORKS -->
-<div class="section" id="hiw" style="background:var(--bg)">
+<div class="section reveal" id="hiw" style="background:var(--bg)">
   <div class="section-inner">
     <div class="eyebrow">How it works</div>
     <h2 class="section-h">You snooze,<br>someone else<br><span class="g-vio">lands the contract.</span></h2>
@@ -1380,7 +1455,7 @@ nav{padding-top:env(safe-area-inset-top)}
         <span class="hiw-img-label">Get paid</span>
       </div>
     </div>
-    <div class="hiw-steps">
+    <div class="hiw-steps reveal-stagger">
       <div class="hiw-step">
         <div class="step-n">01</div>
         <div class="step-ico" style="background:rgba(124,92,252,.18)"><i class="ti ti-user-check" style="color:var(--vlight);font-size:20px"></i></div>
@@ -1429,12 +1504,12 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- SECTORS -->
-<div class="section sectors-sec" id="sectors">
+<div class="section sectors-sec reveal" id="sectors">
   <div class="section-inner">
     <div class="eyebrow">Job sectors</div>
     <h2 class="section-h">Every type of freelance work.<br><span class="g-lime">All in one radar.</span></h2>
     <p class="section-sub">Free users choose any 3 sectors. Pro users get all of them — including every new sector we add. Never miss a niche that pays.</p>
-    <div class="sector-grid">
+    <div class="sector-grid reveal-stagger">
       <div class="sc-card"><div class="sc-ico" style="background:rgba(124,92,252,.18)"><i class="ti ti-code" style="color:var(--vlight)"></i></div><div class="sc-name">Web Development</div><div class="sc-count">142 jobs today</div><span class="sc-tag-free">Free sector</span><i class="ti ti-arrow-up-right sc-arrow"></i></div>
       <div class="sc-card"><div class="sc-ico" style="background:rgba(0,210,255,.14)"><i class="ti ti-brain" style="color:var(--cyan)"></i></div><div class="sc-name">Data Science</div><div class="sc-count">89 jobs today</div><span class="sc-tag-free">Free sector</span><i class="ti ti-arrow-up-right sc-arrow"></i></div>
       <div class="sc-card"><div class="sc-ico" style="background:rgba(255,107,53,.14)"><i class="ti ti-video" style="color:var(--orange)"></i></div><div class="sc-name">Video Editing</div><div class="sc-count">67 jobs today</div><span class="sc-tag-free">Free sector</span><i class="ti ti-arrow-up-right sc-arrow"></i></div>
@@ -1452,12 +1527,12 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- TESTIMONIALS -->
-<div class="section proof-sec">
+<div class="section proof-sec reveal">
   <div class="section-inner">
     <div class="eyebrow">Real freelancers</div>
     <h2 class="section-h">They applied first.<br><span class="g-fire">They got hired.</span></h2>
     <p class="section-sub">Not curated success stories — real people, real results, same tool you're about to use.</p>
-    <div class="testi-grid">
+    <div class="testi-grid reveal-stagger">
       <div class="tcard">
         <div class="tcard-stars">★★★★★</div>
         <p class="tcard-quote">"I applied to a $3,000 React contract within 90 seconds of it going live on LinkedIn. The client told me I was the first person to reach out. Got the contract. SnipeJob isn't just useful — it's a weapon."</p>
@@ -1493,13 +1568,13 @@ nav{padding-top:env(safe-area-inset-top)}
       </div>
       <div class="tcard">
         <div class="tcard-stars">★★★★★</div>
-        <p class="tcard-quote">"Being in South Africa, I thought the alerts wouldn't be relevant. 80% of what SnipeJob sends me is genuinely applicable. I landed my first USD-paying client two weeks after signing up."</p>
-        <div class="tcard-aut"><div class="tcard-av" style="background:rgba(184,255,60,.12);color:var(--lime)">SK</div><div><div class="tcard-name">Sipho Khumalo</div><div class="tcard-role">UI/UX designer · Cape Town</div><div class="tcard-badge"><i class="ti ti-check" style="font-size:11px"></i>Verified Pro user</div></div></div>
+        <p class="tcard-quote">"Being in Spain, I thought the alerts wouldn't be relevant. 80% of what SnipeJob sends me is genuinely applicable. I landed my first USD-paying client two weeks after signing up."</p>
+        <div class="tcard-aut"><div class="tcard-av" style="background:rgba(184,255,60,.12);color:var(--lime)">MG</div><div><div class="tcard-name">Marta Garcia</div><div class="tcard-role">UI/UX designer · Barcelona</div><div class="tcard-badge"><i class="ti ti-check" style="font-size:11px"></i>Verified Pro user</div></div></div>
       </div>
       <div class="tcard">
         <div class="tcard-stars">★★★★★</div>
         <p class="tcard-quote">"The one-click AI apply is actually scary good. It reads the job post and tailors the proposal from my profile. Three of my last five clients have said my proposal stood out from everyone else's."</p>
-        <div class="tcard-aut"><div class="tcard-av" style="background:rgba(255,60,172,.12);color:var(--pink)">RA</div><div><div class="tcard-name">Riya Agarwal</div><div class="tcard-role">Copywriter · Mumbai</div><div class="tcard-badge"><i class="ti ti-check" style="font-size:11px"></i>Verified Pro user</div></div></div>
+        <div class="tcard-aut"><div class="tcard-av" style="background:rgba(255,60,172,.12);color:var(--pink)">GR</div><div><div class="tcard-name">Giulia Romano</div><div class="tcard-role">Copywriter · Milan</div><div class="tcard-badge"><i class="ti ti-check" style="font-size:11px"></i>Verified Pro user</div></div></div>
       </div>
       <div class="tcard">
         <div class="tcard-stars">★★★★★</div>
@@ -1511,7 +1586,7 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- SIDE TASK -->
-<div class="section st-sec" id="sidetask">
+<div class="section st-sec reveal" id="sidetask">
   <div class="section-inner">
     <div class="st-grid">
       <div>
@@ -1556,12 +1631,12 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- PRICING -->
-<div class="section pricing-sec" id="pricing">
+<div class="section pricing-sec reveal" id="pricing">
   <div class="pricing-center">
     <div class="eyebrow" style="display:inline-flex">Pricing</div>
     <h2 class="section-h" style="margin-top:10px">One plan is $0.<br>The other pays for itself.</h2>
     <p class="section-sub" style="margin:0 auto 0">Pick the plan that fits where you are right now. Upgrade anytime when you're ready to go unlimited.</p>
-    <div class="plans-grid">
+    <div class="plans-grid reveal-stagger">
       <div class="plan">
         <div class="plan-tier">Free</div>
         <div class="plan-price">$0</div>
@@ -1596,7 +1671,7 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- COMPARISON TABLE -->
-<div class="section compare-sec">
+<div class="section compare-sec reveal">
   <div class="section-inner">
     <div class="eyebrow">Compare plans</div>
     <h2 class="section-h">Feature by feature</h2>
@@ -1613,7 +1688,7 @@ nav{padding-top:env(safe-area-inset-top)}
         <tr><td>Job sectors</td><td class="ct-partial">3 chosen by you</td><td class="ct-partial" style="color:var(--lime)">All sectors</td></tr>
         <tr><td>Dashboard & job pins</td><td><i class="ti ti-check ct-yes"></i></td><td><i class="ti ti-check ct-yes"></i></td></tr>
         <tr><td>Project manager (open + closed)</td><td><i class="ti ti-check ct-yes"></i></td><td><i class="ti ti-check ct-yes"></i></td></tr>
-        <tr><td>Side Task earnings</td><td><i class="ti ti-check ct-yes"></i></td><td><i class="ti ti-check ct-yes"></i></td></tr>
+        <tr><td>Side Task earnings</td><td class="ct-partial">Paid out monthly</td><td class="ct-partial" style="color:var(--lime)">Paid out immediately</td></tr>
         <tr><td>Withdraw earnings from $2</td><td><i class="ti ti-check ct-yes"></i></td><td><i class="ti ti-check ct-yes"></i></td></tr>
         <tr><td>Ads in dashboard</td><td class="ct-partial" style="color:var(--red)">Every 30 min</td><td class="ct-partial" style="color:var(--lime)">None, ever</td></tr>
         <tr><td>One-click AI apply</td><td><i class="ti ti-x ct-no"></i></td><td><i class="ti ti-check ct-yes"></i></td></tr>
@@ -1625,7 +1700,7 @@ nav{padding-top:env(safe-area-inset-top)}
 </div>
 
 <!-- FAQ -->
-<div class="section faq-sec">
+<div class="section faq-sec reveal">
   <div class="section-inner">
     <div class="eyebrow">FAQ</div>
     <h2 class="section-h">Questions we get a lot</h2>
@@ -1678,7 +1753,7 @@ nav{padding-top:env(safe-area-inset-top)}
   <div class="footer-inner">
     <div class="footer-top">
       <div>
-        <div class="footer-brand"><div class="logo-mark" style="width:28px;height:28px"><i class="ti ti-crosshair" style="color:#fff;font-size:14px"></i></div>SnipeJob</div>
+        <div class="footer-brand"><div class="logo-mark" style="width:28px;height:28px"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/></svg></div>SnipeJob</div>
         <div class="footer-tag">The first-mover advantage for freelancers. Be first. Apply first. Win more.</div>
         <div class="footer-social">
           <div class="soc-btn"><i class="ti ti-brand-twitter"></i></div>
@@ -1714,79 +1789,150 @@ nav{padding-top:env(safe-area-inset-top)}
 <!-- ════════════════ SIGN UP ════════════════ -->
 <div class="page" id="pg-signup">
 <div class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-logo"><div class="logo-mark"><i class="ti ti-crosshair"></i></div>SnipeJob</div>
-    <div class="auth-h">Start for free.</div>
-    <div class="auth-sub">Job alerts running in under 2 minutes.</div>
+  <div class="auth-card wiz-card">
+    <div class="auth-logo"><div class="logo-mark"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/></svg></div>SnipeJob</div>
 
-    <div class="auth-social-row">
-      <button class="social-btn" onclick="handleOAuth('google')" aria-label="Continue with Google">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9A8.7 8.7 0 0 0 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26A5.4 5.4 0 0 1 9 14.5c-2.1 0-3.88-1.42-4.52-3.33H1.46v2.32A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M4.48 11.17A5.4 5.4 0 0 1 4.18 9c0-.75.13-1.48.3-2.17V4.51H1.46A9 9 0 0 0 0 9c0 1.45.35 2.83 1 4.03l3.48-2.86z"/><path fill="#EA4335" d="M9 3.5c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.6 8.6 0 0 0 9 0 9 9 0 0 0 1.46 4.51l3.02 2.32C5.12 4.92 6.9 3.5 9 3.5z"/></svg>
-        Google
-      </button>
-      <button class="social-btn" onclick="handleOAuth('facebook')" aria-label="Continue with Facebook">
-        <i class="ti ti-brand-facebook" style="color:#1877F2;font-size:18px"></i> Facebook
-      </button>
-      <button class="social-btn" onclick="handleOAuth('linkedin_oidc')" aria-label="Continue with LinkedIn">
-        <i class="ti ti-brand-linkedin" style="color:#0A66C2;font-size:18px"></i> LinkedIn
-      </button>
-      <button class="social-btn" onclick="handleOAuth('instagram')" aria-label="Continue with Instagram (Business accounts)" title="Instagram Business/Creator accounts only">
-        <i class="ti ti-brand-instagram" style="color:#E1306C;font-size:18px"></i> Instagram
-      </button>
+    <div class="wiz-steps">
+      <div class="wiz-step current" id="wiz-dot-1"><div class="wiz-dot">1</div><span class="wiz-step-label">Account</span></div>
+      <div class="wiz-line" id="wiz-line-1"></div>
+      <div class="wiz-step" id="wiz-dot-2"><div class="wiz-dot">2</div><span class="wiz-step-label">Profile</span></div>
+      <div class="wiz-line" id="wiz-line-2"></div>
+      <div class="wiz-step" id="wiz-dot-3"><div class="wiz-dot">3</div><span class="wiz-step-label">Sectors</span></div>
     </div>
-    <div class="auth-or"><span>or use your email</span></div>
-    <div class="id-notice" onclick="go('kyc')" style="cursor:pointer"><i class="ti ti-shield-check"></i><span>For Side Task earnings, you'll verify your phone & ID after signup. <strong>Click here to start now</strong> or skip to dashboard.</span></div>
-    <div class="form-group"><label class="form-label">Full name</label><input type="text" class="form-input" placeholder="Your name"></div>
-    <div class="form-group"><label class="form-label">Email address</label><input type="email" class="form-input" placeholder="you@email.com"></div>
-    <div class="form-group"><label class="form-label">Country</label>
-      <select class="form-input">
-        <option>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option><option>Ethiopia</option><option>Tanzania</option><option>India</option><option>Pakistan</option><option>Bangladesh</option><option>Philippines</option><option>United Kingdom</option><option>United States</option><option>Canada</option><option>Australia</option><option>Germany</option><option>France</option>
-      </select>
+
+    <!-- ═══ STEP 1: ACCOUNT ═══ -->
+    <div class="wiz-panel act" id="wiz-panel-1">
+      <div class="auth-h">Start for free.</div>
+      <div class="auth-sub">Job alerts running in under 2 minutes.</div>
+
+      <div class="auth-social-row">
+        <button class="social-btn" onclick="handleOAuth('google')" aria-label="Continue with Google">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9A8.7 8.7 0 0 0 17.64 9.2z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26A5.4 5.4 0 0 1 9 14.5c-2.1 0-3.88-1.42-4.52-3.33H1.46v2.32A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M4.48 11.17A5.4 5.4 0 0 1 4.18 9c0-.75.13-1.48.3-2.17V4.51H1.46A9 9 0 0 0 0 9c0 1.45.35 2.83 1 4.03l3.48-2.86z"/><path fill="#EA4335" d="M9 3.5c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.6 8.6 0 0 0 9 0 9 9 0 0 0 1.46 4.51l3.02 2.32C5.12 4.92 6.9 3.5 9 3.5z"/></svg>
+          Google
+        </button>
+        <button class="social-btn" onclick="handleOAuth('facebook')" aria-label="Continue with Facebook">
+          <i class="ti ti-brand-facebook" style="color:#1877F2;font-size:18px"></i> Facebook
+        </button>
+        <button class="social-btn" onclick="handleOAuth('linkedin_oidc')" aria-label="Continue with LinkedIn">
+          <i class="ti ti-brand-linkedin" style="color:#0A66C2;font-size:18px"></i> LinkedIn
+        </button>
+        <button class="social-btn" onclick="handleOAuth('instagram')" aria-label="Continue with Instagram (Business accounts)" title="Instagram Business/Creator accounts only">
+          <i class="ti ti-brand-instagram" style="color:#E1306C;font-size:18px"></i> Instagram
+        </button>
+      </div>
+      <div class="auth-or"><span>or use your email</span></div>
+
+      <div class="form-group"><label class="form-label">Full name</label><input type="text" class="form-input" id="su-fullname" placeholder="Your name"></div>
+      <div class="form-group"><label class="form-label">Email address</label><input type="email" class="form-input" id="su-email" placeholder="you@email.com"></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="su-password" placeholder="At least 8 characters"></div>
+      <div class="form-group"><label class="form-label">Country</label>
+        <select class="form-input" id="su-country">
+          <option>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option><option>Ethiopia</option><option>Tanzania</option><option>India</option><option>Pakistan</option><option>Bangladesh</option><option>Philippines</option><option>United Kingdom</option><option>United States</option><option>Canada</option><option>Australia</option><option>Germany</option><option>France</option>
+        </select>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="auth-btn" onclick="wizGoStep(2)" id="wiz-next-1"><i class="ti ti-arrow-right"></i>&nbsp; Continue</button>
+      </div>
+      <div class="auth-foot">Already have an account? <span onclick="go('signin')">Sign in</span></div>
     </div>
-    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" placeholder="At least 8 characters"></div>
-    <div class="form-group">
-      <label class="form-label">Experience Level</label>
-      <select class="form-input">
-        <option value="junior">Junior (0-2 years)</option>
-        <option value="mid" selected>Mid-Level (3-5 years)</option>
-        <option value="senior">Senior (5-8 years)</option>
-        <option value="expert">Expert / Specialist (8+ years)</option>
-      </select>
-    </div>
-    <div class="form-group"><label class="form-label">Primary Skill (e.g. React, Python, Figma)</label><input type="text" class="form-input" placeholder="Enter your top skill"></div>
-    <div class="form-group"><label class="form-label">Professional Bio (Powers AI Resume)</label><textarea class="form-input" style="height:80px;resize:none" placeholder="Tell us about your experience, achievements, and what makes you a great freelancer..."></textarea></div>
-    <div class="form-group"><label class="form-label">Education / Certifications</label><input type="text" class="form-input" placeholder="Degree, Certs, or Online Courses"></div>
-    <div class="form-group">
-      <label class="form-label">Choose up to 3 job sectors (free plan)</label>
-      <div class="sector-picker">
-        <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
-        <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data & AI</label>
-        <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
-        <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
-        <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
-        <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Content & Copy</label>
-        <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
-        <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
-        <label class="sec-opt"><input type="checkbox" value="support" onchange="handleSectorCheck(this)"> Customer Support</label>
-        <label class="sec-opt"><input type="checkbox" value="va" onchange="handleSectorCheck(this)"> Virtual Assistant</label>
-        <label class="sec-opt"><input type="checkbox" value="sales" onchange="handleSectorCheck(this)"> Sales & Business</label>
-        <label class="sec-opt"><input type="checkbox" value="mgmt" onchange="handleSectorCheck(this)"> Project Management</label>
-        <label class="sec-opt"><input type="checkbox" value="finance" onchange="handleSectorCheck(this)"> Finance & Accounting</label>
-        <label class="sec-opt"><input type="checkbox" value="legal" onchange="handleSectorCheck(this)"> Legal & Compliance</label>
+
+    <!-- ═══ STEP 2: PROFILE (AI-assisted) ═══ -->
+    <div class="wiz-panel" id="wiz-panel-2">
+      <div class="auth-h">Tell us who you are.</div>
+      <div class="auth-sub">Paste your resume or upload a file — we'll fill in the rest.</div>
+
+      <div class="scan-tabs">
+        <span class="scan-tab act" id="scan-tab-paste" onclick="setScanMode('paste')">Paste text</span>
+        <span class="scan-tab" id="scan-tab-upload" onclick="setScanMode('upload')">Upload file</span>
+      </div>
+
+      <div id="scan-paste-zone">
+        <div class="form-group">
+          <textarea class="form-input" id="su-resume-paste" style="height:110px;resize:none" placeholder="Paste your resume, LinkedIn About section, or a few sentences about your experience..."></textarea>
+        </div>
+      </div>
+      <div id="scan-upload-zone" style="display:none">
+        <div class="scan-zone" id="scan-dropzone">
+          <i class="ti ti-file-upload"></i>
+          <div class="scan-zone-text">Drop a PDF resume here, or click to browse</div>
+          <input type="file" id="su-resume-file" accept="application/pdf" style="display:none" onchange="handleResumeFileSelect(this)">
+          <button class="wiz-back-btn" type="button" onclick="document.getElementById('su-resume-file').click()">Choose file</button>
+          <div id="scan-file-name" style="font-size:12px;color:var(--t3);margin-top:10px"></div>
+        </div>
+      </div>
+
+      <button class="auth-btn" style="background:var(--grad-accent)" onclick="runResumeAutofill()" id="scan-run-btn"><i class="ti ti-sparkles"></i>&nbsp; Scan with AI</button>
+
+      <div class="scan-result" id="scan-result">
+        <i class="ti ti-check" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+        <span>Profile filled in below — review and adjust anything before continuing.</span>
+      </div>
+
+      <div class="auth-divider-text">or fill in manually</div>
+
+      <div class="form-group">
+        <label class="form-label">Experience Level</label>
+        <select class="form-input" id="su-explevel">
+          <option value="junior">Junior (0-2 years)</option>
+          <option value="mid" selected>Mid-Level (3-5 years)</option>
+          <option value="senior">Senior (5-8 years)</option>
+          <option value="expert">Expert / Specialist (8+ years)</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Primary Skill (e.g. React, Python, Figma)</label><input type="text" class="form-input" id="su-skill" placeholder="Enter your top skill"></div>
+      <div class="form-group"><label class="form-label">Professional Bio (Powers AI Resume)</label><textarea class="form-input" id="su-bio" style="height:80px;resize:none" placeholder="Tell us about your experience, achievements, and what makes you a great freelancer..."></textarea></div>
+      <div class="form-group"><label class="form-label">Education / Certifications</label><input type="text" class="form-input" id="su-education" placeholder="Degree, Certs, or Online Courses"></div>
+
+      <div class="id-notice" onclick="go('kyc')" style="cursor:pointer"><i class="ti ti-shield-check"></i><span>For Side Task earnings, you'll verify your phone & ID after signup. <strong>Click here to start now</strong> or skip to dashboard.</span></div>
+
+      <div class="wiz-nav">
+        <button class="wiz-back-btn" onclick="wizGoStep(1)">Back</button>
+        <button class="auth-btn" onclick="wizGoStep(3)" id="wiz-next-2"><i class="ti ti-arrow-right"></i>&nbsp; Continue</button>
       </div>
     </div>
-    <button class="auth-btn" onclick="handleSignUp()"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
-    <div class="auth-foot">Already have an account? <span onclick="go('signin')">Sign in</span></div>
+
+    <!-- ═══ STEP 3: SECTORS ═══ -->
+    <div class="wiz-panel" id="wiz-panel-3">
+      <div class="auth-h">Pick your sectors.</div>
+      <div class="auth-sub">Choose up to 3 on the free plan — Pro unlocks all of them.</div>
+
+      <div class="form-group">
+        <div class="sector-picker">
+          <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
+          <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data & AI</label>
+          <label class="sec-opt"><input type="checkbox" value="video" onchange="handleSectorCheck(this)"> Video Editing</label>
+          <label class="sec-opt"><input type="checkbox" value="design" onchange="handleSectorCheck(this)"> UI/UX Design</label>
+          <label class="sec-opt"><input type="checkbox" value="mobile" onchange="handleSectorCheck(this)"> App Development</label>
+          <label class="sec-opt"><input type="checkbox" value="writing" onchange="handleSectorCheck(this)"> Content & Copy</label>
+          <label class="sec-opt"><input type="checkbox" value="marketing" onchange="handleSectorCheck(this)"> Digital Marketing</label>
+          <label class="sec-opt"><input type="checkbox" value="cyber" onchange="handleSectorCheck(this)"> Cybersecurity</label>
+          <label class="sec-opt"><input type="checkbox" value="support" onchange="handleSectorCheck(this)"> Customer Support</label>
+          <label class="sec-opt"><input type="checkbox" value="va" onchange="handleSectorCheck(this)"> Virtual Assistant</label>
+          <label class="sec-opt"><input type="checkbox" value="sales" onchange="handleSectorCheck(this)"> Sales & Business</label>
+          <label class="sec-opt"><input type="checkbox" value="mgmt" onchange="handleSectorCheck(this)"> Project Management</label>
+          <label class="sec-opt"><input type="checkbox" value="finance" onchange="handleSectorCheck(this)"> Finance & Accounting</label>
+          <label class="sec-opt"><input type="checkbox" value="legal" onchange="handleSectorCheck(this)"> Legal & Compliance</label>
+        </div>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="wiz-back-btn" onclick="wizGoStep(2)">Back</button>
+        <button class="auth-btn" onclick="handleSignUp()" id="wiz-submit-btn"><i class="ti ti-rocket"></i>&nbsp; Create account — it's free</button>
+      </div>
+    </div>
+
     <div class="auth-back" onclick="go('home')">← Back to home</div>
   </div>
 </div>
 </div>
 
+
 <!-- ════════════════ SIGN IN ════════════════ -->
 <div class="page" id="pg-signin">
 <div class="auth-wrap">
   <div class="auth-card">
-    <div class="auth-logo"><div class="logo-mark"><i class="ti ti-crosshair"></i></div>SnipeJob</div>
+    <div class="auth-logo"><div class="logo-mark"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/></svg></div>SnipeJob</div>
     <div class="auth-h">Welcome back.</div>
     <div class="auth-sub">Sign in to your dashboard.</div>
 
@@ -1806,8 +1952,8 @@ nav{padding-top:env(safe-area-inset-top)}
       </button>
     </div>
     <div class="auth-or"><span>or use your email</span></div>
-    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" placeholder="you@email.com"></div>
-    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" placeholder="••••••••"></div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="si-email" placeholder="you@email.com"></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="si-password" placeholder="••••••••"></div>
     <div style="text-align:right;margin-top:-10px;margin-bottom:18px"><span style="font-size:12.5px;color:var(--vlight);cursor:pointer" onclick="handleForgotPassword()">Forgot password?</span></div>
     <button class="auth-btn" onclick="handleSignIn()"><i class="ti ti-login"></i>&nbsp; Sign in</button>
     <div class="auth-foot">Don't have an account? <span onclick="go('signup')">Sign up free</span></div>
@@ -1825,6 +1971,7 @@ nav{padding-top:env(safe-area-inset-top)}
     <div class="sidebar-section">Main</div>
     <button class="snav act" id="sn-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed<span class="snav-badge" id="feed-badge">0</span></button>
     <button class="snav" id="sn-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned Jobs</button>
+    <button class="snav" id="sn-prep" onclick="dTab('prep')"><i class="ti ti-target-arrow"></i>Career Prep</button>
     <button class="snav" id="sn-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
     <button class="snav" id="sn-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">PRO</span></button>
     <div class="sidebar-sep"></div>
@@ -1915,10 +2062,10 @@ nav{padding-top:env(safe-area-inset-top)}
       <div class="d-stat"><div class="d-stat-lbl">Jobs today</div><div class="d-stat-num" id="stat-jobs-today" style="color:var(--vlight)">—</div><div class="d-stat-sub" id="stat-jobs-sub" style="color:var(--t3)">Loading...</div></div>
       <div class="d-stat"><div class="d-stat-lbl">Pinned</div><div class="d-stat-num" id="stat-pinned" style="color:var(--cyan)">—</div><div class="d-stat-sub" id="stat-pinned-sub">—</div></div>
       <div class="d-stat"><div class="d-stat-lbl">Active projects</div><div class="d-stat-num" id="stat-projects" style="color:var(--orange)">—</div><div class="d-stat-sub" id="stat-projects-sub">—</div></div>
-      <div class="d-stat" style="background:var(--grad-earn);border-color:rgba(184,255,60,.2);cursor:pointer" onclick="dTab('sidetask')">
+      <div class="d-stat" style="background:linear-gradient(135deg,rgba(184,255,60,.1),rgba(0,224,150,.06));border-color:rgba(184,255,60,.2);cursor:pointer" onclick="dTab('sidetask')">
         <div class="d-stat-lbl" style="color:var(--lime)">Side Task balance</div>
         <div class="d-stat-num" id="stat-balance" style="color:var(--lime)">$0.00</div>
-        <div class="d-stat-sub" style="color:rgba(184,255,60,.5)">Tap to withdraw →</div>
+        <div class="d-stat-sub" style="color:var(--lime-ink);opacity:.8">Tap to withdraw →</div>
       </div>
     </div>
 
@@ -1926,6 +2073,7 @@ nav{padding-top:env(safe-area-inset-top)}
     <div class="tab-bar">
       <button class="tbtn act" id="tb-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed</button>
       <button class="tbtn" id="tb-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned</button>
+      <button class="tbtn" id="tb-prep" onclick="dTab('prep')"><i class="ti ti-target-arrow"></i>Career Prep</button>
       <button class="tbtn" id="tb-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
       <button class="tbtn" id="tb-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income</button>
       <button class="tbtn" id="tb-sidetask" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Side Task</button>
@@ -1991,6 +2139,50 @@ nav{padding-top:env(safe-area-inset-top)}
           <div class="jcard-tags"><span class="badge b-hot">Declined</span></div>
         </div>
         <div class="jcard-actions"><button class="jbtn jbtn-g"><i class="ti ti-trash" style="font-size:13px"></i></button></div>
+      </div>
+    </div>
+
+    <!-- ─── CAREER PREP ─── -->
+    <div class="tab-pane" id="tp-prep">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+
+        <!-- RESUME SCORE -->
+        <div class="settings-card" style="margin:0">
+          <div class="settings-sect">Resume score</div>
+          <div id="resume-score-empty" style="text-align:center;padding:20px 10px">
+            <i class="ti ti-file-analytics" style="font-size:28px;color:var(--t3)"></i>
+            <div style="font-size:13px;color:var(--t2);margin:10px 0 14px">See how your profile reads to employers.</div>
+            <button class="jbtn jbtn-v" onclick="runResumeScore()" id="resume-score-btn">Score my resume</button>
+          </div>
+          <div id="resume-score-result" style="display:none">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+              <div id="resume-score-num" style="font-family:'Syne',sans-serif;font-weight:900;font-size:2rem;color:var(--vlight)">—</div>
+              <div style="flex:1;font-size:12.5px;color:var(--t2)">out of 100, based on clarity, impact, and keyword strength</div>
+            </div>
+            <ul id="resume-score-tips" style="margin:0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.7"></ul>
+            <div id="resume-rewrite-upsell" style="display:none;margin-top:14px" class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer">
+              <i class="ti ti-lock"></i>Upgrade to Pro for a full tailored rewrite per job
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTOR TRENDS -->
+        <div class="settings-card" style="margin:0">
+          <div class="settings-sect">What's trending in your sector</div>
+          <div id="trends-content" style="font-size:13px;color:var(--t2)">
+            <i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading trends...
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERVIEW PREP -->
+      <div class="settings-card">
+        <div class="settings-sect">Interview prep</div>
+        <div id="interview-setup">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:14px">Practice with realistic questions and get instant feedback. Free plan includes 3 general questions; Pro generates questions from your pinned jobs and scores every answer.</div>
+          <button class="jbtn jbtn-v" onclick="startInterviewPrep()" id="interview-start-btn">Start practice session</button>
+        </div>
+        <div id="interview-session" style="display:none"></div>
       </div>
     </div>
 
@@ -2089,8 +2281,9 @@ nav{padding-top:env(safe-area-inset-top)}
         <div>
           <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px">
             <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Total balance</div>
-            <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:2.4rem;color:var(--lime);letter-spacing:-.04em">$47.20</div>
-            <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Your 30% of all completed tasks</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:2.4rem;color:var(--lime);letter-spacing:-.04em" id="st-total-balance">—</div>
+            <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Your 30% of all completed tasks</div>
+            <div id="st-payout-timing" style="font-size:11.5px;color:var(--t3);background:rgba(var(--ink-rgb),.04);border-radius:8px;padding:8px 11px;margin-bottom:14px;display:flex;align-items:center;gap:6px"></div>
             <button style="width:100%;padding:13px;background:var(--lime);color:#08070F;border:none;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px" onclick="openWithdraw()"><i class="ti ti-wallet"></i> Withdraw funds</button>
             <div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:10px">Payout methods</div>
             <div style="display:flex;flex-direction:column;gap:7px">
@@ -2103,9 +2296,7 @@ nav{padding-top:env(safe-area-inset-top)}
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px">
             <div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.07em">Recent earnings</div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--t2)">Opinion poll</span><span style="color:var(--lime);font-weight:700">+$1.20</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--t2)">App trial</span><span style="color:var(--lime);font-weight:700">+$3.50</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--t2)">Sign-up offer</span><span style="color:var(--lime);font-weight:700">+$5.00</span></div>
+            <div id="st-recent-earnings"><div style="font-size:12.5px;color:var(--t3)">Loading...</div></div>
           </div>
         </div>
       </div>
@@ -2418,7 +2609,789 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
   }
 }
 
-// ... (Other functions follow)
+/* ─── SPA PAGE ROUTER ─── */
+function go(pageName) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById('pg-' + pageName);
+  if (target) target.classList.add('active');
+  window.scrollTo(0, 0);
+  closeRailExplore();
+  if (typeof closeMob === 'function') closeMob();
+  syncMobileNavVisibility();
+  if (pageName === 'dashboard') initDashboard();
+}
+
+/* ─── CURSOR-REACTIVE GRADIENTS ─── */
+(function setupCursorGlow() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(pointer: coarse)').matches) return; // skip on touch devices, no hover concept
+
+  const targets = document.querySelectorAll('.hero, .plan.hot');
+  if (targets.length === 0) return;
+
+  targets.forEach(el => {
+    el.addEventListener('pointermove', e => {
+      const rect = el.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      el.style.setProperty('--mx', `${x}%`);
+      el.style.setProperty('--my', `${y}%`);
+    });
+  });
+})();
+
+/* ─── SCROLL REVEAL + LAZY IMAGES ─── */
+(function setupScrollReveal() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Lazy-load any <img data-src="..."> as it enters the viewport.
+  const lazyImages = document.querySelectorAll('img[data-src]');
+  if (lazyImages.length > 0) {
+    const imgObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+          obs.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px 0px' });
+    lazyImages.forEach(img => imgObserver.observe(img));
+  }
+
+  if (prefersReduced) return; // CSS already disables motion; skip the JS work too
+
+  const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+  if (revealEls.length === 0) return;
+
+  const revealObserver = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+
+  revealEls.forEach(el => revealObserver.observe(el));
+})();
+
+/* ─── SIGNUP WIZARD: STEP NAVIGATION ─── */
+function wizGoStep(step) {
+  if (step === 2 && !wizValidateStep1()) return;
+  if (step === 3 && !wizValidateStep2()) return;
+
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`wiz-panel-${i}`).classList.toggle('act', i === step);
+    const dot = document.getElementById(`wiz-dot-${i}`);
+    dot.classList.toggle('current', i === step);
+    dot.classList.toggle('done', i < step);
+  }
+  document.getElementById('wiz-line-1').classList.toggle('done', step > 1);
+  document.getElementById('wiz-line-2').classList.toggle('done', step > 2);
+}
+
+function wizValidateStep1() {
+  const email = document.getElementById('su-email')?.value.trim();
+  const password = document.getElementById('su-password')?.value;
+  if (!email || !email.includes('@')) { toast('Enter a valid email address.', 'ti-alert-triangle'); return false; }
+  if (!password || password.length < 8) { toast('Password must be at least 8 characters.', 'ti-alert-triangle'); return false; }
+  return true;
+}
+
+function wizValidateStep2() {
+  const skill = document.getElementById('su-skill')?.value.trim();
+  if (!skill) { toast('Add your primary skill — paste a resume above and scan, or type it in manually.', 'ti-alert-triangle'); return false; }
+  return true;
+}
+
+/* ─── SIGNUP WIZARD: RESUME SCAN (paste vs upload toggle) ─── */
+let resumeFileBase64 = null;
+
+function setScanMode(mode) {
+  document.getElementById('scan-tab-paste').classList.toggle('act', mode === 'paste');
+  document.getElementById('scan-tab-upload').classList.toggle('act', mode === 'upload');
+  document.getElementById('scan-paste-zone').style.display = mode === 'paste' ? 'block' : 'none';
+  document.getElementById('scan-upload-zone').style.display = mode === 'upload' ? 'block' : 'none';
+}
+
+function handleResumeFileSelect(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.type !== 'application/pdf') { toast('Please upload a PDF file.', 'ti-alert-triangle'); return; }
+  if (file.size > 8 * 1024 * 1024) { toast('File is too large — please keep it under 8MB.', 'ti-alert-triangle'); return; }
+
+  document.getElementById('scan-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = () => { resumeFileBase64 = reader.result.split(',')[1]; };
+  reader.onerror = () => toast('Could not read that file. Please try again.', 'ti-alert-triangle');
+  reader.readAsDataURL(file);
+}
+
+// Drag & drop support on the upload zone
+(function setupDropzone() {
+  const zone = document.getElementById('scan-dropzone');
+  if (!zone) return;
+  ['dragover', 'dragenter'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const input = document.getElementById('su-resume-file');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleResumeFileSelect(input);
+    }
+  });
+})();
+
+async function runResumeAutofill() {
+  const isUpload = document.getElementById('scan-tab-upload').classList.contains('act');
+  const btn = document.getElementById('scan-run-btn');
+
+  let payload = {};
+  if (isUpload) {
+    if (!resumeFileBase64) return toast('Choose a PDF file first.', 'ti-alert-triangle');
+    payload = { file_base64: resumeFileBase64 };
+  } else {
+    const text = document.getElementById('su-resume-paste')?.value.trim();
+    if (!text || text.length < 30) return toast('Paste at least a few sentences about your experience.', 'ti-alert-triangle');
+    payload = { resume_text: text };
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Scanning...';
+
+  try {
+    const res = await fetch(`${API_URL}/profile/autofill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    if (data.full_name && !document.getElementById('su-fullname').value) document.getElementById('su-fullname').value = data.full_name;
+    if (data.primary_skill) document.getElementById('su-skill').value = data.primary_skill;
+    if (data.bio) document.getElementById('su-bio').value = data.bio;
+    if (data.education) document.getElementById('su-education').value = data.education;
+    if (data.exp_level) document.getElementById('su-explevel').value = data.exp_level;
+
+    document.getElementById('scan-result').classList.add('show');
+    toast('Profile filled in — review below.', 'ti-check');
+  } catch (e) {
+    console.error('Resume autofill error:', e);
+    toast('Could not scan that. You can still fill in the fields below manually.', 'ti-alert-triangle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i>&nbsp; Scan with AI';
+  }
+}
+
+/* ─── AUTH STATE ─── */
+let currentProfile = null;
+
+async function refreshSession() {
+  if (!sb) return null;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    localStorage.setItem('user_token', session.access_token);
+  } else {
+    localStorage.removeItem('user_token');
+  }
+  return session;
+}
+
+// Keep localStorage token in sync whenever Supabase refreshes/expires it
+if (sb) {
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) localStorage.setItem('user_token', session.access_token);
+    else localStorage.removeItem('user_token');
+  });
+}
+
+/* ─── SIGN UP ─── */
+async function handleSignUp() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+
+  const fullName = document.getElementById('su-fullname')?.value.trim();
+  const country = document.getElementById('su-country')?.value;
+  const expLevel = document.getElementById('su-explevel')?.value;
+  const primarySkill = document.getElementById('su-skill')?.value.trim();
+  const bio = document.getElementById('su-bio')?.value.trim();
+  const education = document.getElementById('su-education')?.value.trim();
+  const sectors = Array.from(document.querySelectorAll('.sec-opt input:checked')).map(el => el.value);
+
+  const btn = event?.target?.closest('button');
+
+  // OAuth users already have a session by the time they reach this step
+  // (they were routed straight into the wizard at step 2 after redirect) —
+  // finish their profile via PATCH instead of creating a duplicate account.
+  const existingSession = await refreshSession();
+  if (existingSession) {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Saving...'; }
+    try {
+      currentProfile = await apiFetch('/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ full_name: fullName, country, exp_level: expLevel, primary_skill: primarySkill, bio, education, sectors }),
+      });
+      toast('Profile complete! Welcome to SnipeJob.', 'ti-check');
+      go('dashboard');
+    } catch (e) {
+      toast(e.message || 'Could not save your profile. Please try again.', 'ti-alert-triangle');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-rocket"></i>&nbsp; Create account — it\'s free'; }
+    }
+    return;
+  }
+
+  // Standard email/password signup path
+  const email = document.getElementById('su-email')?.value.trim();
+  const password = document.getElementById('su-password')?.value;
+  if (!email || !password) return toast('Email and password are required.', 'ti-alert-triangle');
+  if (password.length < 8) return toast('Password must be at least 8 characters.', 'ti-alert-triangle');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Creating account...'; }
+
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, country, exp_level: expLevel, primary_skill: primarySkill, bio, education, sectors }
+      }
+    });
+
+    if (error) {
+      // Supabase returns a 429 with this kind of message when its shared
+      // SMTP relay is throttled — see HOSTING.md step on custom SMTP.
+      if (error.status === 429 || /rate limit/i.test(error.message)) {
+        toast('Too many signup attempts right now. Please wait a few minutes and try again.', 'ti-clock');
+      } else {
+        toast(error.message || 'Sign up failed.', 'ti-alert-triangle');
+      }
+      return;
+    }
+
+    if (data.session) {
+      // Email confirmation disabled — user is logged in immediately
+      localStorage.setItem('user_token', data.session.access_token);
+      toast('Account created! Welcome to SnipeJob.', 'ti-check');
+      go('dashboard');
+    } else {
+      toast('Check your email to confirm your account, then sign in.', 'ti-mail');
+      go('signin');
+    }
+  } catch (e) {
+    console.error('Sign up error:', e);
+    toast('Something went wrong. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-rocket"></i>&nbsp; Create account — it\'s free'; }
+  }
+}
+
+/* ─── SIGN IN ─── */
+async function handleSignIn() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+
+  const email = document.getElementById('si-email')?.value.trim();
+  const password = document.getElementById('si-password')?.value;
+  if (!email || !password) return toast('Enter your email and password.', 'ti-alert-triangle');
+
+  const btn = event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Signing in...'; }
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast(error.message || 'Invalid email or password.', 'ti-alert-triangle');
+      return;
+    }
+    localStorage.setItem('user_token', data.session.access_token);
+    toast('Welcome back!', 'ti-check');
+    go('dashboard');
+  } catch (e) {
+    console.error('Sign in error:', e);
+    toast('Something went wrong. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
+  }
+}
+
+/* ─── OAUTH ─── */
+async function handleOAuth(provider) {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  const { error } = await sb.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) toast(error.message || `Could not start ${provider} sign-in.`, 'ti-alert-triangle');
+}
+
+/* ─── SIGN OUT ─── */
+async function handleSignOut() {
+  if (sb) await sb.auth.signOut();
+  localStorage.removeItem('user_token');
+  currentProfile = null;
+  toast('Signed out.', 'ti-logout');
+  go('home');
+}
+
+/* ─── FORGOT PASSWORD ─── */
+async function handleForgotPassword() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  const email = document.getElementById('si-email')?.value.trim();
+  if (!email) return toast('Enter your email above first, then click "Forgot password?"', 'ti-alert-triangle');
+  const { error } = await sb.auth.resetPasswordForEmail(email);
+  if (error) toast(error.message || 'Could not send reset email.', 'ti-alert-triangle');
+  else toast('Password reset email sent.', 'ti-mail');
+}
+
+/* ─── DASHBOARD INIT ─── */
+let allJobs = [];
+let activeSector = 'all';
+let activeSort = 'all';
+let searchQuery = '';
+
+async function initDashboard() {
+  const session = await refreshSession();
+  if (!session) { go('signin'); return; }
+
+  try {
+    currentProfile = await apiFetch('/profile');
+  } catch (e) {
+    console.error('Failed to load profile:', e);
+    toast('Could not load your profile. Please sign in again.', 'ti-alert-triangle');
+    go('signin');
+    return;
+  }
+
+  const greetingName = currentProfile.full_name ? currentProfile.full_name.split(' ')[0] : 'there';
+  const greetEl = document.querySelector('.dash-greeting');
+  if (greetEl) greetEl.textContent = `Welcome back, ${greetingName} 👋`;
+
+  const balEl = document.getElementById('stat-balance');
+  if (balEl) balEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
+  const sideBalEl = document.getElementById('sb-bal-val-side');
+  if (sideBalEl) sideBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
+
+  const adBanner = document.getElementById('ad-banner');
+  if (adBanner) adBanner.style.display = currentProfile.current_tier === 'paid' ? 'none' : 'flex';
+
+  await loadJobs();
+}
+
+/* ─── JOB LOADING & RENDERING ─── */
+async function loadJobs() {
+  const listEl = document.getElementById('jobs-list');
+  const dateLine = document.getElementById('dash-date-line');
+  if (listEl) listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Scanning live sources...</div></div>';
+
+  try {
+    const sectorParam = activeSector === 'all' ? '' : `?sector=${activeSector}`;
+    const result = await apiFetch(`/jobs${sectorParam}`);
+    allJobs = result.items || [];
+
+    const todayEl = document.getElementById('stat-jobs-today');
+    if (todayEl) todayEl.textContent = allJobs.length;
+    const subEl = document.getElementById('stat-jobs-sub');
+    if (subEl) subEl.textContent = allJobs.length > 0 ? 'Updated just now' : 'No jobs in this sector yet';
+    const badgeEl = document.getElementById('feed-badge');
+    if (badgeEl) badgeEl.textContent = allJobs.length;
+    if (dateLine) dateLine.textContent = new Date().toLocaleString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+
+    renderJobs();
+  } catch (e) {
+    console.error('Failed to load jobs:', e);
+    if (listEl) listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
+      <i class="ti ti-wifi-off" style="font-size:22px"></i>
+      <div style="margin-top:8px">Couldn't load jobs right now.</div>
+      <button class="tbtn" style="margin-top:10px" onclick="loadJobs()">Retry</button>
+    </div>`;
+    if (dateLine) dateLine.textContent = 'Could not refresh feed';
+  }
+}
+
+function renderJobs(showMatchScore = false) {
+  const listEl = document.getElementById('jobs-list');
+  if (!listEl) return;
+
+  let jobs = allJobs;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    jobs = jobs.filter(j => j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q));
+  }
+  if (activeSort === 'urgent') {
+    jobs = jobs.filter(j => (j.internal_labels || []).includes('urgent') || (j.internal_labels || []).includes('new'));
+  }
+
+  if (jobs.length === 0) {
+    listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
+      <i class="ti ti-search-off" style="font-size:22px"></i>
+      <div style="margin-top:8px">No jobs match right now. Try a different sector or check back soon.</div>
+    </div>`;
+    return;
+  }
+
+  listEl.innerHTML = jobs.map(job => {
+    const initial = (job.company || '?').charAt(0).toUpperCase();
+    const timeAgo = formatTimeAgo(job.indexed_at);
+    const isNew = (job.internal_labels || []).includes('new');
+    const hasMatch = showMatchScore && typeof job.match_score === 'number';
+    return `
+    <div class="jcard">
+      <div class="jcard-ico" style="background:rgba(124,92,252,.18);color:var(--vlight)">${initial}</div>
+      <div style="flex:1">
+        <div class="jcard-title">${escapeHtml(job.title)}</div>
+        <div class="jcard-meta">${escapeHtml(job.company)} · ${escapeHtml(job.listing_source)} · ${timeAgo}</div>
+        <div class="jcard-tags">
+          ${hasMatch ? `<span class="badge" style="background:rgba(184,255,60,.15);color:var(--lime)">${job.match_score}% match</span>` : ''}
+          ${isNew ? '<span class="badge b-new" style="background:rgba(184,255,60,.15);color:var(--lime)">New</span>' : ''}
+          <span class="badge" style="background:rgba(var(--ink-rgb),.06);color:var(--t2)">${escapeHtml(job.sector)}</span>
+        </div>
+        ${hasMatch && job.match_reason ? `<div style="font-size:11.5px;color:var(--t3);margin-top:6px"><i class="ti ti-sparkles" style="font-size:12px"></i> ${escapeHtml(job.match_reason)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="tbtn" style="padding:8px 12px" onclick="pinJob('${job.id}')" title="Pin job"><i class="ti ti-bookmark"></i></button>
+        <a class="tbtn" style="padding:8px 12px;text-decoration:none" href="${job.job_url}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i> View</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function formatTimeAgo(isoDate) {
+  if (!isoDate) return 'recently';
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+async function pinJob(jobId) {
+  try {
+    await apiFetch('/pin', { method: 'POST', body: JSON.stringify({ job_id: jobId }) });
+    toast('Job pinned.', 'ti-bookmark');
+  } catch (e) {
+    toast(e.message || 'Could not pin job.', 'ti-alert-triangle');
+  }
+}
+
+/* ─── FILTERS / SORT / SEARCH ─── */
+function filterJobs(sector) {
+  activeSector = sector;
+  document.querySelectorAll('.fc').forEach(el => el.classList.remove('on'));
+  const el = document.getElementById('fc-' + sector);
+  if (el) el.classList.add('on');
+  loadJobs();
+}
+
+function setSort(mode) {
+  activeSort = mode;
+  document.querySelectorAll('[onclick^="setSort"]').forEach(el => el.classList.remove('act'));
+  if (event?.target) event.target.closest('button')?.classList.add('act');
+
+  if (mode === 'match') {
+    loadRankedJobs();
+  } else {
+    renderJobs();
+  }
+}
+
+async function loadRankedJobs() {
+  const listEl = document.getElementById('jobs-list');
+  if (listEl) listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Ranking jobs against your profile...</div></div>';
+
+  try {
+    const sectorParam = activeSector === 'all' ? '' : `?sector=${activeSector}`;
+    const result = await apiFetch(`/jobs/ranked${sectorParam}`);
+    allJobs = result.items || [];
+    renderJobs(true);
+    if (result.ranking_tier === 'basic') {
+      toast('Showing keyword match. Upgrade to Pro for full AI ranking.', 'ti-sparkles');
+    }
+  } catch (e) {
+    toast(e.message || 'Could not rank jobs right now.', 'ti-alert-triangle');
+    loadJobs();
+  }
+}
+
+function handleSearch(value) {
+  searchQuery = value;
+  renderJobs();
+}
+
+/* ─── SIDE TASK: LIVE OFFERS ─── */
+async function loadSideTasks() {
+  const listEl = document.getElementById('tasks-list');
+  const balEl = document.getElementById('st-total-balance');
+  const earnEl = document.getElementById('st-recent-earnings');
+
+  if (balEl && currentProfile) balEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
+
+  const timingEl = document.getElementById('st-payout-timing');
+  if (timingEl && currentProfile) {
+    const isPro = currentProfile.current_tier === 'paid';
+    timingEl.innerHTML = isPro
+      ? `<i class="ti ti-bolt" style="color:var(--lime)"></i> Pro: withdrawals processed immediately`
+      : `<i class="ti ti-calendar" style="color:var(--t3)"></i> Free: withdrawals paid out monthly — <span style="color:var(--vlight);cursor:pointer" onclick="go('upgrade')">upgrade for instant</span>`;
+  }
+
+  if (listEl) {
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading tasks...</div>';
+    try {
+      const result = await apiFetch('/offers');
+      if (!result.configured) {
+        listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No affiliate network connected yet. Check back soon.</div>`;
+      } else if (result.items.length === 0) {
+        listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No tasks available in your country right now. Check back later.</div>`;
+      } else {
+        listEl.innerHTML = result.items.map(o => `
+          <div class="st-task-row">
+            <div class="st-task-l">
+              <div class="st-task-ico" style="background:rgba(184,255,60,.12)"><i class="ti ti-clipboard-check" style="color:var(--lime)"></i></div>
+              <div><div class="st-task-name">${escapeHtml(o.title)}</div><div class="st-task-sub">${escapeHtml(o.country || '')} · Available now</div></div>
+            </div>
+            <a class="st-rew" style="text-decoration:none" href="${o.link}" target="_blank" rel="noopener">+$${o.user_cut.toFixed(2)}</a>
+          </div>`).join('');
+      }
+    } catch (e) {
+      listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">Couldn't load tasks right now. Please try again shortly.</div>`;
+    }
+  }
+
+  if (earnEl) {
+    try {
+      const result = await apiFetch('/earnings');
+      if (result.items.length === 0) {
+        earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">No earnings yet — complete a task to see it here.</div>`;
+      } else {
+        earnEl.innerHTML = result.items.map(e => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span style="color:var(--t2)">${escapeHtml(e.incoming_network_provider)}</span>
+            <span style="color:var(--lime);font-weight:700">+$${Number(e.user_credited_amount).toFixed(2)}</span>
+          </div>`).join('');
+      }
+    } catch (e) {
+      earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">Couldn't load earnings.</div>`;
+    }
+  }
+}
+
+/* ─── DASHBOARD TABS ─── */
+function dTab(tabName) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('act'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('act'));
+  document.querySelectorAll('.snav').forEach(b => b.classList.remove('act'));
+
+  const pane = document.getElementById('tp-' + tabName);
+  if (pane) pane.classList.add('act');
+  const tabBtn = document.getElementById('tb-' + tabName);
+  if (tabBtn) tabBtn.classList.add('act');
+  const sideBtn = document.getElementById('sn-' + tabName);
+  if (sideBtn) sideBtn.classList.add('act');
+
+  if (tabName === 'prep' && !dTab._trendsLoaded) {
+    dTab._trendsLoaded = true;
+    loadTrends();
+  }
+  if (tabName === 'sidetask') {
+    loadSideTasks();
+  }
+}
+
+/* ─── SIGNUP SECTOR PICKER (max 3 on free plan) ─── */
+function handleSectorCheck(checkbox) {
+  const checked = document.querySelectorAll('.sec-opt input:checked');
+  if (checked.length > 3) {
+    checkbox.checked = false;
+    toast('Free plan allows up to 3 sectors. Upgrade to Pro for all sectors.', 'ti-lock');
+  }
+}
+
+/* ─── FAQ ACCORDION ─── */
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  if (!item) return;
+  const answer = item.querySelector('.faq-a');
+  const wasOpen = btn.classList.contains('open');
+
+  document.querySelectorAll('.faq-q.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.faq-a.open').forEach(el => el.classList.remove('open'));
+
+  if (!wasOpen) {
+    btn.classList.add('open');
+    if (answer) answer.classList.add('open');
+  }
+}
+
+/* ─── MOBILE MENU ─── */
+function toggleMobileMenu() {
+  const menu = document.getElementById('mob-nav');
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+function closeMob() {
+  const menu = document.getElementById('mob-nav');
+  if (menu) menu.style.display = 'none';
+}
+
+/* ─── CAREER PREP: RESUME SCORE ─── */
+async function runResumeScore() {
+  const btn = document.getElementById('resume-score-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Scoring...'; }
+
+  try {
+    const result = await apiFetch('/resume/score', { method: 'POST' });
+    document.getElementById('resume-score-empty').style.display = 'none';
+    document.getElementById('resume-score-result').style.display = 'block';
+    document.getElementById('resume-score-num').textContent = result.score;
+    document.getElementById('resume-score-tips').innerHTML = (result.tips || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+    if (!result.full_rewrite_available) {
+      document.getElementById('resume-rewrite-upsell').style.display = 'block';
+    }
+  } catch (e) {
+    toast(e.message || 'Could not score your resume. Add a bio in Settings first.', 'ti-alert-triangle');
+    if (btn) { btn.disabled = false; btn.textContent = 'Score my resume'; }
+  }
+}
+
+/* ─── CAREER PREP: SECTOR TRENDS ─── */
+async function loadTrends() {
+  const el = document.getElementById('trends-content');
+  if (!el || !currentProfile) return;
+  const sector = currentProfile.sectors?.[0] || 'web';
+
+  try {
+    const trends = await apiFetch(`/trends?sector=${sector}`);
+    if (!trends.trending_skills || trends.trending_skills.length === 0) {
+      el.innerHTML = `<div style="color:var(--t3)">Trends for this sector haven't been generated yet — check back soon.</div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div style="margin-bottom:12px">${escapeHtml(trends.summary)}</div>
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Trending skills</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${trends.trending_skills.map(s => `<span style="font-size:11px;padding:3px 8px;background:rgba(var(--ink-rgb),.05);border-radius:5px;color:var(--t2)">${escapeHtml(s)}</span>`).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:6px">Worth getting certified in</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${trends.recommended_certs.map(c => `<span style="font-size:11px;padding:3px 8px;background:rgba(0,210,255,.1);border-radius:5px;color:var(--cyan)">${escapeHtml(c)}</span>`).join('')}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--t3)">Couldn't load trends right now.</div>`;
+  }
+}
+
+/* ─── CAREER PREP: INTERVIEW ─── */
+let activeInterviewSession = null;
+let activeInterviewQuestions = [];
+
+async function startInterviewPrep(jobId = null) {
+  const btn = document.getElementById('interview-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating questions...'; }
+
+  try {
+    const result = await apiFetch('/interview/start', { method: 'POST', body: JSON.stringify({ job_id: jobId }) });
+    activeInterviewSession = result.session_id;
+    activeInterviewQuestions = result.questions;
+
+    document.getElementById('interview-setup').style.display = 'none';
+    const sessionEl = document.getElementById('interview-session');
+    sessionEl.style.display = 'block';
+    sessionEl.innerHTML = activeInterviewQuestions.map((q, i) => `
+      <div class="qa-block" style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:10px">${i + 1}. ${escapeHtml(q)}</div>
+        <textarea class="form-input" id="iv-answer-${i}" style="height:70px;resize:none" placeholder="Type your answer..."></textarea>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <button class="tbtn" style="padding:6px 14px;font-size:12.5px" onclick="submitInterviewAnswer(${i}, this)">${result.tier === 'pro' ? 'Get AI feedback' : 'Save answer'}</button>
+          <span id="iv-result-${i}" style="font-size:12.5px;color:var(--t2)"></span>
+        </div>
+      </div>`).join('') + `<button class="tbtn" onclick="resetInterviewPrep()">Start a new session</button>`;
+  } catch (e) {
+    toast(e.message || 'Could not start interview prep.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Start practice session'; }
+  }
+}
+
+async function submitInterviewAnswer(index, btn) {
+  const answer = document.getElementById(`iv-answer-${index}`)?.value.trim();
+  const resultEl = document.getElementById(`iv-result-${index}`);
+  if (!answer) return toast('Write an answer first.', 'ti-alert-triangle');
+
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = 'Scoring...';
+
+  try {
+    const result = await apiFetch('/interview/answer', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: activeInterviewSession, question: activeInterviewQuestions[index], answer }),
+    });
+    resultEl.innerHTML = `<strong style="color:var(--vlight)">${result.score}/100</strong> — ${escapeHtml(result.feedback)}`;
+  } catch (e) {
+    if (e.status === 403) {
+      resultEl.innerHTML = `<span style="color:var(--t3)">Saved. <span style="color:var(--vlight);cursor:pointer" onclick="go('upgrade')">Upgrade for AI feedback →</span></span>`;
+    } else {
+      toast(e.message || 'Could not score this answer.', 'ti-alert-triangle');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+function resetInterviewPrep() {
+  activeInterviewSession = null;
+  activeInterviewQuestions = [];
+  document.getElementById('interview-setup').style.display = 'block';
+  document.getElementById('interview-session').style.display = 'none';
+  document.getElementById('interview-session').innerHTML = '';
+}
+
+/* ─── RESTORE SESSION ON LOAD ─── */
+(async function bootstrapAuth() {
+  if (!sb) return;
+  const session = await refreshSession();
+  if (!session) return;
+
+  try {
+    currentProfile = await apiFetch('/profile');
+  } catch (e) {
+    currentProfile = null;
+  }
+
+  // First-time OAuth signup (or anyone who never finished onboarding):
+  // profile exists from the DB trigger, but has no primary_skill yet.
+  // Route them into the wizard at step 2 instead of stranding them.
+  const needsOnboarding = currentProfile && !currentProfile.primary_skill;
+  if (needsOnboarding) {
+    go('signup');
+    document.getElementById('wiz-panel-1')?.classList.remove('act');
+    document.getElementById('wiz-panel-2')?.classList.add('act');
+    const dot1 = document.getElementById('wiz-dot-1'), dot2 = document.getElementById('wiz-dot-2');
+    if (dot1) { dot1.classList.remove('current'); dot1.classList.add('done'); }
+    if (dot2) dot2.classList.add('current');
+    document.getElementById('wiz-line-1')?.classList.add('done');
+    toast('Welcome! Just need a few more details.', 'ti-user-check');
+    return;
+  }
+
+  if (document.getElementById('pg-dashboard')?.classList.contains('active')) {
+    initDashboard();
+  }
+})();
 </script>
 </body>
 </html>
