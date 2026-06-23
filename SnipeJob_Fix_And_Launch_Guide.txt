@@ -83,15 +83,15 @@ version from worker.js, PLUS the security/correctness patches below.
      npx wrangler deploy
 
 ✅ VERIFY:
-   a) Visit https://my-sniper-worker.626gl1ch.workers.dev/debug/env
+   a) Visit https://my-sniper-worker.daniellancce1.workers.dev/debug/env
       You should see {"hasSupabaseUrl":true,"hasSupabaseAnonKey":true,
       "hasSupabaseServiceRoleKey":true,"hasGeminiApiKey":true}
       (If any say false, see Step 2 below before continuing.)
-   b) Visit https://my-sniper-worker.626gl1ch.workers.dev/api/jobs
+   b) Visit https://my-sniper-worker.daniellancce1.workers.dev/api/jobs
       You should get {"error":"Unauthorized"} — NOT "Not Found". Getting
       "Unauthorized" is correct and means the route now exists.
    c) Run this in your terminal (replace with any path that was 404 before):
-        curl -s https://my-sniper-worker.626gl1ch.workers.dev/api/trends
+        curl -s https://my-sniper-worker.daniellancce1.workers.dev/api/trends
       You should get "Unauthorized", not "Not Found".
    d) Open Cloudflare Dashboard > Workers & Pages > my-sniper-worker >
       Settings > Bindings, and just visually confirm only ONE worker named
@@ -233,7 +233,7 @@ connected to show real offers. If you haven't signed up with one yet:
 4. In that same network's dashboard, find the "Global Postback URL" /
    "Server-to-server Postback" setting and set it to:
 
-     https://my-sniper-worker.626gl1ch.workers.dev/api/postback?subid={subid}&payout={payout}&country={country}&click_ip={ip}&provider=NETWORK_NAME&secret=YOUR_POSTBACK_SECRET
+     https://my-sniper-worker.daniellancce1.workers.dev/api/postback?subid={subid}&payout={payout}&country={country}&click_ip={ip}&provider=NETWORK_NAME&secret=YOUR_POSTBACK_SECRET
 
    Replace YOUR_POSTBACK_SECRET with the exact value you generated and
    saved in Step 2. Replace NETWORK_NAME with the network's name (e.g.
@@ -361,7 +361,7 @@ distinguishing clearly:
    needs the worker).
    FIX: Complete Step 1 of this guide (deploy my-sniper-worker for real),
    then run:
-     curl -I https://my-sniper-worker.626gl1ch.workers.dev/debug/env
+     curl -I https://my-sniper-worker.daniellancce1.workers.dev/debug/env
    If curl can't resolve the host at all, go to Cloudflare Dashboard >
    Workers & Pages and confirm "my-sniper-worker" is actually listed. If
    it's listed, open it > Settings > Domains & Routes and confirm the
