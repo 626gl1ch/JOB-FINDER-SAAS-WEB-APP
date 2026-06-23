@@ -3111,6 +3111,7 @@ function renderJobs(showMatchScore = false) {
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="tbtn" style="padding:8px 12px" onclick="pinJob('${job.id}')" title="Pin job"><i class="ti ti-bookmark"></i></button>
+        <button class="tbtn" style="padding:8px 12px" onclick="openAiApply('${job.id}')" title="AI Apply"><i class="ti ti-sparkles"></i></button>
         <a class="tbtn" style="padding:8px 12px;text-decoration:none" href="${job.job_url}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i> View</a>
       </div>
     </div>`;
@@ -3414,6 +3415,213 @@ function resetInterviewPrep() {
   document.getElementById('interview-setup').style.display = 'block';
   document.getElementById('interview-session').style.display = 'none';
   document.getElementById('interview-session').innerHTML = '';
+}
+
+/* ─── WITHDRAW (FIX: previously referenced but never defined) ─── */
+function openWithdraw() {
+  const bal = Number(currentProfile?.wallet_balance || 0);
+  const balEl = document.getElementById('withdraw-bal');
+  if (balEl) balEl.textContent = '$' + bal.toFixed(2);
+  document.getElementById('withdraw-modal')?.classList.add('open');
+}
+
+function closeWithdraw() {
+  document.getElementById('withdraw-modal')?.classList.remove('open');
+}
+
+async function submitWithdrawal() {
+  const amount = parseFloat(document.getElementById('w-amount')?.value);
+  const channel = document.getElementById('w-channel')?.value;
+  const address = document.getElementById('w-address')?.value.trim();
+
+  if (!amount || amount < 2) return toast('Minimum withdrawal is $2.00.', 'ti-alert-triangle');
+  if (!address) return toast('Enter a destination address or account.', 'ti-alert-triangle');
+  if (amount > Number(currentProfile?.wallet_balance || 0)) return toast('Amount exceeds your available balance.', 'ti-alert-triangle');
+
+  const btn = event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp;Submitting...'; }
+
+  try {
+    const result = await apiFetch('/withdraw', { method: 'POST', body: JSON.stringify({ amount, channel, address }) });
+    currentProfile.wallet_balance = Number(currentProfile.wallet_balance || 0) - amount;
+    ['stat-balance', 'sb-bal-val-side'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '$' + currentProfile.wallet_balance.toFixed(2);
+    });
+    closeWithdraw();
+    toast(result.payout_timing === 'immediate'
+      ? 'Withdrawal submitted — processed shortly.'
+      : `Withdrawal submitted — scheduled for ${result.scheduled_payout_date}.`, 'ti-check');
+  } catch (e) {
+    toast(e.message || 'Could not submit withdrawal.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i>&nbsp;Submit withdrawal request'; }
+  }
+}
+
+/* ─── KYC IDENTITY VERIFICATION (FIX: previously referenced but never defined) ─── */
+let idImageFile = null;
+
+function handleIdUpload(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (!['image/jpeg', 'image/png'].includes(file.type)) return toast('Please upload a JPG or PNG.', 'ti-alert-triangle');
+  if (file.size > 5 * 1024 * 1024) return toast('File is too large — please keep it under 5MB.', 'ti-alert-triangle');
+
+  idImageFile = file;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('id-preview').src = reader.result;
+    document.getElementById('id-preview-container').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitKyc() {
+  if (!idImageFile) return toast('Upload a photo of your ID first.', 'ti-alert-triangle');
+
+  const btn = document.getElementById('kyc-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Verifying...'; }
+
+  try {
+    const formData = new FormData();
+    formData.append('image', idImageFile);
+    formData.append('phone_number', currentProfile?.verified_phone || '');
+
+    const result = await apiFetch('/verify-id', { method: 'POST', body: formData });
+
+    if (result.status === 'verified') {
+      toast("Identity verified! You're all set for Side Task withdrawals.", 'ti-check');
+    } else {
+      toast('We could not verify that ID. Please try a clearer photo or contact support.', 'ti-alert-triangle');
+    }
+    go('dashboard');
+  } catch (e) {
+    toast(e.message || 'Verification failed. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i>&nbsp; Submit for AI Verification'; }
+  }
+}
+
+/* ─── PRO UPGRADE / PAYMENT (FIX: previously referenced but never defined) ─── */
+let selectedPaymentMethod = 'stripe';
+
+function selectPayment(method) {
+  selectedPaymentMethod = method;
+  document.querySelectorAll('input[name="pay-method"]').forEach((r, i) => {
+    r.checked = (method === 'stripe' && i === 0) || (method === 'crypto' && i === 1);
+  });
+  document.getElementById('stripe-form').style.display = method === 'stripe' ? 'block' : 'none';
+  document.getElementById('crypto-form').style.display = method === 'crypto' ? 'block' : 'none';
+}
+
+async function processUpgrade() {
+  if (selectedPaymentMethod === 'crypto') {
+    toast('Send the exact amount to the address shown, then message support with your transaction ID — Pro will be activated manually within a few hours.', 'ti-currency-bitcoin');
+    return;
+  }
+  await startProCheckout();
+}
+
+async function startProCheckout() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  const session = await refreshSession();
+  if (!session) { go('signin'); return; }
+
+  const btn = event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Redirecting...'; }
+
+  try {
+    const result = await apiFetch('/payment/create-checkout', { method: 'POST' });
+    if (result.url) {
+      window.location.href = result.url;
+    } else {
+      toast('Could not start checkout. Try again.', 'ti-alert-triangle');
+    }
+  } catch (e) {
+    toast(e.message || 'Network error starting checkout.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-lock"></i>&nbsp; Pay $9.00 & Upgrade'; }
+  }
+}
+
+/* ─── ONE-CLICK AI APPLY (FIX: previously had no trigger button + no handlers) ─── */
+function openAiApply(jobId) {
+  if (!currentProfile || currentProfile.current_tier !== 'paid') {
+    toast('One-click AI Apply is a Pro feature.', 'ti-lock');
+    go('upgrade');
+    return;
+  }
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('ai-proposal-container').style.display = 'none';
+  document.getElementById('ai-apply-modal').classList.add('open');
+
+  apiFetch('/ai-apply', { method: 'POST', body: JSON.stringify({ job_id: jobId }) })
+    .then(result => {
+      document.getElementById('ai-loading').style.display = 'none';
+      document.getElementById('ai-proposal-container').style.display = 'block';
+      document.getElementById('ai-proposal-text').value = result.proposal || '';
+    })
+    .catch(e => {
+      closeAiApply();
+      toast(e.message || 'Could not generate a proposal right now.', 'ti-alert-triangle');
+    });
+}
+
+function closeAiApply() {
+  document.getElementById('ai-apply-modal').classList.remove('open');
+}
+
+function sendAiProposal() {
+  const text = document.getElementById('ai-proposal-text').value;
+  navigator.clipboard?.writeText(text).catch(() => {});
+  toast("Proposal copied — paste it into the job's application form.", 'ti-check');
+  closeAiApply();
+}
+
+/* ─── ADD PROJECT (FIX: previously referenced but never defined) ─── */
+// NOTE: there is no backing database table for projects yet — this keeps
+// the button functional client-side only; it resets on reload. See the
+// PRD roadmap section if you want this persisted to Supabase later.
+function openAddProject() {
+  document.getElementById('add-project-modal').classList.add('open');
+}
+
+function closeAddProject() {
+  document.getElementById('add-project-modal').classList.remove('open');
+}
+
+function saveProject() {
+  const name = document.getElementById('p-name')?.value.trim();
+  const client = document.getElementById('p-client')?.value.trim();
+  const value = parseFloat(document.getElementById('p-value')?.value) || 0;
+  const date = document.getElementById('p-date')?.value;
+
+  if (!name || !client) return toast('Project name and client are required.', 'ti-alert-triangle');
+
+  const card = document.createElement('div');
+  card.className = 'proj';
+  card.innerHTML = `
+    <div class="proj-head"><div><div class="proj-name">${escapeHtml(name)}</div><div class="proj-meta">Client: ${escapeHtml(client)} · $${value.toLocaleString()}${date ? ' · Due ' + new Date(date).toLocaleDateString() : ''}</div></div><span class="badge b-done">Active</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:0%;background:var(--grad-accent)"></div></div>
+    <div class="prog-lbl">0% complete · Just added</div>`;
+
+  const firstProj = document.querySelector('#tp-projects .proj');
+  if (firstProj) firstProj.insertAdjacentElement('beforebegin', card);
+  else document.getElementById('tp-projects').appendChild(card);
+
+  ['p-name', 'p-client', 'p-value', 'p-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  closeAddProject();
+  toast('Project added.', 'ti-check');
+}
+
+/* ─── LANDING CTA EMAIL CAPTURE (FIX: previously referenced but never defined) ─── */
+function handleCtaEmail() {
+  const email = document.getElementById('cta-email-input')?.value.trim();
+  if (!email || !email.includes('@')) return toast('Enter a valid email address.', 'ti-alert-triangle');
+  go('signup');
+  const suEmail = document.getElementById('su-email');
+  if (suEmail) suEmail.value = email;
 }
 
 /* ─── RESTORE SESSION ON LOAD ─── */
