@@ -45,6 +45,21 @@ export default {
 
     if (method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+    // ── DEBUG ──────────────────────────────────────────────────────────────────
+    // GET /debug/env — confirms all required secrets are bound
+    // Returns a JSON object with boolean flags (never exposes the actual values)
+    if (url.pathname === "/debug/env" && method === "GET") {
+      return new Response(
+        JSON.stringify({
+          hasSupabaseUrl:            !!env.SUPABASE_URL,
+          hasSupabaseAnonKey:        !!env.SUPABASE_ANON_KEY,
+          hasSupabaseServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
+          hasGeminiApiKey:           !!env.GEMINI_API_KEY,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // --- PATCHED ROUTES ---
 
     // POST /api/payment/create-checkout — starts a real Stripe subscription
@@ -129,10 +144,6 @@ export default {
 
     // POST /api/postback
     if (url.pathname === "/api/postback" && method === "POST") {
-      // SECURITY FIX: without this, any logged-in Pro user could call this
-      // endpoint with their own user ID and an arbitrary payout amount to
-      // credit themselves free money. This must match a `secret` param you
-      // add to your affiliate network's postback URL template — see the guide.
       if (!env.POSTBACK_SECRET || url.searchParams.get("secret") !== env.POSTBACK_SECRET) {
         return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       }
