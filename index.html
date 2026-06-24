@@ -3377,9 +3377,17 @@ async function initDashboard() {
     currentProfile = await apiFetch('/profile');
   } catch (e) {
     console.error('Failed to load profile:', e);
-    toast('Could not load your profile. Please sign in again.', 'ti-alert-triangle');
-    go('signin');
-    return;
+    // Only redirect to sign-in on auth errors (401/403).
+    // A 500 or network error means the worker is temporarily down —
+    // stay on the dashboard and show a retry banner instead.
+    if (e.status === 401 || e.status === 403) {
+      toast('Session expired. Please sign in again.', 'ti-alert-triangle');
+      go('signin');
+      return;
+    }
+    toast('Could not reach the server. Check your connection and try refreshing.', 'ti-wifi-off');
+    // Provide a minimal skeleton profile so the dashboard still renders
+    currentProfile = currentProfile || { full_name: '', wallet_balance: 0, current_tier: 'free' };
   }
 
   const greetingName = currentProfile.full_name ? currentProfile.full_name.split(' ')[0] : 'there';
