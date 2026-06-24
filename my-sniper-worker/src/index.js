@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SnipeJob Cloudflare Worker API
  * Zero-cost backend for job sniping and monetization.
  */
@@ -705,7 +705,7 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
         // FREE (or no job selected): generic stock questions, zero Gemini cost.
         const STOCK_QUESTIONS = {
           web: ["Walk me through how you'd debug a production issue you've never seen before.", "Tell me about a time you had to learn a new framework quickly.", "How do you decide between writing custom code and using a library?"],
-          default: ["Tell me about a project you're proud of and why.", "Describe a time you disagreed with a teammate or client. How did you handle it?", "How do you prioritize when you have multiple deadlines at once?"],
+          default: ["Tell me about a project you're proud of and why.", "Describe a time you had to disagree with a teammate or client. How did you handle it?", "How do you prioritize when you have multiple deadlines at once?"],
         };
         const questions = STOCK_QUESTIONS[sector] || STOCK_QUESTIONS.default;
 

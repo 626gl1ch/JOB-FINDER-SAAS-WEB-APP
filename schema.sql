@@ -60,6 +60,11 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='oauth_provider') THEN
         ALTER TABLE public.profiles ADD COLUMN oauth_provider TEXT DEFAULT 'email';
     END IF;
+    -- Tracks which Stripe customer maps to which user, so the
+    -- customer.subscription.deleted webhook can find the right row to downgrade.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_customer_id') THEN
+        ALTER TABLE public.profiles ADD COLUMN stripe_customer_id TEXT;
+    END IF;
     -- Remove NOT NULL constraint from country if it exists
     BEGIN
         ALTER TABLE public.profiles ALTER COLUMN country DROP NOT NULL;
