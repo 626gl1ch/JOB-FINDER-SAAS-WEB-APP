@@ -2891,6 +2891,128 @@ footer {
   </div>
 </div>
 
+<!-- ─── EXTENSION ISOLATION: Run before anything else ─── -->
+<script>
+/**
+ * EXTENSION ISOLATION LAYER
+ * Prevents MetaMask, web3 wallets, and other browser extensions from
+ * interfering with the SPA router, localStorage, and auth redirects.
+ */
+(function isolateFromExtensions() {
+  // 1. Freeze window.ethereum so MetaMask can't be re-injected or mutated
+  //    mid-session, which can fire events that reset page state.
+  try {
+    if (typeof window.ethereum !== 'undefined') {
+      // Already injected — seal it so no further mutations happen
+      Object.defineProperty(window, 'ethereum', {
+        configurable: false,
+        writable: false,
+        value: window.ethereum
+      });
+    } else {
+      // Not yet injected — block future injection entirely so MetaMask
+      // can't set window.ethereum after our app starts and fire events.
+      Object.defineProperty(window, 'ethereum', {
+        configurable: false,
+        get: function() { return undefined; },
+        set: function() { /* silently block */ }
+      });
+    }
+  } catch(e) { /* already non-configurable — we're good */ }
+
+  // 2. Block web3 / Web3 injection similarly
+  try {
+    Object.defineProperty(window, 'web3', {
+      configurable: false,
+      get: function() { return undefined; },
+      set: function() { /* silently block */ }
+    });
+  } catch(e) {}
+
+  // 3. Harden localStorage: wrap it so extension errors can't crash our app
+  (function hardenStorage() {
+    var _nativeGet = Storage.prototype.getItem;
+    var _nativeSet = Storage.prototype.setItem;
+    var _nativeRem = Storage.prototype.removeItem;
+    Storage.prototype.getItem = function(k) {
+      try { return _nativeGet.call(this, k); } catch(e) { return null; }
+    };
+    Storage.prototype.setItem = function(k, v) {
+      try { _nativeSet.call(this, k, v); } catch(e) { /* quota or security block — ignore */ }
+    };
+    Storage.prototype.removeItem = function(k) {
+      try { _nativeRem.call(this, k); } catch(e) {}
+    };
+  })();
+
+  // 4. In-memory token fallback: if localStorage is blocked by an extension
+  //    (privacy badger, DuckDuckGo extension, etc.), fall back to memory.
+  window._appTokenStore = {};
+  window._safeGetToken = function(key) {
+    try {
+      var v = localStorage.getItem(key);
+      if (v !== null) return v;
+    } catch(e) {}
+    return window._appTokenStore[key] || null;
+  };
+  window._safeSetToken = function(key, value) {
+    try { localStorage.setItem(key, value); } catch(e) {}
+    window._appTokenStore[key] = value;
+  };
+  window._safeRemoveToken = function(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+    delete window._appTokenStore[key];
+  };
+
+  // 5. Suppress extension-injected errors from polluting our error handling
+  var _origOnError = window.onerror;
+  window.onerror = function(msg, src, line, col, err) {
+    // Drop errors from chrome-extension:// sources entirely
+    if (src && src.indexOf('chrome-extension://') === 0) return true;
+    if (src && src.indexOf('moz-extension://') === 0) return true;
+    if (src && src.indexOf('safari-extension://') === 0) return true;
+    if (_origOnError) return _origOnError.apply(this, arguments);
+    return false;
+  };
+
+  var _origUncaught = window.onunhandledrejection;
+  window.addEventListener('unhandledrejection', function(evt) {
+    var src = evt && evt.reason && evt.reason.stack ? evt.reason.stack : '';
+    if (src.indexOf('chrome-extension://') !== -1 || src.indexOf('moz-extension://') !== -1) {
+      evt.preventDefault(); // swallow extension promise rejections
+    }
+  }, true);
+
+  // 6. Lock down postMessage: MetaMask and other wallets use postMessage
+  //    to communicate; we accept only same-origin messages to avoid
+  //    extension messages accidentally triggering our app's listener logic.
+  var _origAddEventListener = window.addEventListener.bind(window);
+  // We don't override addEventListener (too risky) but we do add a
+  // capture-phase filter that drops cross-origin extension messages
+  // before they reach any of our handlers.
+  _origAddEventListener('message', function(evt) {
+    // Allow same origin and Supabase's own OAuth iframe messages
+    if (evt.origin === window.location.origin) return;
+    // Supabase PKCE callback iframe uses null/empty origin
+    if (!evt.origin || evt.origin === 'null') return;
+    // Block everything else (MetaMask, other extension bridges)
+    // by simply not letting it propagate — we stop propagation in capture
+    if (
+      evt.data &&
+      typeof evt.data === 'object' &&
+      (evt.data.type === 'metamask' ||
+       evt.data.target === 'metamask-inpage' ||
+       evt.data.target === 'metamask-contentscript' ||
+       (evt.data.name && evt.data.name.indexOf('metamask') !== -1) ||
+       (typeof evt.data === 'string' && evt.data.indexOf('metamask') !== -1))
+    ) {
+      evt.stopImmediatePropagation();
+    }
+  }, true /* capture phase = runs before any bubble-phase handlers */);
+
+})();
+</script>
+
 <!-- Supabase Client Library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -3003,7 +3125,7 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
       ...options,
       signal: controller.signal,
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('user_token') || ''}`,
+        'Authorization': `Bearer ${window._safeGetToken('user_token') || ''}`,
         ...(options.headers || {})
       }
     });
@@ -3022,14 +3144,39 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
 }
 
 /* ─── SPA PAGE ROUTER ─── */
+// _lastNav / _navLockUntil prevent extensions (MetaMask, etc.) from bouncing
+// the user back to the sign-in page right after a successful dashboard redirect.
+let _lastNav = null;
+let _navLockUntil = 0;
+
 function go(pageName) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('pg-' + pageName);
-  if (target) target.classList.add('active');
-  window.scrollTo(0, 0);
-  closeRailExplore();
-  if (typeof closeMob === 'function') closeMob();
-  syncMobileNavVisibility();
+  const now = Date.now();
+  // Suppress any extension-driven redirect to 'signin' for 3 s after we land on 'dashboard'
+  if (pageName === 'signin' && _lastNav === 'dashboard' && now < _navLockUntil) {
+    console.warn('[SnipeJob] Redirect to signin suppressed — dashboard lock active.');
+    return;
+  }
+
+  try {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('pg-' + pageName);
+    if (target) target.classList.add('active');
+    window.scrollTo(0, 0);
+  } catch(navErr) {
+    // Rare: extension sandbox caused a DOM error — retry on next paint
+    requestAnimationFrame(function() {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const target = document.getElementById('pg-' + pageName);
+      if (target) target.classList.add('active');
+    });
+  }
+
+  _lastNav = pageName;
+  if (pageName === 'dashboard') _navLockUntil = now + 3000;
+
+  try { closeRailExplore(); } catch(e) {}
+  try { if (typeof closeMob === 'function') closeMob(); } catch(e) {}
+  try { syncMobileNavVisibility(); } catch(e) {}
   if (pageName === 'dashboard') initDashboard();
 }
 
@@ -3209,20 +3356,35 @@ let currentProfile = null;
 
 async function refreshSession() {
   if (!sb) return null;
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    localStorage.setItem('user_token', session.access_token);
-  } else {
-    localStorage.removeItem('user_token');
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      window._safeSetToken('user_token', session.access_token);
+    } else {
+      window._safeRemoveToken('user_token');
+    }
+    return session;
+  } catch(e) {
+    console.warn('[SnipeJob] refreshSession error:', e);
+    return null;
   }
-  return session;
 }
 
-// Keep localStorage token in sync whenever Supabase refreshes/expires it
+// Keep token in sync whenever Supabase refreshes/expires it.
+// Guard: only accept SIGNED_IN / TOKEN_REFRESHED events — ignore SIGNED_OUT
+// that can be fired by MetaMask's postMessage bridge or other extensions
+// clearing storage, which would log the user out unexpectedly.
 if (sb) {
   sb.auth.onAuthStateChange((_event, session) => {
-    if (session) localStorage.setItem('user_token', session.access_token);
-    else localStorage.removeItem('user_token');
+    if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+      if (session) window._safeSetToken('user_token', session.access_token);
+    } else if (_event === 'SIGNED_OUT') {
+      // Only honour a sign-out if it was deliberately triggered by our app
+      // (handleSignOut sets _appSigningOut = true before calling sb.auth.signOut)
+      if (window._appSigningOut) {
+        window._safeRemoveToken('user_token');
+      }
+    }
   });
 }
 
@@ -3291,9 +3453,9 @@ async function handleSignUp() {
 
     if (data.session) {
       // Email confirmation disabled — user is logged in immediately
-      localStorage.setItem('user_token', data.session.access_token);
+      window._safeSetToken('user_token', data.session.access_token);
       toast('Account created! Welcome to SnipeJob.', 'ti-check');
-      go('dashboard');
+      setTimeout(function() { go('dashboard'); }, 50);
     } else {
       toast('Check your email to confirm your account, then sign in.', 'ti-mail');
       go('signin');
@@ -3323,9 +3485,11 @@ async function handleSignIn() {
       toast(error.message || 'Invalid email or password.', 'ti-alert-triangle');
       return;
     }
-    localStorage.setItem('user_token', data.session.access_token);
+    window._safeSetToken('user_token', data.session.access_token);
     toast('Welcome back!', 'ti-check');
-    go('dashboard');
+    // Use a small delay before navigating so that any extension storage
+    // listeners (MetaMask, etc.) have already fired and can't race us.
+    setTimeout(function() { go('dashboard'); }, 50);
   } catch (e) {
     console.error('Sign in error:', e);
     toast('Something went wrong. Please try again.', 'ti-alert-triangle');
@@ -3337,18 +3501,25 @@ async function handleSignIn() {
 /* ─── OAUTH ─── */
 async function handleOAuth(provider) {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  // Build the redirect URL explicitly so extensions can't mutate window.location
+  // between the call and Supabase reading it.
+  const redirectTo = window.location.origin + window.location.pathname;
   const { error } = await sb.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: window.location.origin + window.location.pathname }
+    options: { redirectTo }
   });
   if (error) toast(error.message || `Could not start ${provider} sign-in.`, 'ti-alert-triangle');
 }
 
 /* ─── SIGN OUT ─── */
 async function handleSignOut() {
+  window._appSigningOut = true;
   if (sb) await sb.auth.signOut();
-  localStorage.removeItem('user_token');
+  window._safeRemoveToken('user_token');
+  window._appSigningOut = false;
   currentProfile = null;
+  _lastNav = null; // reset nav lock so sign-in works normally after
+  _navLockUntil = 0;
   toast('Signed out.', 'ti-logout');
   go('home');
 }
@@ -3371,16 +3542,23 @@ let searchQuery = '';
 
 async function initDashboard() {
   const session = await refreshSession();
-  if (!session) { go('signin'); return; }
+  if (!session) {
+    // Only redirect to sign-in if we're not in a post-login lock window
+    // (protects against extension-triggered false sign-outs right after login)
+    if (Date.now() > _navLockUntil) {
+      go('signin');
+    }
+    return;
+  }
 
   try {
     currentProfile = await apiFetch('/profile');
   } catch (e) {
     console.error('Failed to load profile:', e);
-    // Only redirect to sign-in on auth errors (401/403).
+    // Only redirect to sign-in on auth errors (401/403) and not during lock window.
     // A 500 or network error means the worker is temporarily down —
     // stay on the dashboard and show a retry banner instead.
-    if (e.status === 401 || e.status === 403) {
+    if ((e.status === 401 || e.status === 403) && Date.now() > _navLockUntil) {
       toast('Session expired. Please sign in again.', 'ti-alert-triangle');
       go('signin');
       return;
@@ -3993,8 +4171,20 @@ function handleCtaEmail() {
 /* ─── RESTORE SESSION ON LOAD ─── */
 (async function bootstrapAuth() {
   if (!sb) return;
-  const session = await refreshSession();
+
+  let session = null;
+  try {
+    session = await refreshSession();
+  } catch(e) {
+    console.warn('[SnipeJob] bootstrapAuth: refreshSession failed:', e);
+    return;
+  }
   if (!session) return;
+
+  // We have a live session — lock the dashboard route now so no extension
+  // event fired during profile fetch can redirect us back to sign-in.
+  _lastNav = 'dashboard';
+  _navLockUntil = Date.now() + 5000;
 
   try {
     currentProfile = await apiFetch('/profile');
@@ -4007,6 +4197,7 @@ function handleCtaEmail() {
   // Route them into the wizard at step 2 instead of stranding them.
   const needsOnboarding = currentProfile && !currentProfile.primary_skill;
   if (needsOnboarding) {
+    _lastNav = null; _navLockUntil = 0; // release lock — wizard is fine
     go('signup');
     document.getElementById('wiz-panel-1')?.classList.remove('act');
     document.getElementById('wiz-panel-2')?.classList.add('act');
