@@ -1169,6 +1169,7 @@ select.form-input option{background:#2C2C2E;color:var(--ink)}
   }
 }
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .skeleton{
   background:linear-gradient(90deg,#2C2C2E 25%,#363638 37%,#2C2C2E 63%);
   background-size:400% 100%;
@@ -1595,9 +1596,9 @@ footer {
 /* Gradient accent word in hero heading — the signature element */
 .g-vio {
   background: var(--grad-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
   position: relative;
   display: inline-block;
 }
@@ -1608,6 +1609,34 @@ footer {
   background: var(--grad-brand);
   border-radius: 2px;
   opacity: 0.5;
+}
+
+/* Lime gradient text */
+.g-lime {
+  background: linear-gradient(135deg, var(--lime), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+/* Fire/energy gradient text */
+.g-fire {
+  background: var(--grad-energy);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+/* Hero two-column grid — desktop */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 </style>
@@ -2682,7 +2711,7 @@ footer {
       </div>
     </div>
 
-    <div class="tab-pane" id="tp-sidetask">
+    <div class="tab-pane" id="tp-sidetask" style="position:relative;">
       <!-- Pro Lock Overlay -->
       <div id="st-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(8,7,15,.85);backdrop-filter:blur(8px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;border-radius:16px">
         <div style="width:80px;height:80px;background:linear-gradient(135deg,rgba(124,92,252,.3),rgba(139,114,255,.15));border:1px solid rgba(124,92,252,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px">
@@ -3645,6 +3674,16 @@ async function initDashboard() {
   const greetEl = document.querySelector('.dash-greeting');
   if (greetEl) greetEl.textContent = `Welcome back, ${greetingName} 👋`;
 
+  // Update user avatar with real initials
+  const userAvEl = document.querySelector('.user-av');
+  if (userAvEl && currentProfile.full_name) {
+    const parts = currentProfile.full_name.trim().split(' ');
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+    userAvEl.textContent = initials;
+  }
+
   const balEl = document.getElementById('stat-balance');
   if (balEl) balEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
   const sideBalEl = document.getElementById('sb-bal-val-side');
@@ -3655,6 +3694,18 @@ async function initDashboard() {
     adBanner.style.display = currentProfile.current_tier === 'paid' ? 'none' : 'flex';
     adBanner.style.cursor = 'pointer';
     adBanner.onclick = () => go('upgrade');
+  }
+
+  // Update settings plan card to reflect actual tier
+  const planNameEl = document.querySelector('#tp-settings .settings-card:last-of-type .plan-name-label');
+  const settingsPlanCard = document.querySelector('#tp-settings .settings-card:nth-of-type(4)');
+  if (settingsPlanCard && currentProfile.current_tier === 'paid') {
+    const planLine = settingsPlanCard.querySelector('div[style*="font-size:15px"]');
+    const subLine = settingsPlanCard.querySelector('div[style*="font-size:13px"]');
+    if (planLine) planLine.innerHTML = '<span style="color:var(--vlight);font-weight:700">✦ Pro Plan</span>';
+    if (subLine) subLine.textContent = 'Unlimited alerts · All sectors · Zero ads';
+    const upgradeBtn = settingsPlanCard.querySelector('button');
+    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open('https://billing.stripe.com/p/login', '_blank'); }
   }
 
   await loadJobs();
@@ -3823,6 +3874,13 @@ async function loadSideTasks() {
 
   if (balEl && currentProfile) balEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
 
+  // Keep sidebar balance widget in sync
+  const sideBalEl = document.getElementById('sb-bal-val-side');
+  if (sideBalEl && currentProfile) sideBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
+  // Also update the stat card
+  const statBalEl = document.getElementById('stat-balance');
+  if (statBalEl && currentProfile) statBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
+
   const timingEl = document.getElementById('st-payout-timing');
   if (timingEl && currentProfile) {
     const isPro = currentProfile.current_tier === 'paid';
@@ -3884,6 +3942,11 @@ function dTab(tabName) {
   if (tabBtn) tabBtn.classList.add('act');
   const sideBtn = document.getElementById('sn-' + tabName);
   if (sideBtn) sideBtn.classList.add('act');
+
+  // Auto-close sidebar on mobile/tablet after navigation
+  if (window.matchMedia('(max-width:1024px)').matches) {
+    closeDashSidebar();
+  }
 
   if (tabName === 'prep' && !dTab._trendsLoaded) {
     dTab._trendsLoaded = true;
@@ -4159,20 +4222,24 @@ async function startProCheckout() {
   const session = await refreshSession();
   if (!session) { go('signin'); return; }
 
-  const btn = event?.target?.closest('button');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Redirecting...'; }
+  const btn = document.getElementById('checkout-btn') || event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Redirecting to secure checkout...'; }
+
+  const errEl = document.getElementById('upgrade-error');
+  if (errEl) errEl.style.display = 'none';
 
   try {
     const result = await apiFetch('/payment/create-checkout', { method: 'POST' });
-    if (result.url) {
+    if (result && result.url) {
       window.location.href = result.url;
     } else {
-      toast('Could not start checkout. Try again.', 'ti-alert-triangle');
+      throw new Error('No checkout URL returned.');
     }
   } catch (e) {
-    toast(e.message || 'Network error starting checkout.', 'ti-alert-triangle');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-lock"></i>&nbsp; Pay $9.00 & Upgrade'; }
+    const msg = e.message || 'Network error starting checkout. Please try again.';
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    else toast(msg, 'ti-alert-triangle');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-lock"></i>&nbsp; Continue to Secure Checkout →'; }
   }
 }
 
@@ -4246,10 +4313,16 @@ function saveProject() {
   toast('Project added.', 'ti-check');
 }
 
-/* ─── LANDING CTA EMAIL CAPTURE (FIX: previously referenced but never defined) ─── */
+/* ─── LANDING CTA EMAIL CAPTURE ─── */
 function handleCtaEmail() {
   const email = document.getElementById('cta-email-input')?.value.trim();
   if (!email || !email.includes('@')) return toast('Enter a valid email address.', 'ti-alert-triangle');
+  // If already logged in, go straight to dashboard
+  const token = window._safeGetToken('user_token');
+  if (token) {
+    go('dashboard');
+    return;
+  }
   go('signup');
   const suEmail = document.getElementById('su-email');
   if (suEmail) suEmail.value = email;
@@ -4258,6 +4331,22 @@ function handleCtaEmail() {
 /* ─── RESTORE SESSION ON LOAD ─── */
 (async function bootstrapAuth() {
   if (!sb) return;
+
+  // ── Handle Stripe redirect params ──────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const paymentStatus = urlParams.get('payment');
+  const stripeSessionId = urlParams.get('session_id');
+
+  if (paymentStatus === 'success' && stripeSessionId) {
+    // Clean the URL without reload
+    window.history.replaceState({}, '', window.location.pathname);
+    // Show a payment-processing toast while we verify
+    toast('Payment received — activating Pro…', 'ti-check');
+  } else if (paymentStatus === 'cancelled') {
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('Checkout cancelled — your card was not charged.', 'ti-info-circle');
+  }
+  // ──────────────────────────────────────────────────────────────
 
   let session = null;
   try {
@@ -4268,8 +4357,6 @@ function handleCtaEmail() {
   }
   if (!session) return;
 
-  // We have a live session — update nav immediately and lock the dashboard
-  // route so no extension event can redirect us back to sign-in.
   updateNavForAuth(true);
   _lastNav = 'dashboard';
   _navLockUntil = Date.now() + 5000;
@@ -4280,12 +4367,26 @@ function handleCtaEmail() {
     currentProfile = null;
   }
 
-  // First-time OAuth signup (or anyone who never finished onboarding):
-  // profile exists from the DB trigger, but has no primary_skill yet.
-  // Route them into the wizard at step 2 instead of stranding them.
+  // Verify Stripe session and eagerly upgrade profile if confirmed
+  if (paymentStatus === 'success' && stripeSessionId) {
+    try {
+      const statusRes = await apiFetch(`/payment/status?session_id=${stripeSessionId}`);
+      if (statusRes && statusRes.active) {
+        // Refresh profile so dashboard shows Pro tier immediately
+        try { currentProfile = await apiFetch('/profile'); } catch(e) {}
+        toast('🎉 Welcome to Pro! Enjoy unlimited job alerts and Side Tasks.', 'ti-crown');
+      }
+    } catch(e) {
+      console.warn('Payment status check failed:', e);
+    }
+    go('dashboard');
+    return;
+  }
+
+  // First-time OAuth signup: route into wizard at step 2
   const needsOnboarding = currentProfile && !currentProfile.primary_skill;
   if (needsOnboarding) {
-    _lastNav = null; _navLockUntil = 0; // release lock — wizard is fine
+    _lastNav = null; _navLockUntil = 0;
     go('signup');
     document.getElementById('wiz-panel-1')?.classList.remove('act');
     document.getElementById('wiz-panel-2')?.classList.add('act');
@@ -4300,6 +4401,35 @@ function handleCtaEmail() {
   if (document.getElementById('pg-dashboard')?.classList.contains('active')) {
     initDashboard();
   }
+})();
+
+/* ─── QUOTA COUNTDOWN TIMER ─── */
+(function startQuotaTimer() {
+  const label = document.getElementById('quota-timer-label');
+  if (!label) return;
+  // Reset at the top of every 2-hour window
+  const now = new Date();
+  const msInWindow = (now.getMinutes() % 120) * 60000 + now.getSeconds() * 1000 + now.getMilliseconds();
+  let msLeft = 120 * 60000 - msInWindow;
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+  }
+
+  label.textContent = formatTime(msLeft);
+  const interval = setInterval(() => {
+    msLeft -= 1000;
+    if (msLeft <= 0) msLeft = 120 * 60000;
+    if (label.isConnected) {
+      label.textContent = formatTime(msLeft);
+    } else {
+      clearInterval(interval);
+    }
+  }, 1000);
 })();
 </script>
 </body>
