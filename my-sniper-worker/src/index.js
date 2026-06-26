@@ -1,6 +1,10 @@
 /**
  * SnipeJob Cloudflare Worker API
  * Zero-cost backend for job sniping and monetization.
+ * 
+ * FIXED: Wrapped entire handler in try/catch + extracted into handleRequest()
+ * so CORS headers are ALWAYS returned — even on 500 crashes. Added env var
+ * validation that returns a clear 503 listing exactly which secrets are missing.
  */
 
 export default {
@@ -35,15 +39,43 @@ export default {
       "Vary": "Origin",
     };
 
+    // Always handle preflight first — before any other logic that could throw.
     if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Wrap the entire handler so that ANY unhandled exception still returns
+    // the CORS headers. Without this, Cloudflare returns a bare 500 with no
+    // headers, and the browser reports a CORS error instead of the real cause.
+    try {
+      return await handleRequest(request, env, url, method, corsHeaders);
+    } catch (err) {
+      console.error("Unhandled worker error:", err?.stack || err);
+      return new Response(
+        JSON.stringify({ error: "Internal server error", detail: err?.message || String(err) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+};
+
+async function handleRequest(request, env, url, method, corsHeaders) {
+    // Validate required environment variables on every request so misconfigurations
+    // surface as a clear 503 (with CORS headers) rather than a cryptic crash.
+    const missingVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GEMINI_API_KEY"].filter(k => !env[k]);
+    if (missingVars.length > 0) {
+      console.error("Missing env vars:", missingVars.join(", "));
+      return new Response(
+        JSON.stringify({ error: "Worker misconfigured: missing environment variables", missing: missingVars }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const authHeader = request.headers.get("Authorization");
     const userToken = authHeader ? authHeader.split(" ")[1] : null;
 
     // Decode the JWT payload to get the real Supabase user UUID (the "sub" claim).
-    // We do NOT verify the signature here ÔÇö Supabase still does that on every
+    // We do NOT verify the signature here — Supabase still does that on every
     // REST call made via the `supabase()` helper below, since we forward the
     // same bearer token and RLS enforces auth.uid() server-side. This decode
     // is only so the worker itself can reference the correct UUID (e.g. for
@@ -56,7 +88,7 @@ export default {
         const payloadJson = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
         userId = JSON.parse(payloadJson).sub || null;
       } catch (e) {
-        userId = null; // malformed token ÔÇö requests needing userId will 401 below
+        userId = null; // malformed token — requests needing userId will 401 below
       }
     }
 
@@ -74,10 +106,10 @@ export default {
       return res;
     };
 
-    // Shared Gemini text-generation helper ÔÇö used by ai-apply, ai-resume,
+    // Shared Gemini text-generation helper — used by ai-apply, ai-resume,
     // job ranking, resume scoring, interview prep, and signup autofill.
     // Accepts either a plain text prompt (string) or a multimodal parts
-    // array (for PDF input ÔÇö see /api/profile/autofill).
+    // array (for PDF input — see /api/profile/autofill).
     const callGemini = async (promptOrParts) => {
       const parts = typeof promptOrParts === "string" ? [{ text: promptOrParts }] : promptOrParts;
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
@@ -113,10 +145,10 @@ export default {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 0c. POST /api/profile/autofill (Signup-time resume scan ÔÇö runs BEFORE
+    // 0c. POST /api/profile/autofill (Signup-time resume scan — runs BEFORE
     // the account exists, so this is intentionally unauthenticated. Accepts
     // either resume_text (pasted) or file_base64 (PDF upload, sent straight
-    // to Gemini's multimodal input ÔÇö no separate PDF parsing library needed).
+    // to Gemini's multimodal input — no separate PDF parsing library needed).
     if (url.pathname === "/api/profile/autofill" && method === "POST") {
       const body = await request.json().catch(() => ({}));
       const { resume_text, file_base64 } = body;
@@ -133,7 +165,7 @@ export default {
         return new Response("File too large", { status: 400, headers: corsHeaders });
       }
 
-      const instruction = `Extract the following from this resume/bio. Be conservative ÔÇö if something isn't clearly stated, leave it as an empty string rather than guessing.
+      const instruction = `Extract the following from this resume/bio. Be conservative — if something isn't clearly stated, leave it as an empty string rather than guessing.
 Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their single strongest/most marketable skill", "bio": "2-3 sentence professional summary in their voice, under 400 characters", "education": "degree or certifications, short", "exp_level": "one of: junior, mid, senior, expert"}`;
 
       const parts = file_base64
@@ -151,7 +183,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 0b. GET /api/profile (merged in from my-sniper-worker ÔÇö that copy is now retired)
+    // 0b. GET /api/profile
     if (url.pathname === "/api/profile" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const res = await supabase(`profiles?select=*&id=eq.${userId}`);
@@ -162,9 +194,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify(profiles[0]), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 0d. PATCH /api/profile (Completes onboarding for OAuth signups, who
-    // already have an auth.users row + a blank profiles row from the DB
-    // trigger, but skipped the wizard's profile/sector steps via redirect.)
+    // 0d. PATCH /api/profile
     if (url.pathname === "/api/profile" && method === "PATCH") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const body = await request.json().catch(() => ({}));
@@ -189,7 +219,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
     if (url.pathname === "/api/jobs" && method === "GET") {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      // Get user profile to check tier and sectors
       const profileRes = await supabase("profiles?select=current_tier,sectors");
       const profiles = await profileRes.json();
       const profile = profiles[0];
@@ -198,24 +227,20 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const sector = url.searchParams.get("sector") || "all";
       let query = `scraped_jobs?select=*&order=indexed_at.desc`;
-      const userSectors = profile.sectors || []; // guard against a null sectors column on new profiles
+      const userSectors = profile.sectors || [];
 
       if (sector !== "all") {
-        // Even if requesting a specific sector, check if free user has access
         if (profile.current_tier === "free" && !userSectors.includes(sector)) {
             return new Response("Upgrade to Pro to access this sector", { status: 403, headers: corsHeaders });
         }
         query += `&sector=eq.${sector}`;
       } else if (profile.current_tier === "free") {
-        // Free users only see their selected sectors (max 3)
-        // If they haven't selected any, show them 'web' by default
         const sectors = userSectors.length > 0 ? userSectors.slice(0, 3).join(",") : "web";
         query += `&sector=in.(${sectors})`;
       }
 
-      // Tier limits
       if (profile.current_tier === "free") {
-        query += "&limit=30"; // Increased limit slightly
+        query += "&limit=30";
       }
 
       const jobsRes = await supabase(query);
@@ -227,7 +252,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 1b. GET /api/pinned (Fetch user pinned jobs)
+    // 1b. GET /api/pinned
     if (url.pathname === "/api/pinned" && method === "GET") {
         if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const res = await supabase("user_pinned_jobs?select=*,job:scraped_jobs(*)");
@@ -235,7 +260,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 1c. POST /api/pin (Pin a job)
+    // 1c. POST /api/pin
     if (url.pathname === "/api/pin" && method === "POST") {
         if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const { job_id } = await request.json();
@@ -246,14 +271,13 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         });
         if (!res.ok) {
             const errBody = await res.text().catch(() => "");
-            // Postgres unique-violation code when the job is already pinned
             const friendly = errBody.includes("23505") ? "Job already pinned" : (errBody || "Could not pin job");
             return new Response(friendly, { status: res.status, headers: corsHeaders });
         }
         return new Response(res.body, { status: res.status, headers: corsHeaders });
     }
 
-    // 1d. DELETE /api/pin (Unpin a job)
+    // 1d. DELETE /api/pin
     if (url.pathname === "/api/pin" && method === "DELETE") {
         if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const { job_id } = await request.json();
@@ -261,7 +285,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(null, { status: res.status, headers: corsHeaders });
     }
 
-    // 1e. PATCH /api/pin (Update pin status)
+    // 1e. PATCH /api/pin
     if (url.pathname === "/api/pin" && method === "PATCH") {
         if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const { job_id, status } = await request.json();
@@ -272,15 +296,14 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(null, { status: res.status, headers: corsHeaders });
     }
 
-    // 2. POST /api/ai-apply (AI Premium One-Click Application)
+    // 2. POST /api/ai-apply
     if (url.pathname === "/api/ai-apply" && method === "POST") {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const { job_id } = await request.json();
       if (!job_id) return new Response("Missing job_id", { status: 400, headers: corsHeaders });
 
-      // Check if user is Pro
-      const profileRes = await supabase("profiles?select=current_tier,payload_resume"); // Assuming resume is stored or passed
+      const profileRes = await supabase("profiles?select=current_tier,payload_resume");
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
@@ -288,16 +311,14 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response("Pro feature only", { status: 403, headers: corsHeaders });
       }
 
-      // Get job details
       const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
       const job = (await jobRes.json())[0];
 
       if (!job) return new Response("Job not found", { status: 404, headers: corsHeaders });
 
-      // Call Gemini for proposal
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{
             parts: [{
@@ -321,24 +342,21 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify({ proposal: proposalText }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // --- NEW: AI 1-TAP RESUME ENDPOINT ---
+    // POST /api/ai-resume
     if (url.pathname === "/api/ai-resume" && method === "POST") {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const { job_id } = await request.json();
       if (!job_id) return new Response("Missing job_id", { status: 400, headers: corsHeaders });
 
-      // 1. Get user profile
       const profileRes = await supabase("profiles?select=full_name,sectors,exp_level,primary_skill,bio,education,current_tier");
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
       if (profile.current_tier !== "paid") return new Response("Pro feature only", { status: 403, headers: corsHeaders });
 
-      // 2. Get job details
       const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
       const job = (await jobRes.json())[0];
       if (!job) return new Response("Job not found", { status: 404, headers: corsHeaders });
 
-      // 3. Call Gemini for Tailored Resume
       const prompt = `You are an expert resume writer. Generate a highly tailored, professional, and impactful resume for the following job:
       JOB: ${job.title}
       DESCRIPTION: ${job.payload_description}
@@ -354,7 +372,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
 
@@ -365,19 +383,18 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response("AI resume generation is temporarily unavailable. Please try again shortly.", { status: 502, headers: corsHeaders });
       }
 
-      return new Response(JSON.stringify({ status: "submitted", resume: resumeText }), { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      return new Response(JSON.stringify({ status: "submitted", resume: resumeText }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // 3. POST /api/payment/webhook (Stripe/NOWPayments Webhook)
+    // 3. POST /api/payment/webhook
     if (url.pathname === "/api/payment/webhook" && method === "POST") {
-        // Simplified webhook handler for simulation
         const { user_id, status } = await request.json();
 
         if (status === "confirmed") {
             const expiry = new Date();
-            expiry.setMonth(expiry.getMonth() + 1); // +1 Month
+            expiry.setMonth(expiry.getMonth() + 1);
 
             await supabase(`profiles?id=eq.${user_id}`, {
                 method: "PATCH",
@@ -391,7 +408,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response("Webhook processed", { status: 200, headers: corsHeaders });
     }
 
-    // 4. POST /api/verify-id (Zero-Cost AI Identity Checks)
+    // 4. POST /api/verify-id
     if (url.pathname === "/api/verify-id" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -401,12 +418,9 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       if (!idImage) return new Response("Missing image", { status: 400, headers: corsHeaders });
 
-      // In a real implementation, you'd upload to Supabase Storage here.
-      // For brevity, we pass the image buffer directly to Gemini.
-
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{
             parts: [
@@ -420,9 +434,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiData = await geminiRes.json();
       const candidateText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!geminiRes.ok || !candidateText) {
-        // e.g. Gemini safety block, quota exceeded, or invalid key ÔÇö
-        // previously this threw an uncaught TypeError and the client saw a
-        // generic 500 with no explanation.
         console.error("Gemini verify-id error:", JSON.stringify(geminiData).slice(0, 500));
         return new Response("AI verification is temporarily unavailable. Please try again shortly.", { status: 502, headers: corsHeaders });
       }
@@ -441,7 +452,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         status = "verified";
       }
 
-      // Update profile
       await supabase("profiles?id=eq." + userId, {
         method: "PATCH",
         body: JSON.stringify({
@@ -454,31 +464,19 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify(aiResult), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 4b. GET /api/offers (Live Side Task offer feed ÔÇö fetches from your
-    // affiliate network and tags every offer link with this user's UUID as
-    // subid, so postbacks can be matched back to the right wallet. Swap the
-    // OFFER_FEED_URL and field names below for whichever network you join ÔÇö
-    // see HOSTING.md "Affiliate Revenue" section for the macro reference.)
+    // 4b. GET /api/offers
     if (url.pathname === "/api/offers" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const profileRes = await supabase("profiles?select=current_tier,country");
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-      // Side Tasks are available on both tiers (per the landing page promise) ÔÇö
-      // no tier gate here. Payout *timing* differs by tier instead, handled
-      // in /api/withdraw (free = monthly batch, Pro = immediate).
 
       if (!env.OFFER_FEED_URL || !env.OFFER_FEED_API_KEY) {
-        // No network connected yet ÔÇö return an empty list rather than erroring,
-        // so the dashboard shows "no tasks available" instead of breaking.
         return new Response(JSON.stringify({ items: [], configured: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       try {
-        // Example shape for CPALead-style feeds ÔÇö adjust the URL/params and
-        // the field names in the .map() below to match your chosen network's
-        // actual JSON response format.
         const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${profile.country || ''}&format=json`);
         const feedData = await feedRes.json();
         const rawOffers = Array.isArray(feedData) ? feedData : (feedData.offers || []);
@@ -488,7 +486,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           title: o.title || o.name,
           payout: parseFloat(o.payout || o.amount || 0),
           user_cut: +(parseFloat(o.payout || o.amount || 0) * 0.3).toFixed(2),
-          // userId embedded here is what comes back as {subid} on the postback
           link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
           country: o.country || profile.country,
         }));
@@ -500,9 +497,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
     }
 
-    // 4c. GET /api/earnings (Recent affiliate credit history, for the
-    // "Recent earnings" panel ÔÇö reads from affiliate_logs which
-    // process_affiliate_credit already writes to on every postback.)
+    // 4c. GET /api/earnings
     if (url.pathname === "/api/earnings" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const res = await supabase(`affiliate_logs?select=user_credited_amount,incoming_network_provider,processing_timestamp&user_id=eq.${userId}&order=processing_timestamp.desc&limit=10`);
@@ -510,16 +505,15 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify({ items: rows }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. POST /api/postback (Durable Affiliate Track & Fraud Firewall)
+    // POST /api/postback
     if (url.pathname === "/api/postback" && method === "POST") {
-      const subid = url.searchParams.get("subid"); // User UUID
+      const subid = url.searchParams.get("subid");
       const payout = parseFloat(url.searchParams.get("payout"));
       const clickIp = url.searchParams.get("click_ip");
       const country = url.searchParams.get("country");
 
-      // Verify user and country
       const profileRes = await supabase(`profiles?select=country,vpn_violation_count,current_tier&id=eq.${subid}`);
-      const profiles = await profileRes.json();
+      const profiles = await res.json();
       const profile = profiles[0];
 
       if (!profile || profile.current_tier !== 'paid') {
@@ -527,7 +521,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       if (profile.country !== country) {
-        // VPN Violation
         if (profile) {
             await supabase(`profiles?id=eq.${subid}`, {
                 method: "PATCH",
@@ -540,7 +533,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const userCut = payout * 0.3;
       const provider = url.searchParams.get("provider") || "unknown";
 
-      // Atomic transaction via Supabase function
       await supabase("rpc/process_affiliate_credit", {
         method: "POST",
         body: JSON.stringify({
@@ -556,10 +548,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response("OK", { headers: corsHeaders });
     }
 
-    // 4. POST /api/withdraw (Free tier: queued for monthly batch payout.
-    // Pro tier: flagged for immediate processing. Previously this route
-    // blocked ALL free-tier withdrawals outright, which contradicted the
-    // landing page's "available to everyone" promise ÔÇö fixed to match.)
+    // 4. POST /api/withdraw
     if (url.pathname === "/api/withdraw" && method === "POST") {
        if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -568,7 +557,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
        if (!amount || amount < 2) return new Response("Minimum $2", { status: 400, headers: corsHeaders });
 
-       // Check balance
        const profileRes = await supabase("profiles?select=wallet_balance,current_tier");
        const profile = (await profileRes.json())[0];
        if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
@@ -576,9 +564,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
        const isPro = profile.current_tier === "paid";
 
-       // Free tier: next 1st-of-month at least 3 days out (so a withdrawal
-       // requested on the 30th doesn't get an unrealistic next-day date).
-       // Pro tier: no scheduled date ÔÇö processed immediately by your payout flow.
        let scheduledDate = null;
        if (!isPro) {
          const now = new Date();
@@ -588,8 +573,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
          scheduledDate = target.toISOString().slice(0, 10);
        }
 
-       // Deduct and log ÔÇö both calls scoped to this user explicitly,
-       // rather than relying solely on RLS to filter an unscoped PATCH.
        await supabase(`profiles?id=eq.${userId}`, {
            method: "PATCH",
            body: JSON.stringify({ wallet_balance: profile.wallet_balance - amount })
@@ -615,9 +598,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 5. GET /api/jobs/ranked (AI Job Ranking ÔÇö free tier gets a fast local
-    // keyword score, Pro gets Gemini's full-fit analysis. Free has no
-    // Gemini cost; only Pro calls the model.)
+    // 5. GET /api/jobs/ranked
     if (url.pathname === "/api/jobs/ranked" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -632,7 +613,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const jobs = await jobsRes.json();
 
       if (profile.current_tier !== "paid") {
-        // FREE: local keyword-overlap score, no AI call, instant + zero cost.
         const skillWords = (profile.primary_skill || "").toLowerCase().split(/\W+/).filter(Boolean);
         const ranked = jobs.map(job => {
           const text = (job.title + " " + job.payload_description).toLowerCase();
@@ -644,15 +624,14 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify({ items: ranked, ranking_tier: "basic" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // PRO: ask Gemini to score the top jobs against the full profile.
-      const jobList = jobs.slice(0, 12).map((j, i) => `${i}. ${j.title} ÔÇö ${j.payload_description.slice(0, 200)}`).join("\n");
+      const jobList = jobs.slice(0, 12).map((j, i) => `${i}. ${j.title} — ${j.payload_description.slice(0, 200)}`).join("\n");
       const prompt = `You are a job-matching engine. Score how well this candidate fits each job, 0-100.
 CANDIDATE: Skill: ${profile.primary_skill}. Level: ${profile.exp_level}. Bio: ${profile.bio}
 
 JOBS (numbered):
 ${jobList}
 
-Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "score": 85, "reason": "short reason under 12 words"}, ...] for every job listed.`;
+Return ONLY a strict JSON array, no markdown: [{"index": 0, "score": 85, "reason": "short reason under 12 words"}, ...] for every job listed.`;
 
       const gemini = await callGemini(prompt);
       if (!gemini.ok) {
@@ -672,8 +651,7 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
       return new Response(JSON.stringify({ items: ranked, ranking_tier: "pro" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 6. POST /api/resume/score (Free: score + tips. Pro already has full
-    // rewrite via /api/ai-resume ÔÇö this is the lighter, free-tier hook.)
+    // 6. POST /api/resume/score
     if (url.pathname === "/api/resume/score" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -707,8 +685,7 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 7. POST /api/interview/start (Free: 3 generic sector questions, no AI
-    // cost. Pro: Gemini generates questions tailored to a specific pinned job.)
+    // 7. POST /api/interview/start
     if (url.pathname === "/api/interview/start" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -722,7 +699,6 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
       const sector = profile.sectors?.[0] || "web";
 
       if (profile.current_tier !== "paid" || !job_id) {
-        // FREE (or no job selected): generic stock questions, zero Gemini cost.
         const STOCK_QUESTIONS = {
           web: ["Walk me through how you'd debug a production issue you've never seen before.", "Tell me about a time you had to learn a new framework quickly.", "How do you decide between writing custom code and using a library?"],
           default: ["Tell me about a project you're proud of and why.", "Describe a time you had to disagree with a teammate or client. How did you handle it?", "How do you prioritize when you have multiple deadlines at once?"],
@@ -739,7 +715,6 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
         return new Response(JSON.stringify({ session_id: session?.id, questions, tier: "basic" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // PRO with a job selected: tailored questions from the job description.
       const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
       const job = (await jobRes.json())[0];
       if (!job) return new Response("Job not found", { status: 404, headers: corsHeaders });
@@ -769,16 +744,14 @@ Return ONLY a strict JSON array of 5 question strings, no markdown: ["question 1
       return new Response(JSON.stringify({ session_id: session?.id, questions, tier: "pro" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 8. POST /api/interview/answer (Pro only ÔÇö scoring costs a Gemini call
-    // per answer, so this stays behind the paywall even though /start is
-    // partly free.)
+    // 8. POST /api/interview/answer
     if (url.pathname === "/api/interview/answer" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const profileRes = await supabase("profiles?select=current_tier");
       const profile = (await profileRes.json())[0];
       if (!profile || profile.current_tier !== "paid") {
-        return new Response("Pro feature only ÔÇö upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });
+        return new Response("Pro feature only — upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });
       }
 
       const { session_id, question, answer } = await request.json();
@@ -806,9 +779,7 @@ Return ONLY strict JSON, no markdown: {"score": 78, "feedback": "one sentence, u
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 9. GET /api/trends (Free for everyone ÔÇö reads from the shared
-    // sector_trends cache table, which a separate daily cron populates.
-    // No per-request Gemini cost.)
+    // 9. GET /api/trends
     if (url.pathname === "/api/trends" && method === "GET") {
       if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const sector = url.searchParams.get("sector") || "web";
@@ -821,5 +792,4 @@ Return ONLY strict JSON, no markdown: {"score": 78, "feedback": "one sentence, u
     }
 
     return new Response("Not Found", { status: 404, headers: corsHeaders });
-  }
-};
+}
