@@ -1,131 +1,52 @@
 =====================================================================
-  SNIPEJOB — MANUAL STEPS TO FIX CORS / 500 ERRORS & DEPLOY
+  SNIPEJOB — REMAINING MANUAL SETUP STEPS
 =====================================================================
 
-WHAT WAS WRONG (Quick Summary)
--------------------------------
-Your browser showed "CORS policy" errors, but that was a red herring.
-The real problem: your Cloudflare Worker was crashing with a 500 error
-BEFORE it could set any response headers. When a Worker crashes,
-Cloudflare returns a bare error with NO headers at all — so the browser
-sees no Access-Control-Allow-Origin header and reports it as "CORS blocked"
-instead of showing you the real cause.
+The code refactoring, CORS fixes, and initial deployment have been fully automated by the Gemini CLI agent.
 
-Root cause: the Worker's secrets (SUPABASE_URL, SUPABASE_ANON_KEY, etc.)
-were never saved in Cloudflare, so env.SUPABASE_URL was undefined, and the
-Worker crashed on the first line that tried to use it.
-
-The fix (already done in index.js for you):
-  1. Wrapped the entire handler in a try/catch so CORS headers are ALWAYS
-     returned — even on crashes.
-  2. Added env var validation that returns a clear JSON error listing
-     exactly which secrets are missing, instead of a cryptic 500.
+You only need to complete the following manual configuration steps for the system to function correctly.
 
 =====================================================================
-PART 1 — DEPLOY THE FIXED WORKER CODE
+PART 1 — SET YOUR SECRET ENVIRONMENT VARIABLES IN CLOUDFLARE
 =====================================================================
 
-You have two options. Pick the one that suits you.
-
------------------------------------------------------------------------
-OPTION A: Deploy via Wrangler CLI (Recommended — takes ~2 minutes)
------------------------------------------------------------------------
-
-STEP 1: Install Node.js if you don't have it
-  - Download from: https://nodejs.org (get the LTS version)
-  - After installing, open a terminal and confirm with: node --version
-
-STEP 2: Install Wrangler
-  Open a terminal and run:
-    npm install -g wrangler
-
-STEP 3: Log in to Cloudflare via Wrangler
-  Run:
-    wrangler login
-  This opens a browser window. Log in with your Cloudflare account.
-
-STEP 4: Place the fixed file
-  - Take the file "index.js" (provided alongside this guide)
-  - Put it at: my-sniper-worker/src/index.js
-    (replacing the old file)
-
-STEP 5: Deploy
-  In your terminal, navigate to the my-sniper-worker folder:
-    cd path/to/my-sniper-worker
-  Then run:
-    wrangler deploy
-  You should see output ending with:
-    "Published my-sniper-worker (xx ms)"
-
------------------------------------------------------------------------
-OPTION B: Deploy via Cloudflare Dashboard (No CLI needed)
------------------------------------------------------------------------
-
-STEP 1: Go to https://dash.cloudflare.com
-STEP 2: Click "Workers & Pages" in the left sidebar
-STEP 3: Click on your worker named "my-sniper-worker"
-STEP 4: Click the "Edit Code" button (top right area)
-STEP 5: You will see the current worker code in an editor
-STEP 6: Select ALL the existing code (Ctrl+A / Cmd+A) and DELETE it
-STEP 7: Open the file "index.js" provided with this guide
-         Copy its entire contents and paste into the Cloudflare editor
-STEP 8: Click "Save and Deploy" (blue button, top right)
-
-=====================================================================
-PART 2 — SET YOUR SECRET ENVIRONMENT VARIABLES IN CLOUDFLARE
-=====================================================================
-
-This is the MOST IMPORTANT step. Without these, the worker crashes
-every time and you will keep seeing errors.
+This is the MOST IMPORTANT step. Without these, the worker crashes.
 
 STEP 1: Go to https://dash.cloudflare.com
 STEP 2: Click "Workers & Pages" in the left sidebar
 STEP 3: Click on "my-sniper-worker"
 STEP 4: Click the "Settings" tab
 STEP 5: Scroll down to "Variables and Secrets" and click it
-STEP 6: Add each of the following secrets one at a time:
-
-  Click "+ Add variable" for each one below:
+STEP 6: Add each of the following secrets one at a time (click "+ Add variable"):
 
   ┌─────────────────────────────┬────────────────────────────────────────────────────┐
   │ Variable Name               │ Where to get the value                             │
   ├─────────────────────────────┼────────────────────────────────────────────────────┤
-  │ SUPABASE_URL                │ Supabase dashboard → Project Settings →            │
-  │                             │ API → "Project URL"                                │
-  │                             │ Looks like: https://xxxx.supabase.co               │
+  │ SUPABASE_URL                │ Supabase dashboard → Project Settings → API        │
   ├─────────────────────────────┼────────────────────────────────────────────────────┤
-  │ SUPABASE_ANON_KEY           │ Supabase dashboard → Project Settings →            │
-  │                             │ API → "anon public" key                            │
-  │                             │ Starts with: eyJ...                                │
+  │ SUPABASE_ANON_KEY           │ Supabase dashboard → Project Settings → API        │
   ├─────────────────────────────┼────────────────────────────────────────────────────┤
-  │ SUPABASE_SERVICE_ROLE_KEY   │ Supabase dashboard → Project Settings →            │
-  │                             │ API → "service_role secret" key                    │
-  │                             │ Starts with: eyJ...  ← keep this private!         │
+  │ SUPABASE_SERVICE_ROLE_KEY   │ Supabase dashboard → Project Settings → API        │
   ├─────────────────────────────┼────────────────────────────────────────────────────┤
-  │ GEMINI_API_KEY              │ Go to: https://aistudio.google.com/app/apikey      │
-  │                             │ Sign in → click "Create API Key"                   │
-  │                             │ Copy the key (starts with: AIza...)               │
+  │ GEMINI_API_KEY              │ https://aistudio.google.com/app/apikey             │
   └─────────────────────────────┴────────────────────────────────────────────────────┘
 
-IMPORTANT: For each variable, make sure you click "Encrypt" (or select
-"Secret") before saving — this keeps sensitive keys hidden from logs.
+IMPORTANT: For each variable, make sure you click "Encrypt" (or select "Secret") before saving.
 
-STEP 7: Click "Save" after adding all four variables.
-
-OPTIONAL variables (only needed if you set up affiliate offers):
+OPTIONAL variables:
   OFFER_FEED_URL       → The API endpoint URL from your affiliate network
   OFFER_FEED_API_KEY   → Your API key from the affiliate network
 
 =====================================================================
-PART 3 — VERIFY EVERYTHING IS WORKING
+PART 2 — VERIFY EVERYTHING IS WORKING
 =====================================================================
 
-After deploying and setting secrets, run this quick test:
+After setting secrets, verify:
 
 STEP 1: Open your browser and go to:
   https://my-sniper-worker.daniellancce1.workers.dev/debug/env
 
-You should see a JSON response like:
+You should see:
   {
     "hasSupabaseUrl": true,
     "hasSupabaseAnonKey": true,
@@ -133,54 +54,17 @@ You should see a JSON response like:
     "hasGeminiApiKey": true
   }
 
-If any of those say "false", that secret wasn't saved correctly.
-Go back to Part 2 and re-add the missing one.
-
-STEP 2: Open your live site at: https://626gl1ch.github.io
-        Open DevTools (F12) → Console tab
-        Try logging in or loading the dashboard
-        You should NO LONGER see any CORS or 500 errors.
-
-If you still see errors after this:
-  - Check the Cloudflare Worker logs:
-    Cloudflare Dashboard → Workers → my-sniper-worker → Logs tab
-  - The error message will now be in plain English (not "CORS blocked")
-  - Common remaining issues:
-      * Supabase RLS (Row Level Security) blocking queries — check your
-        Supabase policies under Authentication → Policies
-      * Supabase URL has a trailing slash — remove it if so
-      * Wrong key used (anon vs service_role) — double check
+If any say "false", re-check the secrets in the Cloudflare dashboard.
 
 =====================================================================
-PART 4 — SUPABASE SETUP CHECKLIST (if starting fresh)
+PART 3 — SUPABASE SETUP CHECKLIST
 =====================================================================
 
-If your Supabase project is new or you haven't run the schema yet:
+If your Supabase project is new:
 
 STEP 1: Go to https://supabase.com → your project
 STEP 2: Click "SQL Editor" in the left sidebar
-STEP 3: Open the file "schema.sql" from your project folder
-STEP 4: Paste the entire contents into the SQL editor
-STEP 5: Click "Run" (or press Ctrl+Enter)
-STEP 6: If you have "updates.sql" too, run that file next the same way
-
-STEP 7: Enable Email Auth in Supabase:
-  → Authentication → Providers → Email → toggle ON
-  → Turn OFF "Confirm email" during testing if you want instant access
-
-STEP 8: Add your site URL to allowed redirects:
-  → Authentication → URL Configuration
-  → Add: https://626gl1ch.github.io
-  → Add: https://626gl1ch.github.io/**
-
-=====================================================================
-SUMMARY — ORDER TO DO THINGS
-=====================================================================
-
-  [1] Set the 4 secrets in Cloudflare (Part 2) ← do this FIRST
-  [2] Deploy the fixed index.js (Part 1)
-  [3] Run the /debug/env check (Part 3, Step 1)
-  [4] Test your live site (Part 3, Step 2)
-  [5] Run Supabase schema if needed (Part 4)
-
+STEP 3: Run "schema.sql" (and "updates.sql" if present) using the SQL editor.
+STEP 4: Authentication → Providers → Email → toggle ON.
+STEP 5: Authentication → URL Configuration → Add: https://626gl1ch.github.io/**
 =====================================================================
