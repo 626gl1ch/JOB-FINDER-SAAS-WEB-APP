@@ -8,15 +8,35 @@ export default {
     const url = new URL(request.url);
     const method = request.method;
 
-    // CORS Headers
+    // CORS Headers — explicitly echo back the requesting origin when on
+    // the allow-list. "*" is rejected by browsers when the request carries
+    // an Authorization header, so we must return the exact origin.
+    const ALLOWED_ORIGINS = [
+      "https://626gl1ch.github.io",
+      "http://localhost",
+      "http://localhost:3000",
+      "http://localhost:5500",
+      "http://localhost:8080",
+      "http://127.0.0.1",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:5500",
+      "http://127.0.0.1:8080",
+    ];
+    const requestOrigin = request.headers.get("Origin") || "";
+    const originAllowed =
+      ALLOWED_ORIGINS.includes(requestOrigin) ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(requestOrigin);
+
     const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": originAllowed ? requestOrigin : ALLOWED_ORIGINS[0],
       "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+      "Vary": "Origin",
     };
 
     if (method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     const authHeader = request.headers.get("Authorization");
