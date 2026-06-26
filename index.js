@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SnipeJob Cloudflare Worker API
  * Zero-cost backend for job sniping and monetization.
  */
@@ -169,10 +169,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     // 1. GET /api/jobs (Tier-Enforced Job Delivery)
     if (url.pathname === "/api/jobs" && method === "GET") {
-      if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      // Get user profile to check tier and sectors
-      const profileRes = await supabase("profiles?select=current_tier,sectors");
+      // Get user profile to check tier and sectors (scoped to logged-in user)
+      const profileRes = await supabase(`profiles?select=current_tier,sectors&id=eq.${userId}`);
       const profiles = await profileRes.json();
       const profile = profiles[0];
 
@@ -256,13 +256,13 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     // 2. POST /api/ai-apply (AI Premium One-Click Application)
     if (url.pathname === "/api/ai-apply" && method === "POST") {
-      if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const { job_id } = await request.json();
       if (!job_id) return new Response("Missing job_id", { status: 400, headers: corsHeaders });
 
-      // Check if user is Pro
-      const profileRes = await supabase("profiles?select=current_tier,payload_resume"); // Assuming resume is stored or passed
+      // Check if user is Pro (scoped to logged-in user)
+      const profileRes = await supabase(`profiles?select=current_tier,payload_resume&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
@@ -305,12 +305,12 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     // --- NEW: AI 1-TAP RESUME ENDPOINT ---
     if (url.pathname === "/api/ai-resume" && method === "POST") {
-      if (!userToken) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const { job_id } = await request.json();
       if (!job_id) return new Response("Missing job_id", { status: 400, headers: corsHeaders });
 
-      // 1. Get user profile
-      const profileRes = await supabase("profiles?select=full_name,sectors,exp_level,primary_skill,bio,education,current_tier");
+      // 1. Get user profile (scoped to logged-in user)
+      const profileRes = await supabase(`profiles?select=full_name,sectors,exp_level,primary_skill,bio,education,current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
       if (profile.current_tier !== "paid") return new Response("Pro feature only", { status: 403, headers: corsHeaders });
@@ -352,25 +352,149 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       });
     }
 
-    // 3. POST /api/payment/webhook (Stripe/NOWPayments Webhook)
+    // 3a. POST /payment/create-checkout (Stripe Checkout Session)
+    if (url.pathname === "/payment/create-checkout" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      if (!env.STRIPE_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Fetch user email from Supabase auth (via profiles)
+      const profileRes = await supabase(`profiles?select=full_name,country&id=eq.${userId}`);
+      const profile = (await profileRes.json())[0];
+
+      const origin = request.headers.get("Origin") || "https://snipejob.app";
+
+      // Create Stripe Checkout Session
+      const stripeBody = new URLSearchParams({
+        "mode": "subscription",
+        "line_items[0][price]": env.STRIPE_PRICE_ID || "price_1TlpyNJTMtNFrTYFKT0DELxn",
+        "line_items[0][quantity]": "1",
+        "success_url": `${origin}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        "cancel_url": `${origin}/index.html?payment=cancelled`,
+        "client_reference_id": userId,
+        "metadata[user_id]": userId,
+        "allow_promotion_codes": "true",
+      });
+
+      const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: stripeBody.toString(),
+      });
+
+      const stripeData = await stripeRes.json();
+
+      if (!stripeRes.ok || !stripeData.url) {
+        console.error("Stripe checkout error:", JSON.stringify(stripeData).slice(0, 500));
+        return new Response(
+          JSON.stringify({ error: stripeData.error?.message || "Could not create checkout session" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3b. POST /api/payment/webhook (Stripe Signature-Verified Webhook)
     if (url.pathname === "/api/payment/webhook" && method === "POST") {
-        // Simplified webhook handler for simulation
-        const { user_id, status } = await request.json();
+      const rawBody = await request.text();
+      const stripeSignature = request.headers.get("stripe-signature");
 
-        if (status === "confirmed") {
+      // If we have a signing secret, verify the webhook signature.
+      // Falls back to legacy JSON body for NOWPayments / manual testing.
+      if (env.STRIPE_WEBHOOK_SECRET && stripeSignature) {
+        try {
+          // Stripe webhook signature verification (HMAC-SHA256)
+          const parts = stripeSignature.split(",").reduce((acc, part) => {
+            const [k, v] = part.split("=");
+            acc[k] = v;
+            return acc;
+          }, {});
+          const timestamp = parts.t;
+          const receivedSig = parts.v1;
+          const signedPayload = `${timestamp}.${rawBody}`;
+
+          const key = await crypto.subtle.importKey(
+            "raw",
+            new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),
+            { name: "HMAC", hash: "SHA-256" },
+            false,
+            ["sign"]
+          );
+          const sigBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedPayload));
+          const computedSig = Array.from(new Uint8Array(sigBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+          if (computedSig !== receivedSig) {
+            return new Response("Webhook signature mismatch", { status: 400, headers: corsHeaders });
+          }
+        } catch (sigErr) {
+          console.error("Stripe signature check failed:", sigErr.message);
+          return new Response("Webhook signature error", { status: 400, headers: corsHeaders });
+        }
+
+        // Parse the verified Stripe event
+        const event = JSON.parse(rawBody);
+
+        if (event.type === "checkout.session.completed" || event.type === "invoice.payment_succeeded") {
+          const session = event.data.object;
+          const target_user_id = session.client_reference_id || session.metadata?.user_id;
+
+          if (target_user_id) {
             const expiry = new Date();
-            expiry.setMonth(expiry.getMonth() + 1); // +1 Month
-
-            await supabase(`profiles?id=eq.${user_id}`, {
-                method: "PATCH",
-                body: JSON.stringify({
-                    current_tier: "paid",
-                    subscription_expiry: expiry.toISOString()
-                })
+            expiry.setMonth(expiry.getMonth() + 1);
+            await supabase(`profiles?id=eq.${target_user_id}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+              body: JSON.stringify({
+                current_tier: "paid",
+                subscription_expiry: expiry.toISOString(),
+                stripe_customer_id: session.customer || null,
+                stripe_subscription_id: session.subscription || null,
+              }),
             });
+          }
+        }
+
+        if (event.type === "customer.subscription.deleted") {
+          // Subscription cancelled — downgrade back to free
+          const sub = event.data.object;
+          const customerId = sub.customer;
+          // Look up user by stripe_customer_id
+          const profileSearch = await supabase(`profiles?select=id&stripe_customer_id=eq.${customerId}`);
+          const found = (await profileSearch.json())[0];
+          if (found) {
+            await supabase(`profiles?id=eq.${found.id}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+              body: JSON.stringify({ current_tier: "free", subscription_expiry: null }),
+            });
+          }
         }
 
         return new Response("Webhook processed", { status: 200, headers: corsHeaders });
+      }
+
+      // Legacy fallback: manual / NOWPayments JSON body
+      try {
+        const body = JSON.parse(rawBody);
+        const { user_id, status } = body;
+        if (status === "confirmed" && user_id) {
+          const expiry = new Date();
+          expiry.setMonth(expiry.getMonth() + 1);
+          await supabase(`profiles?id=eq.${user_id}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({ current_tier: "paid", subscription_expiry: expiry.toISOString() }),
+          });
+        }
+      } catch(_) {}
+
+      return new Response("Webhook processed", { status: 200, headers: corsHeaders });
     }
 
     // 4. POST /api/verify-id (Zero-Cost AI Identity Checks)
@@ -429,39 +553,46 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         body: JSON.stringify({
           id_status: status,
           verified_phone: phoneNumber,
-          country: edgeCountry
-        })
+          country: edgeCountry,
+        }),
       });
 
       return new Response(JSON.stringify(aiResult), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 4b. GET /api/offers (Live Side Task offer feed ÔÇö fetches from your
+    // 4b. GET /api/offers (Live Side Task offer feed — fetches from your
     // affiliate network and tags every offer link with this user's UUID as
     // subid, so postbacks can be matched back to the right wallet. Swap the
-    // OFFER_FEED_URL and field names below for whichever network you join ÔÇö
+    // OFFER_FEED_URL and field names below for whichever network you join —
     // see HOSTING.md "Affiliate Revenue" section for the macro reference.)
     if (url.pathname === "/api/offers" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      const profileRes = await supabase("profiles?select=current_tier,country");
+      const profileRes = await supabase(`profiles?select=current_tier,country&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-      // Side Tasks are available on both tiers (per the landing page promise) ÔÇö
-      // no tier gate here. Payout *timing* differs by tier instead, handled
-      // in /api/withdraw (free = monthly batch, Pro = immediate).
+
+      // Side Tasks are Pro-only — gate here so free users see the upgrade wall
+      if (profile.current_tier !== "paid") {
+        return new Response(JSON.stringify({ items: [], configured: false, pro_required: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       if (!env.OFFER_FEED_URL || !env.OFFER_FEED_API_KEY) {
-        // No network connected yet ÔÇö return an empty list rather than erroring,
+        // No network connected yet — return an empty list rather than erroring,
         // so the dashboard shows "no tasks available" instead of breaking.
         return new Response(JSON.stringify({ items: [], configured: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       try {
-        // Example shape for CPALead-style feeds ÔÇö adjust the URL/params and
+        // Country resolution: prefer user's verified profile country, then
+        // fall back to Cloudflare's edge-detected CF-IPCountry header (free
+        // on all CF Workers — 2-letter ISO code, e.g. "NG", "GB", "US").
+        const userCountry = profile.country || request.headers.get("CF-IPCountry") || "";
+
+        // Example shape for CPALead-style feeds — adjust the URL/params and
         // the field names in the .map() below to match your chosen network's
         // actual JSON response format.
-        const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${profile.country || ''}&format=json`);
+        const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${userCountry}&format=json`);
         const feedData = await feedRes.json();
         const rawOffers = Array.isArray(feedData) ? feedData : (feedData.offers || []);
 
@@ -472,7 +603,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           user_cut: +(parseFloat(o.payout || o.amount || 0) * 0.3).toFixed(2),
           // userId embedded here is what comes back as {subid} on the postback
           link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
-          country: o.country || profile.country,
+          country: o.country || userCountry,
         }));
 
         return new Response(JSON.stringify({ items: offers, configured: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -483,7 +614,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
     }
 
     // 4c. GET /api/earnings (Recent affiliate credit history, for the
-    // "Recent earnings" panel ÔÇö reads from affiliate_logs which
+    // "Recent earnings" panel — reads from affiliate_logs which
     // process_affiliate_credit already writes to on every postback.)
     if (url.pathname === "/api/earnings" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
@@ -541,7 +672,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
     // 4. POST /api/withdraw (Free tier: queued for monthly batch payout.
     // Pro tier: flagged for immediate processing. Previously this route
     // blocked ALL free-tier withdrawals outright, which contradicted the
-    // landing page's "available to everyone" promise ÔÇö fixed to match.)
+    // landing page's "available to everyone" promise — fixed to match.)
     if (url.pathname === "/api/withdraw" && method === "POST") {
        if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
@@ -550,8 +681,8 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
        if (!amount || amount < 2) return new Response("Minimum $2", { status: 400, headers: corsHeaders });
 
-       // Check balance
-       const profileRes = await supabase("profiles?select=wallet_balance,current_tier");
+       // Check balance (scoped to logged-in user)
+       const profileRes = await supabase(`profiles?select=wallet_balance,current_tier&id=eq.${userId}`);
        const profile = (await profileRes.json())[0];
        if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
        if (profile.wallet_balance < amount) return new Response("Insufficient balance", { status: 400, headers: corsHeaders });
@@ -560,7 +691,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
        // Free tier: next 1st-of-month at least 3 days out (so a withdrawal
        // requested on the 30th doesn't get an unrealistic next-day date).
-       // Pro tier: no scheduled date ÔÇö processed immediately by your payout flow.
+       // Pro tier: no scheduled date — processed immediately by your payout flow.
        let scheduledDate = null;
        if (!isPro) {
          const now = new Date();
@@ -570,7 +701,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
          scheduledDate = target.toISOString().slice(0, 10);
        }
 
-       // Deduct and log ÔÇö both calls scoped to this user explicitly,
+       // Deduct and log — both calls scoped to this user explicitly,
        // rather than relying solely on RLS to filter an unscoped PATCH.
        await supabase(`profiles?id=eq.${userId}`, {
            method: "PATCH",
@@ -597,13 +728,13 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 5. GET /api/jobs/ranked (AI Job Ranking ÔÇö free tier gets a fast local
+    // 5. GET /api/jobs/ranked (AI Job Ranking — free tier gets a fast local
     // keyword score, Pro gets Gemini's full-fit analysis. Free has no
     // Gemini cost; only Pro calls the model.)
     if (url.pathname === "/api/jobs/ranked" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      const profileRes = await supabase("profiles?select=current_tier,sectors,primary_skill,bio,exp_level");
+      const profileRes = await supabase(`profiles?select=current_tier,sectors,primary_skill,bio,exp_level&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
@@ -627,7 +758,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       // PRO: ask Gemini to score the top jobs against the full profile.
-      const jobList = jobs.slice(0, 12).map((j, i) => `${i}. ${j.title} ÔÇö ${j.payload_description.slice(0, 200)}`).join("\n");
+      const jobList = jobs.slice(0, 12).map((j, i) => `${i}. ${j.title} — ${j.payload_description.slice(0, 200)}`).join("\n");
       const prompt = `You are a job-matching engine. Score how well this candidate fits each job, 0-100.
 CANDIDATE: Skill: ${profile.primary_skill}. Level: ${profile.exp_level}. Bio: ${profile.bio}
 
@@ -655,11 +786,11 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
     }
 
     // 6. POST /api/resume/score (Free: score + tips. Pro already has full
-    // rewrite via /api/ai-resume ÔÇö this is the lighter, free-tier hook.)
+    // rewrite via /api/ai-resume — this is the lighter, free-tier hook.)
     if (url.pathname === "/api/resume/score" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      const profileRes = await supabase("profiles?select=bio,primary_skill,exp_level,education,current_tier");
+      const profileRes = await supabase(`profiles?select=bio,primary_skill,exp_level,education,current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
       if (!profile.bio || profile.bio.trim().length < 20) {
@@ -697,7 +828,7 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
       const body = await request.json().catch(() => ({}));
       const { job_id } = body;
 
-      const profileRes = await supabase("profiles?select=current_tier,sectors,primary_skill,exp_level");
+      const profileRes = await supabase(`profiles?select=current_tier,sectors,primary_skill,exp_level&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
@@ -757,7 +888,7 @@ Return ONLY a strict JSON array of 5 question strings, no markdown: ["question 1
     if (url.pathname === "/api/interview/answer" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      const profileRes = await supabase("profiles?select=current_tier");
+      const profileRes = await supabase(`profiles?select=current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile || profile.current_tier !== "paid") {
         return new Response("Pro feature only ÔÇö upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });

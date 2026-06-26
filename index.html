@@ -2441,10 +2441,13 @@ footer {
 
   <!-- MAIN CONTENT -->
   <div class="dash-main">
+    <!-- Floating Sidebar Toggle -->
+    <button id="sidebar-toggle-floating" style="position:fixed; left: 15px; top: 75px; z-index: 550; background: var(--bg2); border: 1px solid var(--border); color: var(--ink); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" onclick="toggleDashSidebar()">≡</button>
+
     <!-- AD BANNER (free users) -->
-    <div class="ad-banner" id="ad-banner">
+    <div class="ad-banner" id="ad-banner" onclick="go('upgrade')" style="cursor:pointer">
       <span>🎯 <strong>Sponsored:</strong> QuickWork — Get 2× more clients with your SnipeJob profile. Try free for 14 days →</span>
-      <button class="ad-close" onclick="document.getElementById('ad-banner').style.display='none'">×</button>
+      <button class="ad-close" onclick="event.stopPropagation();document.getElementById('ad-banner').style.display='none'">×</button>
     </div>
 
     <div class="dash-topbar">
@@ -2681,19 +2684,20 @@ footer {
 
     <div class="tab-pane" id="tp-sidetask">
       <!-- Pro Lock Overlay -->
-      <div id="st-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(8,7,15,.8);backdrop-filter:blur(6px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
-        <div style="width:80px;height:80px;background:var(--vpale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px">
-          <i class="ti ti-lock" style="font-size:40px;color:var(--vlight)"></i>
+      <div id="st-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(8,7,15,.85);backdrop-filter:blur(8px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;border-radius:16px">
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,rgba(124,92,252,.3),rgba(139,114,255,.15));border:1px solid rgba(124,92,252,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px">
+          <i class="ti ti-lock" style="font-size:36px;color:var(--vlight)"></i>
         </div>
-        <h2 style="font-family:'Syne',sans-serif;font-size:2rem;margin-bottom:12px">Pro Feature Only</h2>
-        <p style="color:var(--t2);max-width:380px;margin-bottom:32px;line-height:1.6">The Side Task micro-earning system is exclusive to Pro subscribers. Upgrade now to start earning while you snipe jobs.</p>
-        <button class="btn-primary" onclick="go('upgrade')"><i class="ti ti-crown"></i> Upgrade to Pro</button>
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.8rem;margin-bottom:12px">Pro Feature Only</h2>
+        <p style="color:var(--t2);max-width:380px;margin-bottom:8px;line-height:1.6">The Side Task micro-earning system is exclusive to Pro subscribers. Complete real offers and earn cash deposited to your wallet.</p>
+        <p style="color:var(--t3);font-size:12px;margin-bottom:28px">$9/month — cancel anytime</p>
+        <button class="btn-primary" onclick="go('upgrade')" style="padding:14px 36px;font-size:15px"><i class="ti ti-crown"></i> Upgrade to Pro — $9/mo</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 270px;gap:22px;align-items:start">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="font-size:14px;font-weight:600;color:var(--ink)">Available tasks · Nigeria</div>
+            <div style="font-size:14px;font-weight:600;color:var(--ink)">Available tasks · <span id="st-country-label">Your Country</span></div>
             <button class="jbtn jbtn-v" style="font-size:11px;padding:5px 12px" onclick="go('kyc')"><i class="ti ti-shield-check"></i> Verify Identity</button>
           </div>
           <div style="font-size:13px;color:var(--t2);margin-bottom:18px">Complete tasks to earn your 30% share. Balance updates in real-time.</div>
@@ -2815,47 +2819,44 @@ footer {
 <!-- ════════════════ PRO UPGRADE ════════════════ -->
 <div class="page" id="pg-upgrade">
 <div class="auth-wrap">
-  <div class="auth-card" style="max-width:600px">
-    <div class="auth-logo"><div class="logo-mark"><i class="ti ti-rocket"></i></div>SnipeJob Pro</div>
-    <div class="auth-h">Go Unlimited.</div>
-    <div class="auth-sub">Unlock all sectors, unlimited alerts, and one-click AI apply for just $9/month.</div>
-    
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px">
-      <div style="background:rgba(var(--ink-rgb),.03);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;border-color:var(--violet)" onclick="selectPayment('stripe')">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <i class="ti ti-credit-card" style="font-size:24px;color:var(--vlight)"></i>
-          <input type="radio" name="pay-method" checked>
-        </div>
-        <div style="font-weight:700;color:var(--ink)">Credit Card</div>
-        <div style="font-size:12px;color:var(--t3)">Stripe Secure</div>
+  <div class="auth-card" style="max-width:540px">
+    <div class="auth-logo"><div class="logo-mark" style="background:linear-gradient(135deg,#7C5CFC,#9b8aff)"><i class="ti ti-rocket"></i></div>SnipeJob Pro</div>
+    <div class="auth-h" style="font-size:2rem">Go Unlimited.</div>
+    <div class="auth-sub">Unlock all sectors, unlimited job alerts, AI apply, and Side Task earnings — <strong style="color:var(--vlight)">$9/month</strong>. Cancel anytime.</div>
+
+    <!-- Features list -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin:24px 0 28px">
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
+        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
+        <span>Unlimited job alerts across <strong style="color:var(--ink)">all 14 sectors</strong></span>
       </div>
-      <div style="background:rgba(var(--ink-rgb),.03);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer" onclick="selectPayment('crypto')">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <i class="ti ti-currency-bitcoin" style="font-size:24px;color:var(--orange)"></i>
-          <input type="radio" name="pay-method">
-        </div>
-        <div style="font-weight:700;color:var(--ink)">Crypto</div>
-        <div style="font-size:12px;color:var(--t3)">NOWPayments</div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
+        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
+        <span>One-click <strong style="color:var(--ink)">AI-written proposals</strong> for every job</span>
       </div>
-    </div>
-    
-    <div id="stripe-form" style="display:block">
-        <div class="form-group"><label class="form-label">Card number</label><input class="form-input" placeholder="•••• •••• •••• ••••"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group"><label class="form-label">Expiry</label><input class="form-input" placeholder="MM / YY"></div>
-            <div class="form-group"><label class="form-label">CVC</label><input class="form-input" placeholder="•••"></div>
-        </div>
-    </div>
-    
-    <div id="crypto-form" style="display:none;text-align:center;padding:20px;background:rgba(255,107,53,.05);border-radius:12px;border:1px solid rgba(255,107,53,.2)">
-        <div style="font-size:14px;color:var(--t2);margin-bottom:12px">Pay <strong>$9.00</strong> in BTC/ETH/USDT</div>
-        <div style="background:#fff;padding:10px;display:inline-block;border-radius:8px;margin-bottom:12px">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SNIPEJOB_CRYPTO_PLACEHOLDER" style="width:120px;height:120px">
-        </div>
-        <div style="font-size:11px;color:var(--t3);word-break:break-all">0x1234567890abcdef1234567890abcdef12345678</div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
+        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
+        <span>Side Task micro-earnings with <strong style="color:var(--ink)">instant payouts</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
+        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
+        <span>AI resume rewriter + tailored <strong style="color:var(--ink)">interview prep</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
+        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
+        <span>Zero ads — <strong style="color:var(--ink)">clean, distraction-free</strong> dashboard</span>
+      </div>
     </div>
 
-    <button class="auth-btn" style="margin-top:20px" onclick="processUpgrade()"><i class="ti ti-lock"></i>&nbsp; Pay $9.00 & Upgrade</button>
+    <!-- Price display -->
+    <div style="text-align:center;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(124,92,252,.1),rgba(139,114,255,.05));border:1px solid rgba(124,92,252,.25);border-radius:16px">
+      <div style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:900;color:var(--ink);letter-spacing:-.05em">$9<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/mo</span></div>
+      <div style="font-size:12px;color:var(--t3);margin-top:4px">Billed monthly · Cancel anytime · Secure via Stripe</div>
+    </div>
+
+    <button class="auth-btn" id="checkout-btn" onclick="startProCheckout()"><i class="ti ti-lock"></i>&nbsp; Continue to Secure Checkout →</button>
+    <div id="upgrade-error" style="display:none;margin-top:12px;padding:12px 16px;background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.2);border-radius:10px;font-size:13px;color:rgba(255,120,138,.9);text-align:center"></div>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--t3)"><i class="ti ti-shield-lock" style="font-size:13px"></i> Payments processed securely by Stripe. We never store card details.</div>
     <div class="auth-back" onclick="go('dashboard')">← Back to dashboard</div>
   </div>
 </div>
@@ -3620,6 +3621,9 @@ async function initDashboard() {
     return;
   }
 
+  // Always start with the sidebar collapsed so it doesn't cover content
+  closeDashSidebar();
+
   try {
     currentProfile = await apiFetch('/profile');
   } catch (e) {
@@ -3647,7 +3651,11 @@ async function initDashboard() {
   if (sideBalEl) sideBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
 
   const adBanner = document.getElementById('ad-banner');
-  if (adBanner) adBanner.style.display = currentProfile.current_tier === 'paid' ? 'none' : 'flex';
+  if (adBanner) {
+    adBanner.style.display = currentProfile.current_tier === 'paid' ? 'none' : 'flex';
+    adBanner.style.cursor = 'pointer';
+    adBanner.onclick = () => go('upgrade');
+  }
 
   await loadJobs();
 }
@@ -3670,6 +3678,12 @@ async function loadJobs() {
     const badgeEl = document.getElementById('feed-badge');
     if (badgeEl) badgeEl.textContent = allJobs.length;
     if (dateLine) dateLine.textContent = new Date().toLocaleString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+
+    // Update sidetask country label from user profile
+    const stCountry = document.getElementById('st-country-label');
+    if (stCountry && currentProfile && currentProfile.country) {
+      stCountry.textContent = currentProfile.country;
+    }
 
     renderJobs();
   } catch (e) {
@@ -3876,7 +3890,11 @@ function dTab(tabName) {
     loadTrends();
   }
   if (tabName === 'sidetask') {
-    loadSideTasks();
+    // Check if user is Pro
+    const isPro = currentProfile && currentProfile.current_tier === 'paid';
+    const overlay = document.getElementById('st-lock-overlay');
+    if (overlay) overlay.style.display = isPro ? 'none' : 'flex';
+    if (isPro) loadSideTasks();
   }
 }
 
@@ -4030,7 +4048,7 @@ function resetInterviewPrep() {
   document.getElementById('interview-session').innerHTML = '';
 }
 
-/* ─── WITHDRAW (FIX: previously referenced but never defined) ─── */
+/* ─── WITHDRAW ─── */
 function openWithdraw() {
   const bal = Number(currentProfile?.wallet_balance || 0);
   const balEl = document.getElementById('withdraw-bal');
