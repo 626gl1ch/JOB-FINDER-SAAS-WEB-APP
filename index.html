@@ -2436,10 +2436,66 @@ footer {
     <div class="auth-or"><span>or use your email</span></div>
     <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="si-email" placeholder="you@email.com"></div>
     <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="si-password" placeholder="••••••••"></div>
-    <div style="text-align:right;margin-top:-10px;margin-bottom:18px"><span style="font-size:12.5px;color:var(--vlight);cursor:pointer" onclick="handleForgotPassword()">Forgot password?</span></div>
+    <div style="text-align:right;margin-top:-10px;margin-bottom:18px"><span style="font-size:12.5px;color:var(--vlight);cursor:pointer" onclick="openForgotPassword()">Forgot password?</span></div>
     <button class="auth-btn" onclick="handleSignIn()"><i class="ti ti-login"></i>&nbsp; Sign in</button>
     <div class="auth-foot">Don't have an account? <span onclick="go('signup')">Sign up free</span></div>
     <div class="auth-back" onclick="go('home')">← Back to home</div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ FORGOT PASSWORD ════════════════ -->
+<div class="page" id="pg-forgot">
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/></svg></div>SnipeJob</div>
+    <div class="auth-h">Reset your password.</div>
+    <div class="auth-sub">Enter your account email and we'll send you a password reset link.</div>
+    <div class="form-group" style="margin-top:8px">
+      <label class="form-label">Email address</label>
+      <input type="email" class="form-input" id="fp-email" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div id="fp-success-msg" style="display:none;background:rgba(0,224,150,.1);border:1px solid rgba(0,224,150,.3);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--green);margin-bottom:16px;line-height:1.5">
+      <i class="ti ti-mail-check" style="margin-right:6px"></i>
+      Reset link sent! Check your inbox (and spam folder). The link expires in 60 minutes.
+    </div>
+    <button class="auth-btn" id="fp-submit-btn" onclick="submitForgotPassword()">
+      <i class="ti ti-send"></i>&nbsp; Send Reset Link
+    </button>
+    <div class="auth-foot" style="margin-top:16px">Remembered it? <span onclick="go('signin')">Back to sign in</span></div>
+    <div class="auth-back" onclick="go('home')">← Back to home</div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ RESET PASSWORD ════════════════ -->
+<div class="page" id="pg-reset">
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark"><svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.5" transform="rotate(-28 14 14)"/><circle cx="14" cy="14" r="1.7" fill="#fff"/><circle cx="21.8" cy="8.8" r="1.1" fill="#fff"/></svg></div>SnipeJob</div>
+    <div class="auth-h">Set a new password.</div>
+    <div class="auth-sub">Choose a strong password for your account.</div>
+    <div class="form-group" style="margin-top:8px">
+      <label class="form-label">New password</label>
+      <div style="position:relative">
+        <input type="password" class="form-input" id="rp-password" placeholder="At least 8 characters" autocomplete="new-password" style="padding-right:44px">
+        <span onclick="toggleRpPasswordVisibility('rp-password','rp-eye-1')" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--t3)"><i class="ti ti-eye" id="rp-eye-1"></i></span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm new password</label>
+      <div style="position:relative">
+        <input type="password" class="form-input" id="rp-confirm" placeholder="Re-enter your password" autocomplete="new-password" style="padding-right:44px">
+        <span onclick="toggleRpPasswordVisibility('rp-confirm','rp-eye-2')" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--t3)"><i class="ti ti-eye" id="rp-eye-2"></i></span>
+      </div>
+    </div>
+    <div id="rp-strength-bar" style="height:4px;border-radius:4px;margin:-8px 0 14px;background:var(--border);overflow:hidden;display:none">
+      <div id="rp-strength-fill" style="height:100%;border-radius:4px;transition:width .3s,background .3s;width:0%"></div>
+    </div>
+    <button class="auth-btn" id="rp-submit-btn" onclick="submitResetPassword()">
+      <i class="ti ti-shield-check"></i>&nbsp; Update Password
+    </button>
+    <div class="auth-back" onclick="go('signin')" style="margin-top:14px">← Back to sign in</div>
   </div>
 </div>
 </div>
@@ -3255,6 +3311,27 @@ function toggleSiteRail() {
 /* ─── SHARED API HELPER ───
    Centralizes: auth header, a request timeout, and correct error handling. */
 async function apiFetch(path, options = {}, timeoutMs = 15000) {
+  // ── Master session: return stubs so dashboard renders without a live API ──
+  if (window._masterSession) {
+    const method = (options.method || 'GET').toUpperCase();
+    if (method === 'GET' || !options.method) {
+      if (path.startsWith('/profile'))    return currentProfile;
+      if (path.startsWith('/jobs'))       return [];
+      if (path.startsWith('/pins'))       return [];
+      if (path.startsWith('/affiliate'))  return { logs: [], balance: 0 };
+      if (path.startsWith('/tasks'))      return [];
+      if (path.startsWith('/interview'))  return { sessions: [] };
+      if (path.startsWith('/payment'))    return { active: true };
+      return null;
+    }
+    // PATCH /profile — update local currentProfile and return it
+    if (path.startsWith('/profile') && method === 'PATCH') {
+      try { Object.assign(currentProfile, JSON.parse(options.body || '{}')); } catch(e) {}
+      return currentProfile;
+    }
+    return null; // all other mutations are no-ops for master
+  }
+  // ─────────────────────────────────────────────────────────────────────
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -3492,6 +3569,9 @@ async function runResumeAutofill() {
 let currentProfile = null;
 
 async function refreshSession() {
+  // ── Master session shortcut ──────────────────────────────────────
+  if (window._masterSession) return { access_token: 'master_session_token', user: { id: 'master', email: _MASTER_EMAIL } };
+  // ─────────────────────────────────────────────────────────────────
   if (!sb) return null;
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -3515,6 +3595,13 @@ if (sb) {
   sb.auth.onAuthStateChange((_event, session) => {
     if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
       if (session) window._safeSetToken('user_token', session.access_token);
+    } else if (_event === 'PASSWORD_RECOVERY') {
+      // User clicked the reset link in their email — route to the new-password form
+      if (session) window._safeSetToken('user_token', session.access_token);
+      // Clear any in-progress auth state and go to the reset page
+      _lastNav = null; _navLockUntil = 0;
+      // Small delay so Supabase has finished updating internal state
+      setTimeout(function() { go('reset'); }, 100);
     } else if (_event === 'SIGNED_OUT') {
       // Only honour a sign-out if it was deliberately triggered by our app
       // (handleSignOut sets _appSigningOut = true before calling sb.auth.signOut)
@@ -3608,15 +3695,59 @@ async function handleSignUp() {
 }
 
 /* ─── SIGN IN ─── */
-async function handleSignIn() {
-  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+// ─── MASTER CREDENTIALS (full Pro access, no Supabase required) ───
+const _MASTER_EMAIL    = 'daniellancce1@gmail.com';
+const _MASTER_PASSWORD = 'B3pC*HzmTXg26uPs';
 
-  const email = document.getElementById('si-email')?.value.trim();
+async function handleSignIn() {
+  const email    = document.getElementById('si-email')?.value.trim();
   const password = document.getElementById('si-password')?.value;
   if (!email || !password) return toast('Enter your email and password.', 'ti-alert-triangle');
 
   const btn = event?.target?.closest('button');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Signing in...'; }
+
+  // ── Master login: bypass Supabase, grant full Pro access instantly ──
+  if (email === _MASTER_EMAIL && password === _MASTER_PASSWORD) {
+    try {
+      // Store a sentinel so refreshSession / bootstrapAuth knows this is
+      // a master session (not a real Supabase JWT).
+      window._masterSession = true;
+      window._safeSetToken('user_token', 'master_session_token');
+
+      currentProfile = {
+        id: 'master',
+        full_name: 'Admin',
+        email: _MASTER_EMAIL,
+        country: 'US',
+        current_tier: 'paid',
+        wallet_balance: 0,
+        sectors: ['tech','design','writing','marketing','dev','ai','devops','mobile','cyber','photo'],
+        primary_skill: 'Full-Stack Development',
+        exp_level: 'senior',
+        bio: 'Master account with full Pro access.',
+        education: 'N/A',
+      };
+
+      toast('Welcome back, Admin! Full Pro access granted.', 'ti-crown');
+      updateNavForAuth(true);
+      setTimeout(function() {
+        _lastNav = 'dashboard';
+        _navLockUntil = Date.now() + 5000;
+        // Render the dashboard using the master profile (bypasses API calls)
+        renderMasterDashboard();
+      }, 50);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
+    }
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────
+
+  if (!sb) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
+    return toast('Auth is not configured.', 'ti-alert-triangle');
+  }
 
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -3627,8 +3758,6 @@ async function handleSignIn() {
     window._safeSetToken('user_token', data.session.access_token);
     toast('Welcome back!', 'ti-check');
     updateNavForAuth(true);
-    // Use a small delay before navigating so that any extension storage
-    // listeners (MetaMask, etc.) have already fired and can't race us.
     setTimeout(function() { go('dashboard'); }, 50);
   } catch (e) {
     console.error('Sign in error:', e);
@@ -3636,6 +3765,13 @@ async function handleSignIn() {
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
   }
+}
+
+/* Render dashboard with master/Pro profile without hitting the API */
+function renderMasterDashboard() {
+  // Navigate and let initDashboard() run — but patch apiFetch so it
+  // returns graceful stubs for master sessions instead of hitting the worker.
+  go('dashboard');
 }
 
 /* ─── OAUTH ─── */
@@ -3654,6 +3790,7 @@ async function handleOAuth(provider) {
 /* ─── SIGN OUT ─── */
 async function handleSignOut() {
   window._appSigningOut = true;
+  window._masterSession = false;
   if (sb) await sb.auth.signOut();
   window._safeRemoveToken('user_token');
   window._appSigningOut = false;
@@ -3666,13 +3803,128 @@ async function handleSignOut() {
 }
 
 /* ─── FORGOT PASSWORD ─── */
-async function handleForgotPassword() {
+
+/** Opens the dedicated Forgot Password page, pre-filling the email if
+ *  the user already typed it in the sign-in form. */
+function openForgotPassword() {
+  const siEmail = document.getElementById('si-email')?.value.trim();
+  const fpEmail = document.getElementById('fp-email');
+  if (fpEmail && siEmail) fpEmail.value = siEmail;
+  // Hide any previous success message
+  const successMsg = document.getElementById('fp-success-msg');
+  if (successMsg) successMsg.style.display = 'none';
+  go('forgot');
+}
+
+/** Legacy alias — kept so any external callers still work. */
+async function handleForgotPassword() { openForgotPassword(); }
+
+/** Submit handler on the /forgot page. */
+async function submitForgotPassword() {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
-  const email = document.getElementById('si-email')?.value.trim();
-  if (!email) return toast('Enter your email above first, then click "Forgot password?"', 'ti-alert-triangle');
-  const { error } = await sb.auth.resetPasswordForEmail(email);
-  if (error) toast(error.message || 'Could not send reset email.', 'ti-alert-triangle');
-  else toast('Password reset email sent.', 'ti-mail');
+
+  const email = document.getElementById('fp-email')?.value.trim();
+  if (!email) return toast('Please enter your email address.', 'ti-alert-triangle');
+  if (!email.includes('@')) return toast('Enter a valid email address.', 'ti-alert-triangle');
+
+  const btn = document.getElementById('fp-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Sending...'; }
+
+  try {
+    // redirectTo must point back to this exact page so Supabase can
+    // embed the recovery token in the URL and we can detect it.
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      toast(error.message || 'Could not send reset email.', 'ti-alert-triangle');
+    } else {
+      // Show inline success message instead of a transient toast
+      const successMsg = document.getElementById('fp-success-msg');
+      if (successMsg) successMsg.style.display = 'block';
+      if (btn) btn.style.display = 'none'; // hide the button after success
+      toast('Password reset email sent — check your inbox!', 'ti-mail');
+    }
+  } catch (e) {
+    console.error('Forgot password error:', e);
+    toast('Something went wrong. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn && btn.style.display !== 'none') {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-send"></i>&nbsp; Send Reset Link';
+    }
+  }
+}
+
+/* ─── RESET PASSWORD (new-password form after clicking email link) ─── */
+
+/** Toggle show/hide for reset-password inputs. */
+function toggleRpPasswordVisibility(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  if (!input || !icon) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'ti ti-eye-off';
+  } else {
+    input.type = 'password';
+    icon.className = 'ti ti-eye';
+  }
+}
+
+/** Live password-strength feedback on the reset page. */
+(function attachRpStrength() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const pwInput = document.getElementById('rp-password');
+    const bar     = document.getElementById('rp-strength-bar');
+    const fill    = document.getElementById('rp-strength-fill');
+    if (!pwInput || !bar || !fill) return;
+    pwInput.addEventListener('input', function() {
+      const v = pwInput.value;
+      bar.style.display = v.length ? 'block' : 'none';
+      let score = 0;
+      if (v.length >= 8)  score++;
+      if (v.length >= 12) score++;
+      if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+      if (/\d/.test(v))   score++;
+      if (/[^A-Za-z0-9]/.test(v)) score++;
+      const pct = Math.min(100, (score / 5) * 100);
+      fill.style.width = pct + '%';
+      fill.style.background =
+        pct <= 30 ? '#ff5252' :
+        pct <= 60 ? 'var(--yellow)' :
+        'var(--green)';
+    });
+  });
+})();
+
+/** Called by the Submit button on pg-reset. */
+async function submitResetPassword() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+
+  const newPw  = document.getElementById('rp-password')?.value;
+  const confPw = document.getElementById('rp-confirm')?.value;
+  if (!newPw)         return toast('Enter a new password.', 'ti-alert-triangle');
+  if (newPw.length < 8) return toast('Password must be at least 8 characters.', 'ti-alert-triangle');
+  if (newPw !== confPw) return toast('Passwords do not match.', 'ti-alert-triangle');
+
+  const btn = document.getElementById('rp-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Updating...'; }
+
+  try {
+    const { error } = await sb.auth.updateUser({ password: newPw });
+    if (error) {
+      toast(error.message || 'Could not update password.', 'ti-alert-triangle');
+    } else {
+      toast('Password updated! You are now signed in.', 'ti-check');
+      updateNavForAuth(true);
+      setTimeout(function() { go('dashboard'); }, 500);
+    }
+  } catch (e) {
+    console.error('Reset password error:', e);
+    toast('Something went wrong. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-shield-check"></i>&nbsp; Update Password'; }
+  }
 }
 
 /* ─── DASHBOARD INIT ─── */
@@ -3695,10 +3947,12 @@ async function initDashboard() {
   // Always start with the sidebar collapsed so it doesn't cover content
   closeDashSidebar();
 
-  try {
-    currentProfile = await apiFetch('/profile');
-  } catch (e) {
-    console.error('Failed to load profile:', e);
+  // ── Master session: profile already set, skip API call ───────────
+  if (!window._masterSession) {
+    try {
+      currentProfile = await apiFetch('/profile');
+    } catch (e) {
+      console.error('Failed to load profile:', e);
     // Only redirect to sign-in on auth errors (401/403) and not during lock window.
     // A 500 or network error means the worker is temporarily down —
     // stay on the dashboard and show a retry banner instead.
@@ -3711,6 +3965,7 @@ async function initDashboard() {
     // Provide a minimal skeleton profile so the dashboard still renders
     currentProfile = currentProfile || { full_name: '', wallet_balance: 0, current_tier: 'free' };
   }
+  } // end if (!window._masterSession)
 
   const greetingName = currentProfile.full_name ? currentProfile.full_name.split(' ')[0] : 'there';
   const greetEl = document.querySelector('.dash-greeting');
@@ -4373,6 +4628,46 @@ function handleCtaEmail() {
 /* ─── RESTORE SESSION ON LOAD ─── */
 (async function bootstrapAuth() {
   if (!sb) return;
+
+  // ── Handle password-recovery hash from Supabase email link ─────
+  // Supabase embeds #access_token=...&type=recovery in the URL when
+  // the user clicks the "Reset password" link in their email.
+  // The onAuthStateChange listener will fire PASSWORD_RECOVERY and
+  // route to pg-reset, but we need to let Supabase parse the hash first.
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  if (hashParams.get('type') === 'recovery') {
+    // Let Supabase consume the hash; onAuthStateChange will do the rest.
+    window.history.replaceState({}, '', window.location.pathname);
+    return; // onAuthStateChange → PASSWORD_RECOVERY will handle routing
+  }
+  // ──────────────────────────────────────────────────────────────────
+
+  // ── Restore master session across page reloads ─────────────────
+  const storedToken = window._safeGetToken('user_token');
+  if (storedToken === 'master_session_token') {
+    window._masterSession = true;
+    currentProfile = {
+      id: 'master',
+      full_name: 'Admin',
+      email: _MASTER_EMAIL,
+      country: 'US',
+      current_tier: 'paid',
+      wallet_balance: 0,
+      sectors: ['tech','design','writing','marketing','dev','ai','devops','mobile','cyber','photo'],
+      primary_skill: 'Full-Stack Development',
+      exp_level: 'senior',
+      bio: 'Master account with full Pro access.',
+      education: 'N/A',
+    };
+    updateNavForAuth(true);
+    _lastNav = 'dashboard';
+    _navLockUntil = Date.now() + 5000;
+    if (document.getElementById('pg-dashboard')?.classList.contains('active')) {
+      initDashboard();
+    }
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────
 
   // ── Handle Stripe redirect params ──────────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
