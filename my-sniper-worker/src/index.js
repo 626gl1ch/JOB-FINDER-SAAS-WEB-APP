@@ -86,12 +86,30 @@ export default {
     // --- ROUTES ---
 
     // 0. GET /debug/env (Hosting Verification)
+    // FIX (2026-06-27): this previously only checked `!!env.SUPABASE_URL`,
+    // which reports "true" even if the secret holds garbage (exactly what
+    // happened: SUPABASE_URL was a single stray control character, which is
+    // still a truthy string). Now it also checks the value actually parses
+    // as an https:// URL pointing at a *.supabase.co host, so a corrupted
+    // secret shows up here instead of only surfacing as a confusing
+    // "Invalid URL" 500 on every other route.
     if (url.pathname === "/debug/env" && method === "GET") {
+        let supabaseUrlLooksValid = false;
+        try {
+          const parsed = new URL(env.SUPABASE_URL);
+          supabaseUrlLooksValid = parsed.protocol === "https:" && parsed.hostname.endsWith(".supabase.co");
+        } catch (_) {
+          supabaseUrlLooksValid = false;
+        }
         return new Response(JSON.stringify({
             hasSupabaseUrl: !!env.SUPABASE_URL,
+            supabaseUrlLooksValid,
             hasSupabaseAnonKey: !!env.SUPABASE_ANON_KEY,
             hasSupabaseServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
-            hasGeminiApiKey: !!env.GEMINI_API_KEY
+            hasGeminiApiKey: !!env.GEMINI_API_KEY,
+            hasStripeSecretKey: !!env.STRIPE_SECRET_KEY,
+            hasStripeProPriceId: !!env.STRIPE_PRO_PRICE_ID,
+            hasStripeWebhookSecret: !!env.STRIPE_WEBHOOK_SECRET,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -352,11 +370,20 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       });
     }
 
-    // 3a. POST /payment/create-checkout (Stripe Checkout Session)
-    if (url.pathname === "/payment/create-checkout" && method === "POST") {
+    // 3a. POST /api/payment/create-checkout (Stripe Checkout Session)
+    // FIX (2026-06-27): path was "/payment/create-checkout" (missing the
+    // "/api" prefix the frontend and Stripe docs both use) — every click
+    // 404'd before it ever reached this handler.
+    if (url.pathname === "/api/payment/create-checkout" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      if (!env.STRIPE_SECRET_KEY) {
+      // FIX (2026-06-27): was env.STRIPE_PRICE_ID (doesn't exist — the secret
+      // is actually named STRIPE_PRO_PRICE_ID, confirmed via `wrangler secret
+      // list`), with a hardcoded price ID as a silent fallback. That meant
+      // every checkout was quietly using a baked-in test price no matter what
+      // was configured. Now this requires the real secret and fails loudly
+      // (503) instead of silently substituting a price you didn't choose.
+      if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRO_PRICE_ID) {
         return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -369,7 +396,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       // Create Stripe Checkout Session
       const stripeBody = new URLSearchParams({
         "mode": "subscription",
-        "line_items[0][price]": env.STRIPE_PRO_PRICE_ID || "price_1TlpyNJTMtNFrTYFKT0DELxn",
+        "line_items[0][price]": env.STRIPE_PRO_PRICE_ID,
         "line_items[0][quantity]": "1",
         "success_url": `${origin}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         "cancel_url": `${origin}/index.html?payment=cancelled`,
@@ -398,6 +425,46 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3a2. GET /api/payment/status (NEW — 2026-06-27)
+    // index.html already calls this right after the Stripe redirect
+    // (`/payment/status?session_id=...`) to update the UI immediately, but
+    // the route never existed on the backend, so that check silently did
+    // nothing. This confirms the session directly with Stripe and upgrades
+    // the profile eagerly, without waiting for the webhook to land.
+    if (url.pathname === "/api/payment/status" && method === "GET") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const sessionId = url.searchParams.get("session_id");
+      if (!sessionId || !env.STRIPE_SECRET_KEY) {
+        return new Response(JSON.stringify({ active: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      });
+      const session = await stripeRes.json();
+
+      // If payment_status === "paid", ensure profile is upgraded immediately
+      // (the webhook may still be in-flight — this is the eager path).
+      if (stripeRes.ok && session.payment_status === "paid" && session.client_reference_id === userId) {
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + 1);
+        await supabase(`profiles?id=eq.${userId}`, {
+          method: "PATCH",
+          headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify({
+            current_tier: "paid",
+            subscription_expiry: expiry.toISOString(),
+            stripe_customer_id: session.customer || null,
+            stripe_subscription_id: session.subscription || null,
+          }),
+        });
+        return new Response(JSON.stringify({ active: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ active: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 3b. POST /api/payment/webhook (Stripe Signature-Verified Webhook)
@@ -583,30 +650,88 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify({ items: [], configured: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // FIX (2026-06-27): the signup form stores country as a full name
+      // (e.g. "Nigeria"), but CPALead's feed API expects an ISO 3166-1
+      // alpha-2 code (e.g. "NG"). Sending the full name was silently
+      // ignored by CPALead, so the feed returned offers from every country
+      // mixed together instead of just the user's. This maps the stored
+      // name to the code it actually understands, covering every country
+      // in the signup dropdown plus common others for future expansion.
+      const COUNTRY_CODES = {
+        "Nigeria": "NG", "Ghana": "GH", "Kenya": "KE", "South Africa": "ZA",
+        "Ethiopia": "ET", "Tanzania": "TZ", "Uganda": "UG", "Rwanda": "RW",
+        "Cameroon": "CM", "Ivory Coast": "CI", "Senegal": "SN", "Zambia": "ZM",
+        "Zimbabwe": "ZW", "Mozambique": "MZ", "Angola": "AO", "Mali": "ML",
+        "India": "IN", "Pakistan": "PK", "Bangladesh": "BD", "Philippines": "PH",
+        "Indonesia": "ID", "Vietnam": "VN", "Thailand": "TH", "Malaysia": "MY",
+        "Sri Lanka": "LK", "Nepal": "NP", "Myanmar": "MM",
+        "United Kingdom": "GB", "United States": "US", "Canada": "CA",
+        "Australia": "AU", "Germany": "DE", "France": "FR", "Italy": "IT",
+        "Spain": "ES", "Netherlands": "NL", "Sweden": "SE", "Norway": "NO",
+        "Denmark": "DK", "Poland": "PL", "Portugal": "PT", "Belgium": "BE",
+        "Switzerland": "CH", "Austria": "AT", "Ireland": "IE",
+        "Brazil": "BR", "Mexico": "MX", "Argentina": "AR", "Colombia": "CO",
+        "Chile": "CL", "Peru": "PE", "Venezuela": "VE",
+        "Saudi Arabia": "SA", "UAE": "AE", "Egypt": "EG", "Morocco": "MA",
+        "Turkey": "TR", "Israel": "IL", "Jordan": "JO",
+        "China": "CN", "Japan": "JP", "South Korea": "KR", "Singapore": "SG",
+        "Hong Kong": "HK", "Taiwan": "TW", "New Zealand": "NZ",
+      };
+
+      // Country resolution: prefer the user's profile country (mapped to its
+      // ISO code), then fall back to Cloudflare's edge-detected CF-IPCountry
+      // header, which already arrives as a 2-letter code.
+      const rawCountry = profile.country || request.headers.get("CF-IPCountry") || "";
+      const userCountryCode = COUNTRY_CODES[rawCountry] || (rawCountry.length === 2 ? rawCountry.toUpperCase() : null);
+
+      if (!userCountryCode) {
+        // Country not set or unrecognised — return empty rather than showing
+        // offers from the wrong country. User should update their profile.
+        return new Response(JSON.stringify({
+          items: [],
+          configured: true,
+          country_missing: true,
+          message: "Update your profile country to see available tasks.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       try {
-        // Country resolution: prefer user's verified profile country, then
-        // fall back to Cloudflare's edge-detected CF-IPCountry header (free
-        // on all CF Workers — 2-letter ISO code, e.g. "NG", "GB", "US").
-        const userCountry = profile.country || request.headers.get("CF-IPCountry") || "";
+        // Pass the ISO code to CPALead so the network pre-filters on their
+        // end, then double-filter below to catch any stragglers some
+        // networks include (multi-country offers listing every country
+        // they accept) — only exact-country or worldwide offers get through.
+        const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${userCountryCode}&format=json`);
+        if (!feedRes.ok) throw new Error(`Feed returned ${feedRes.status}`);
 
-        // Example shape for CPALead-style feeds — adjust the URL/params and
-        // the field names in the .map() below to match your chosen network's
-        // actual JSON response format.
-        const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${userCountry}&format=json`);
         const feedData = await feedRes.json();
-        const rawOffers = Array.isArray(feedData) ? feedData : (feedData.offers || []);
+        const rawOffers = Array.isArray(feedData) ? feedData : (feedData.offers || feedData.data || []);
 
-        const offers = rawOffers.slice(0, 15).map(o => ({
-          id: o.offer_id || o.id,
-          title: o.title || o.name,
-          payout: parseFloat(o.payout || o.amount || 0),
-          user_cut: +(parseFloat(o.payout || o.amount || 0) * 0.3).toFixed(2),
-          // userId embedded here is what comes back as {subid} on the postback
-          link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
-          country: o.country || userCountry,
-        }));
+        const offers = rawOffers
+          .filter(o => {
+            const offerCountry = (o.country || o.countries || o.geo || "").toUpperCase();
+            return !offerCountry ||
+                   offerCountry === userCountryCode ||
+                   offerCountry === "WW" ||
+                   offerCountry === "WORLDWIDE" ||
+                   offerCountry.includes(userCountryCode);
+          })
+          .slice(0, 15)
+          .map(o => {
+            const rawPayout = parseFloat(o.payout || o.amount || o.revenue || 0);
+            return {
+              id: o.offer_id || o.id,
+              title: o.title || o.name,
+              description: o.description || o.short_description || "",
+              payout: rawPayout,
+              user_cut: +(rawPayout * 0.3).toFixed(2),
+              // userId embedded here is what comes back as {subid} on the postback
+              link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
+              country: userCountryCode,
+              category: o.category || o.vertical || "general",
+            };
+          });
 
-        return new Response(JSON.stringify({ items: offers, configured: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ items: offers, configured: true, user_country: userCountryCode }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (e) {
         console.error("Offer feed fetch error:", e.message);
         return new Response("Could not load tasks right now. Please try again shortly.", { status: 502, headers: corsHeaders });
@@ -765,7 +890,7 @@ CANDIDATE: Skill: ${profile.primary_skill}. Level: ${profile.exp_level}. Bio: ${
 JOBS (numbered):
 ${jobList}
 
-Return ONLY a strict JSON array, no markdown: [{"index": 0, "score": 85, "reason": "short reason under 12 words"}, ...] for every job listed.`;
+Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "score": 85, "reason": "short reason under 12 words"}, ...] for every job listed.`;
 
       const gemini = await callGemini(prompt);
       if (!gemini.ok) {
