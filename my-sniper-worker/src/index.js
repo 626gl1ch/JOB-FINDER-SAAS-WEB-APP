@@ -21,11 +21,35 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    // Canonical base URL of the deployed app (the SPA in index.html). Used to
+    // build Stripe success/cancel redirect targets that work no matter what
+    // domain the REQUEST came from — critical for the sales-funnel flow below,
+    // where the request originates from a completely different site than the
+    // app itself, so request Origin/Referer can't be trusted to point back at
+    // the app. Override via the APP_BASE_URL secret/var if the app moves to a
+    // custom domain later (e.g. https://snipejob.app) — no code change needed.
+    const APP_BASE_URL = (env.APP_BASE_URL || "https://626gl1ch.github.io/JOB-FINDER-SAAS-WEB-APP").replace(/\/$/, "");
+
+    // Subscription plan catalogue. "annual" is the $90/yr founding-rate plan
+    // sold from the sales funnel; "monthly" is the existing $9/mo in-app plan.
+    // Both map to their own Stripe Price ID (configured as separate wrangler
+    // secrets, since test/live mode each need their own price IDs anyway).
+    const PLAN_CONFIG = {
+      monthly: { priceEnv: "STRIPE_PRO_PRICE_ID", label: "monthly" },
+      annual: { priceEnv: "STRIPE_PRO_ANNUAL_PRICE_ID", label: "annual" },
+    };
+    const getPlanExpiry = (plan) => {
+      const expiry = new Date();
+      if (plan === "annual") expiry.setFullYear(expiry.getFullYear() + 1);
+      else expiry.setMonth(expiry.getMonth() + 1);
+      return expiry;
+    };
+
     const authHeader = request.headers.get("Authorization");
     const userToken = authHeader ? authHeader.split(" ")[1] : null;
 
     // Decode the JWT payload to get the real Supabase user UUID (the "sub" claim).
-    // We do NOT verify the signature here ÔÇö Supabase still does that on every
+    // We do NOT verify the signature here — Supabase still does that on every
     // REST call made via the `supabase()` helper below, since we forward the
     // same bearer token and RLS enforces auth.uid() server-side. This decode
     // is only so the worker itself can reference the correct UUID (e.g. for
@@ -38,7 +62,7 @@ export default {
         const payloadJson = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
         userId = JSON.parse(payloadJson).sub || null;
       } catch (e) {
-        userId = null; // malformed token ÔÇö requests needing userId will 401 below
+        userId = null; // malformed token — requests needing userId will 401 below
       }
     }
 
@@ -56,10 +80,10 @@ export default {
       return res;
     };
 
-    // Shared Gemini text-generation helper ÔÇö used by ai-apply, ai-resume,
+    // Shared Gemini text-generation helper — used by ai-apply, ai-resume,
     // job ranking, resume scoring, interview prep, and signup autofill.
     // Accepts either a plain text prompt (string) or a multimodal parts
-    // array (for PDF input ÔÇö see /api/profile/autofill).
+    // array (for PDF input — see /api/profile/autofill).
     const callGemini = async (promptOrParts) => {
       const parts = typeof promptOrParts === "string" ? [{ text: promptOrParts }] : promptOrParts;
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
@@ -109,14 +133,16 @@ export default {
             hasGeminiApiKey: !!env.GEMINI_API_KEY,
             hasStripeSecretKey: !!env.STRIPE_SECRET_KEY,
             hasStripeProPriceId: !!env.STRIPE_PRO_PRICE_ID,
+            hasStripeProAnnualPriceId: !!env.STRIPE_PRO_ANNUAL_PRICE_ID,
             hasStripeWebhookSecret: !!env.STRIPE_WEBHOOK_SECRET,
+            appBaseUrl: APP_BASE_URL,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 0c. POST /api/profile/autofill (Signup-time resume scan ÔÇö runs BEFORE
+    // 0c. POST /api/profile/autofill (Signup-time resume scan — runs BEFORE
     // the account exists, so this is intentionally unauthenticated. Accepts
     // either resume_text (pasted) or file_base64 (PDF upload, sent straight
-    // to Gemini's multimodal input ÔÇö no separate PDF parsing library needed).
+    // to Gemini's multimodal input — no separate PDF parsing library needed).
     if (url.pathname === "/api/profile/autofill" && method === "POST") {
       const body = await request.json().catch(() => ({}));
       const { resume_text, file_base64 } = body;
@@ -133,7 +159,7 @@ export default {
         return new Response("File too large", { status: 400, headers: corsHeaders });
       }
 
-      const instruction = `Extract the following from this resume/bio. Be conservative ÔÇö if something isn't clearly stated, leave it as an empty string rather than guessing.
+      const instruction = `Extract the following from this resume/bio. Be conservative — if something isn't clearly stated, leave it as an empty string rather than guessing.
 Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their single strongest/most marketable skill", "bio": "2-3 sentence professional summary in their voice, under 400 characters", "education": "degree or certifications, short", "exp_level": "one of: junior, mid, senior, expert"}`;
 
       const parts = file_base64
@@ -151,7 +177,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 0b. GET /api/profile (merged in from my-sniper-worker ÔÇö that copy is now retired)
+    // 0b. GET /api/profile (merged in from my-sniper-worker — that copy is now retired)
     if (url.pathname === "/api/profile" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const res = await supabase(`profiles?select=*&id=eq.${userId}`);
@@ -297,7 +323,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       // Call Gemini for proposal
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
           contents: [{
             parts: [{
@@ -354,7 +380,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
 
@@ -370,12 +396,17 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       });
     }
 
-    // 3a. POST /api/payment/create-checkout (Stripe Checkout Session)
+    // 3a. POST /api/payment/create-checkout (Stripe Checkout Session — for an
+    // already-logged-in user upgrading from inside the app)
     // FIX (2026-06-27): path was "/payment/create-checkout" (missing the
     // "/api" prefix the frontend and Stripe docs both use) — every click
     // 404'd before it ever reached this handler.
     if (url.pathname === "/api/payment/create-checkout" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const body = await request.json().catch(() => ({}));
+      const plan = PLAN_CONFIG[body.plan] ? body.plan : "monthly";
+      const priceId = env[PLAN_CONFIG[plan].priceEnv];
 
       // FIX (2026-06-27): was env.STRIPE_PRICE_ID (doesn't exist — the secret
       // is actually named STRIPE_PRO_PRICE_ID, confirmed via `wrangler secret
@@ -383,7 +414,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       // every checkout was quietly using a baked-in test price no matter what
       // was configured. Now this requires the real secret and fails loudly
       // (503) instead of silently substituting a price you didn't choose.
-      if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRO_PRICE_ID) {
+      if (!env.STRIPE_SECRET_KEY || !priceId) {
         return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -391,17 +422,22 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const profileRes = await supabase(`profiles?select=full_name,country&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
 
-      const origin = request.headers.get("Origin") || "https://snipejob.app";
-
-      // Create Stripe Checkout Session
+      // FIX (2026-06-27): this used to build the redirect from the request's
+      // Origin header + "/index.html", e.g. "https://626gl1ch.github.io/index.html".
+      // Origin only ever contains scheme+host — it never includes the repo path
+      // segment GitHub Pages serves the app under ("/JOB-FINDER-SAAS-WEB-APP/"),
+      // so every successful payment redirected straight into a 404 instead of
+      // back into the app. APP_BASE_URL (see top of fetch()) is the actual,
+      // correct, full path to the deployed app.
       const stripeBody = new URLSearchParams({
         "mode": "subscription",
-        "line_items[0][price]": env.STRIPE_PRO_PRICE_ID,
+        "line_items[0][price]": priceId,
         "line_items[0][quantity]": "1",
-        "success_url": `${origin}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        "cancel_url": `${origin}/index.html?payment=cancelled`,
+        "success_url": `${APP_BASE_URL}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        "cancel_url": `${APP_BASE_URL}/index.html?payment=cancelled`,
         "client_reference_id": userId,
         "metadata[user_id]": userId,
+        "metadata[plan]": plan,
         "allow_promotion_codes": "true",
       });
 
@@ -427,6 +463,180 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // 3a-pub. POST /api/payment/create-checkout-public (NEW — 2026-06-27)
+    // Anonymous checkout for the sales funnel: there is no account yet at this
+    // point, so this is intentionally unauthenticated. The funnel sends which
+    // plan was clicked ("annual" or "monthly") and the page URL to return to if
+    // the visitor cancels. Stripe collects the buyer's email itself during
+    // Checkout — we never see it until the session comes back paid.
+    // No client_reference_id is set here (there's no user_id to attach yet);
+    // the new account gets linked to this payment by /api/payment/claim-premium
+    // right after signup, on the page Stripe redirects back to.
+    if (url.pathname === "/api/payment/create-checkout-public" && method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const plan = PLAN_CONFIG[body.plan] ? body.plan : null;
+      if (!plan) {
+        return new Response(JSON.stringify({ error: "Invalid plan — expected 'monthly' or 'annual'." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const priceId = env[PLAN_CONFIG[plan].priceEnv];
+      if (!env.STRIPE_SECRET_KEY || !priceId) {
+        return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Only accept the caller's cancel_url if it's a real http(s) URL — it's
+      // just a redirect target so the blast radius of getting this wrong is
+      // low, but we still don't want to hand Stripe something malformed.
+      let cancelUrl = `${APP_BASE_URL}/index.html`;
+      if (typeof body.cancel_url === "string" && /^https?:\/\//i.test(body.cancel_url)) {
+        cancelUrl = body.cancel_url;
+      }
+
+      const stripeBody = new URLSearchParams({
+        "mode": "subscription",
+        "line_items[0][price]": priceId,
+        "line_items[0][quantity]": "1",
+        "success_url": `${APP_BASE_URL}/index.html?premium_signup=1&session_id={CHECKOUT_SESSION_ID}`,
+        "cancel_url": cancelUrl,
+        "metadata[plan]": plan,
+        "metadata[source]": "sales_funnel",
+        "allow_promotion_codes": "true",
+      });
+
+      const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: stripeBody.toString(),
+      });
+
+      const stripeData = await stripeRes.json();
+      if (!stripeRes.ok || !stripeData.url) {
+        console.error("Stripe public checkout error:", JSON.stringify(stripeData).slice(0, 500));
+        return new Response(
+          JSON.stringify({ error: stripeData.error?.message || "Could not create checkout session" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3a-verify. GET /api/payment/verify-session (NEW — 2026-06-27)
+    // Public/unauthenticated by necessity — there's no account/token yet. Only
+    // ever returns information the visitor already has (their own email, the
+    // plan they bought, whether the payment went through) — never anything
+    // about other users. Called by the premium-signup page right after the
+    // Stripe redirect, before any account exists, purely to populate the
+    // signup form and decide whether to show "create your account" vs.
+    // "you already have an account — sign in instead".
+    if (url.pathname === "/api/payment/verify-session" && method === "GET") {
+      const sessionId = url.searchParams.get("session_id");
+      if (!sessionId || !env.STRIPE_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Missing session_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      });
+      const session = await stripeRes.json();
+      if (!stripeRes.ok) {
+        return new Response(JSON.stringify({ error: "Session not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const paid = session.payment_status === "paid";
+      const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
+      const email = session.customer_details?.email || session.customer_email || null;
+
+      let alreadyRegistered = false;
+      if (email) {
+        const existing = await supabase(`profiles?select=id&email=ilike.${encodeURIComponent(email)}`, {
+          headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+        });
+        const rows = await existing.json().catch(() => []);
+        alreadyRegistered = Array.isArray(rows) && rows.length > 0;
+      }
+
+      return new Response(JSON.stringify({ paid, plan, email, already_registered: alreadyRegistered }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3a-claim. POST /api/payment/claim-premium (NEW — 2026-06-27)
+    // Authenticated (by the brand-new account's own token, right after
+    // sb.auth.signUp/signInWithPassword on the premium-signup page). Attaches
+    // an already-paid Stripe Checkout session to that account. Re-verifies
+    // payment directly against Stripe with the secret key — never trusts a
+    // client-supplied "I paid" flag — and guards against the same session
+    // being used to upgrade two different accounts.
+    if (url.pathname === "/api/payment/claim-premium" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const body = await request.json().catch(() => ({}));
+      const sessionId = body.session_id;
+      if (!sessionId || !env.STRIPE_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Missing session_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      });
+      const session = await stripeRes.json();
+      if (!stripeRes.ok || session.payment_status !== "paid") {
+        return new Response(JSON.stringify({ error: "This payment session has not been completed." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const sessionEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+
+      // The account email must match the email Stripe collected for this
+      // payment — otherwise anyone who got hold of a session_id (e.g. from a
+      // shared screenshot) could claim someone else's paid plan on their own,
+      // different account.
+      const myProfileRes = await supabase(`profiles?select=email&id=eq.${userId}`);
+      const myProfile = (await myProfileRes.json())[0];
+      if (!myProfile || myProfile.email.toLowerCase() !== sessionEmail) {
+        return new Response(JSON.stringify({ error: "This payment was made with a different email address than your account." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Atomically claim the session: insert-if-absent into
+      // claimed_stripe_sessions, then check whose user_id actually ended up
+      // attached to it. If it's not ours, someone else (or a duplicate
+      // request) already claimed this exact payment.
+      await supabase("claimed_stripe_sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Prefer": "resolution=ignore-duplicates",
+        },
+        body: JSON.stringify({ session_id: sessionId, user_id: userId }),
+      });
+      const claimCheck = await supabase(`claimed_stripe_sessions?select=user_id&session_id=eq.${sessionId}`, {
+        headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+      });
+      const claimRow = (await claimCheck.json().catch(() => []))[0];
+      if (claimRow && claimRow.user_id !== userId) {
+        return new Response(JSON.stringify({ error: "This payment has already been used to activate a different account." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
+      const expiry = getPlanExpiry(plan);
+
+      await supabase(`profiles?id=eq.${userId}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          current_tier: "paid",
+          plan_type: plan,
+          subscription_expiry: expiry.toISOString(),
+          stripe_customer_id: session.customer || null,
+          stripe_subscription_id: session.subscription || null,
+          signup_source: "sales_funnel",
+        }),
+      });
+
+      return new Response(JSON.stringify({ success: true, plan, current_tier: "paid" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // 3a2. GET /api/payment/status (NEW — 2026-06-27)
     // index.html already calls this right after the Stripe redirect
     // (`/payment/status?session_id=...`) to update the UI immediately, but
@@ -449,13 +659,14 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       // If payment_status === "paid", ensure profile is upgraded immediately
       // (the webhook may still be in-flight — this is the eager path).
       if (stripeRes.ok && session.payment_status === "paid" && session.client_reference_id === userId) {
-        const expiry = new Date();
-        expiry.setMonth(expiry.getMonth() + 1);
+        const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
+        const expiry = getPlanExpiry(plan);
         await supabase(`profiles?id=eq.${userId}`, {
           method: "PATCH",
           headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
           body: JSON.stringify({
             current_tier: "paid",
+            plan_type: plan,
             subscription_expiry: expiry.toISOString(),
             stripe_customer_id: session.customer || null,
             stripe_subscription_id: session.subscription || null,
@@ -511,14 +722,20 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           const session = event.data.object;
           const target_user_id = session.client_reference_id || session.metadata?.user_id;
 
+          // No target_user_id means this came from the anonymous sales-funnel
+          // checkout (/api/payment/create-checkout-public) — there's no
+          // account to attach yet. That gets linked separately by
+          // /api/payment/claim-premium right after the buyer signs up, so
+          // intentionally do nothing here for that case.
           if (target_user_id) {
-            const expiry = new Date();
-            expiry.setMonth(expiry.getMonth() + 1);
+            const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
+            const expiry = getPlanExpiry(plan);
             await supabase(`profiles?id=eq.${target_user_id}`, {
               method: "PATCH",
               headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
               body: JSON.stringify({
                 current_tier: "paid",
+                plan_type: plan,
                 subscription_expiry: expiry.toISOString(),
                 stripe_customer_id: session.customer || null,
                 stripe_subscription_id: session.subscription || null,
@@ -579,7 +796,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // was missing ÔÇö required by the Gemini API
+        headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
           contents: [{
             parts: [
@@ -593,7 +810,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiData = await geminiRes.json();
       const candidateText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!geminiRes.ok || !candidateText) {
-        // e.g. Gemini safety block, quota exceeded, or invalid key ÔÇö
+        // e.g. Gemini safety block, quota exceeded, or invalid key —
         // previously this threw an uncaught TypeError and the client saw a
         // generic 500 with no explanation.
         console.error("Gemini verify-id error:", JSON.stringify(geminiData).slice(0, 500));
@@ -1007,7 +1224,7 @@ Return ONLY a strict JSON array of 5 question strings, no markdown: ["question 1
       return new Response(JSON.stringify({ session_id: session?.id, questions, tier: "pro" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 8. POST /api/interview/answer (Pro only ÔÇö scoring costs a Gemini call
+    // 8. POST /api/interview/answer (Pro only — scoring costs a Gemini call
     // per answer, so this stays behind the paywall even though /start is
     // partly free.)
     if (url.pathname === "/api/interview/answer" && method === "POST") {
@@ -1016,7 +1233,7 @@ Return ONLY a strict JSON array of 5 question strings, no markdown: ["question 1
       const profileRes = await supabase(`profiles?select=current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile || profile.current_tier !== "paid") {
-        return new Response("Pro feature only ÔÇö upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });
+        return new Response("Pro feature only — upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });
       }
 
       const { session_id, question, answer } = await request.json();
@@ -1044,7 +1261,7 @@ Return ONLY strict JSON, no markdown: {"score": 78, "feedback": "one sentence, u
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 9. GET /api/trends (Free for everyone ÔÇö reads from the shared
+    // 9. GET /api/trends (Free for everyone — reads from the shared
     // sector_trends cache table, which a separate daily cron populates.
     // No per-request Gemini cost.)
     if (url.pathname === "/api/trends" && method === "GET") {

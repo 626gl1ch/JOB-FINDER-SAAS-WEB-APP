@@ -1014,6 +1014,23 @@ select.form-input option{background:#2C2C2E;color:var(--ink)}
   .stat-grid{grid-template-columns:1fr}
 }
 
+/* ─── LARGE MONITORS / ULTRA-WIDE ───
+   Marketing sections and the dashboard use full-bleed 5vw side padding with
+   no inner max-width, which looks fine on laptops but stretches grids and
+   text uncomfortably wide on big desktop monitors (1600px+, ultra-wide).
+   This caps just the readable/interactive content, centered, without
+   touching the full-bleed backgrounds (.hero::before/::after etc. still
+   span edge to edge as designed). */
+@media(min-width:1440px){
+  .hero-grid, .hiw-steps, .testi-grid, .plans-grid, .stat-grid, .footer-top,
+  .section-h, .section-sub, .compare-table {
+    max-width:1320px;margin-left:auto;margin-right:auto;
+  }
+}
+@media(min-width:1600px){
+  .dash-main{max-width:1500px;margin-left:auto;margin-right:auto}
+}
+
 /* ─── NAV DROPDOWN ─── */
 .nav-dropdown{position:relative;list-style:none}
 
@@ -2500,6 +2517,64 @@ footer {
 </div>
 </div>
 
+<!-- ════════════════ PREMIUM SIGNUP (sales-funnel buyers land here AFTER paying) ════════════════ -->
+<div class="page" id="pg-premium-signup">
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:480px">
+    <div class="auth-logo"><div class="logo-mark" style="background:linear-gradient(135deg,#7C5CFC,#9b8aff)"><i class="ti ti-crown"></i></div>SnipeJob Pro</div>
+
+    <!-- Verifying the Stripe session — shown briefly on load -->
+    <div id="premsign-loading">
+      <div class="auth-h">Confirming your payment…</div>
+      <div class="auth-sub">One moment — we're verifying everything with Stripe.</div>
+      <div style="display:flex;justify-content:center;padding:30px 0"><i class="ti ti-loader-2" style="font-size:28px;color:var(--vlight);animation:spin 1s linear infinite"></i></div>
+    </div>
+
+    <!-- Payment couldn't be verified / wasn't completed -->
+    <div id="premsign-error" style="display:none">
+      <div class="auth-h">We couldn't confirm that payment.</div>
+      <div class="auth-sub" id="premsign-error-msg">This checkout link looks invalid or expired. No charge was completed.</div>
+      <button class="auth-btn" onclick="go('home')" style="margin-top:8px"><i class="ti ti-arrow-left"></i>&nbsp; Back to SnipeJob</button>
+    </div>
+
+    <!-- Paid, but an account with this email already exists -->
+    <div id="premsign-existing" style="display:none">
+      <div class="auth-h">Payment confirmed 🎉</div>
+      <div class="auth-sub">Good news — you already have a SnipeJob account with <strong id="premsign-existing-email" style="color:var(--ink)"></strong>. Sign in and your Pro access will be there waiting.</div>
+      <button class="auth-btn" onclick="go('signin')" style="margin-top:8px"><i class="ti ti-login"></i>&nbsp; Sign in to activate Pro</button>
+    </div>
+
+    <!-- Main form: paid, new buyer, needs to create their account -->
+    <div id="premsign-form" style="display:none">
+      <div class="auth-h">Payment confirmed 🎉</div>
+      <div class="auth-sub">You're getting <strong id="premsign-plan-label" style="color:var(--vlight)">SnipeJob Pro</strong>. Create your account below to activate it — takes under a minute.</div>
+
+      <div style="margin:18px 0;padding:14px 16px;background:rgba(0,224,150,.08);border:1px solid rgba(0,224,150,.25);border-radius:12px;font-size:13px;color:var(--green);display:flex;align-items:center;gap:10px">
+        <i class="ti ti-circle-check" style="font-size:18px;flex-shrink:0"></i>
+        <span>Payment received. All sectors, unlimited alerts, and AI tools will unlock the moment your account is created.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email (from your payment)</label>
+        <input type="email" class="form-input" id="ps-email" disabled style="opacity:.7;cursor:not-allowed">
+      </div>
+      <div class="form-group"><label class="form-label">Full name</label><input type="text" class="form-input" id="ps-fullname" placeholder="Your name"></div>
+      <div class="form-group"><label class="form-label">Create a password</label><input type="password" class="form-input" id="ps-password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="form-group"><label class="form-label">Confirm password</label><input type="password" class="form-input" id="ps-password2" placeholder="Re-enter your password" autocomplete="new-password"></div>
+      <div class="form-group"><label class="form-label">Country</label>
+        <select class="form-input" id="ps-country">
+          <option>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option><option>Ethiopia</option><option>Tanzania</option><option>India</option><option>Pakistan</option><option>Bangladesh</option><option>Philippines</option><option>United Kingdom</option><option>United States</option><option>Canada</option><option>Australia</option><option>Germany</option><option>France</option>
+        </select>
+      </div>
+
+      <button class="auth-btn" id="premsign-submit-btn" onclick="handlePremiumSignup()"><i class="ti ti-crown"></i>&nbsp; Activate my Pro account</button>
+      <div id="premsign-form-error" style="display:none;margin-top:12px;padding:12px 16px;background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.2);border-radius:10px;font-size:13px;color:rgba(255,120,138,.9);text-align:center"></div>
+      <div class="auth-foot">Already have an account? <span onclick="go('signin')">Sign in instead</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- ════════════════ DASHBOARD ════════════════ -->
 <div class="page" id="pg-dashboard">
 <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeDashSidebar()"></div>
@@ -2559,7 +2634,7 @@ footer {
     <button id="sidebar-toggle-floating" style="position:fixed; left: 15px; top: 75px; z-index: 550; background: var(--bg2); border: 1px solid var(--border); color: var(--ink); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" onclick="toggleDashSidebar()">≡</button>
 
     <!-- AD BANNER (free users) -->
-    <div class="ad-banner" id="ad-banner" onclick="go('upgrade')" style="cursor:pointer">
+    <div class="ad-banner" id="ad-banner" onclick="startProCheckout()" style="cursor:pointer">
       <span>🎯 <strong>Sponsored:</strong> QuickWork — Get 2× more clients with your SnipeJob profile. Try free for 14 days →</span>
       <button class="ad-close" onclick="event.stopPropagation();document.getElementById('ad-banner').style.display='none'">×</button>
     </div>
@@ -2798,7 +2873,7 @@ footer {
 
     <div class="tab-pane" id="tp-sidetask" style="position:relative;">
       <!-- Pro Lock Overlay -->
-      <div id="st-lock-overlay" style="display:none;position:absolute;inset:0;background:rgba(8,7,15,.85);backdrop-filter:blur(8px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;border-radius:16px">
+      <div id="st-lock-overlay" style="display:flex;position:absolute;inset:0;background:rgba(8,7,15,.85);backdrop-filter:blur(8px);z-index:100;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;border-radius:16px">
         <div style="width:80px;height:80px;background:linear-gradient(135deg,rgba(124,92,252,.3),rgba(139,114,255,.15));border:1px solid rgba(124,92,252,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px">
           <i class="ti ti-lock" style="font-size:36px;color:var(--vlight)"></i>
         </div>
@@ -3391,6 +3466,15 @@ function go(pageName) {
   try { closeRailExplore(); } catch(e) {}
   try { if (typeof closeMob === 'function') closeMob(); } catch(e) {}
   try { syncMobileNavVisibility(); } catch(e) {}
+
+  // Hide the site-side-rail and its toggle button while on the dashboard
+  // (the dashboard has its own sidebar — the site rail would overlap it)
+  const siteRail = document.getElementById('site-side-rail');
+  const railToggleBtn = document.getElementById('rail-toggle-btn');
+  const onDash = pageName === 'dashboard';
+  if (siteRail) siteRail.style.display = onDash ? 'none' : '';
+  if (railToggleBtn) railToggleBtn.style.display = onDash ? 'none' : '';
+
   if (pageName === 'dashboard') initDashboard();
 }
 
@@ -3756,6 +3840,7 @@ async function handleSignIn() {
       return;
     }
     window._safeSetToken('user_token', data.session.access_token);
+    await tryClaimPendingPremiumSession();
     toast('Welcome back!', 'ti-check');
     updateNavForAuth(true);
     setTimeout(function() { go('dashboard'); }, 50);
@@ -3990,7 +4075,7 @@ async function initDashboard() {
   if (adBanner) {
     adBanner.style.display = currentProfile.current_tier === 'paid' ? 'none' : 'flex';
     adBanner.style.cursor = 'pointer';
-    adBanner.onclick = () => go('upgrade');
+    adBanner.onclick = () => startProCheckout();
   }
 
   // Update settings plan card to reflect actual tier
@@ -4006,6 +4091,13 @@ async function initDashboard() {
   }
 
   await loadJobs();
+
+  // Ensure Side Task lock overlay reflects actual tier on dashboard load
+  const stOverlay = document.getElementById('st-lock-overlay');
+  if (stOverlay) {
+    const isPro = currentProfile && currentProfile.current_tier === 'paid';
+    stOverlay.style.display = isPro ? 'none' : 'flex';
+  }
 }
 
 /* ─── JOB LOADING & RENDERING ─── */
@@ -4540,6 +4632,162 @@ async function startProCheckout() {
   }
 }
 
+/* ─── SALES-FUNNEL "PAY FIRST, SIGN UP AFTER" FLOW ───
+   Reached via ?premium_signup=1&session_id=... after a successful Stripe
+   Checkout started from the sales funnel (which has no account/login at
+   all — see /api/payment/create-checkout-public in the worker). */
+let _premiumSession = null; // { sessionId, email, plan } once verified
+
+async function initPremiumSignupFlow(sessionId) {
+  go('premium-signup');
+  const loadingEl = document.getElementById('premsign-loading');
+  const errorEl = document.getElementById('premsign-error');
+  const existingEl = document.getElementById('premsign-existing');
+  const formEl = document.getElementById('premsign-form');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (errorEl) errorEl.style.display = 'none';
+  if (existingEl) existingEl.style.display = 'none';
+  if (formEl) formEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_URL}/payment/verify-session?session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.paid) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (errorEl) {
+        errorEl.style.display = 'block';
+        const msgEl = document.getElementById('premsign-error-msg');
+        if (msgEl && data.error) msgEl.textContent = data.error;
+      }
+      return;
+    }
+
+    if (data.already_registered) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (existingEl) {
+        existingEl.style.display = 'block';
+        const emailEl = document.getElementById('premsign-existing-email');
+        if (emailEl) emailEl.textContent = data.email || 'that email address';
+      }
+      return;
+    }
+
+    _premiumSession = { sessionId, email: data.email, plan: data.plan };
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (formEl) formEl.style.display = 'block';
+    const emailInput = document.getElementById('ps-email');
+    if (emailInput) emailInput.value = data.email || '';
+    const planLabel = document.getElementById('premsign-plan-label');
+    if (planLabel) planLabel.textContent = data.plan === 'annual' ? 'SnipeJob Pro — Annual ($90/yr)' : 'SnipeJob Pro — Monthly ($9/mo)';
+  } catch (e) {
+    console.error('Premium signup verify error:', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'block';
+  }
+}
+
+async function handlePremiumSignup() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  if (!_premiumSession || !_premiumSession.sessionId) {
+    return toast('Missing payment session — please use the link from your confirmation email.', 'ti-alert-triangle');
+  }
+
+  const email = _premiumSession.email;
+  const fullName = document.getElementById('ps-fullname')?.value.trim();
+  const password = document.getElementById('ps-password')?.value;
+  const password2 = document.getElementById('ps-password2')?.value;
+  const country = document.getElementById('ps-country')?.value;
+  const errEl = document.getElementById('premsign-form-error');
+  if (errEl) errEl.style.display = 'none';
+
+  if (!fullName) return toast('Please enter your full name.', 'ti-alert-triangle');
+  if (!password || password.length < 8) return toast('Password must be at least 8 characters.', 'ti-alert-triangle');
+  if (password !== password2) return toast('Passwords do not match.', 'ti-alert-triangle');
+
+  const btn = document.getElementById('premsign-submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Creating your account...'; }
+
+  try {
+    // Pro buyers skip the free tier's "pick up to 3 sectors" limit entirely —
+    // they're paying for everything unlocked, so give them everything.
+    const allSectors = ['web','data','video','design','mobile','writing','marketing','cyber','support','va','sales','mgmt','finance','legal'];
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, country, sectors: allSectors, exp_level: 'mid' } }
+    });
+
+    if (error) {
+      if (error.status === 429 || /rate limit/i.test(error.message)) {
+        toast('Too many attempts right now. Please wait a few minutes and try again.', 'ti-clock');
+      } else if (/already registered/i.test(error.message || '')) {
+        toast('An account with this email already exists — sign in to activate Pro.', 'ti-alert-triangle');
+        window.localStorage.setItem('pending_premium_session_id', _premiumSession.sessionId);
+        setTimeout(function() { go('signin'); }, 50);
+      } else {
+        toast(error.message || 'Sign up failed.', 'ti-alert-triangle');
+      }
+      return;
+    }
+
+    if (data.session) {
+      // Email confirmation is disabled on this project — we're logged in
+      // immediately, so claim the payment right now while we have a token.
+      window._safeSetToken('user_token', data.session.access_token);
+      try {
+        await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ session_id: _premiumSession.sessionId }) });
+        try { currentProfile = await apiFetch('/profile'); } catch (e) {}
+        toast('🎉 Welcome to Pro! Your account is fully activated.', 'ti-crown');
+      } catch (claimErr) {
+        // The account exists either way — keep the session id pending so the
+        // next sign-in retries the claim, and let them into the dashboard.
+        console.warn('[SnipeJob] claim-premium failed right after signup:', claimErr.message);
+        window.localStorage.setItem('pending_premium_session_id', _premiumSession.sessionId);
+        toast('Account created — still confirming your Pro access, this can take a moment.', 'ti-info-circle');
+      }
+      updateNavForAuth(true);
+      setTimeout(function() { go('dashboard'); }, 50);
+    } else {
+      // Email confirmation is required on this project — hold the claim
+      // until they confirm and sign in.
+      window.localStorage.setItem('pending_premium_session_id', _premiumSession.sessionId);
+      toast('Check your email to confirm your account, then sign in to activate Pro.', 'ti-mail');
+      go('signin');
+    }
+  } catch (e) {
+    console.error('Premium sign up error:', e);
+    toast('Something went wrong. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-crown"></i>&nbsp; Activate my Pro account'; }
+  }
+}
+
+// Attaches a paid-but-not-yet-claimed sales-funnel session to the now-logged-in
+// account. Safe to call on every login — it's a no-op when nothing is pending.
+async function tryClaimPendingPremiumSession() {
+  const pendingId = window.localStorage.getItem('pending_premium_session_id');
+  if (!pendingId) return;
+  try {
+    const result = await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ session_id: pendingId }) });
+    window.localStorage.removeItem('pending_premium_session_id');
+    if (result && result.success) {
+      try { currentProfile = await apiFetch('/profile'); } catch (e) {}
+      toast('🎉 Pro activated! Enjoy unlimited alerts and AI tools.', 'ti-crown');
+    }
+  } catch (e) {
+    // A 4xx means the worker definitively rejected this claim (payment not
+    // completed, already used, email mismatch) — retrying won't help, so
+    // stop asking. Anything else (network blip, 5xx) is worth retrying on
+    // the next login.
+    if (e.status && e.status >= 400 && e.status < 500) {
+      window.localStorage.removeItem('pending_premium_session_id');
+    }
+    console.warn('[SnipeJob] Pending premium claim not completed:', e.message);
+  }
+}
+
 /* ─── ONE-CLICK AI APPLY (FIX: previously had no trigger button + no handlers) ─── */
 function openAiApply(jobId) {
   if (!currentProfile || currentProfile.current_tier !== 'paid') {
@@ -4642,6 +4890,20 @@ function handleCtaEmail() {
   }
   // ──────────────────────────────────────────────────────────────────
 
+  // ── Sales-funnel buyer landing back from Stripe ─────────────────
+  // Stripe sends paid sales-funnel buyers here with ?premium_signup=1 — this
+  // takes priority over every other bootstrap path below (master session,
+  // normal session restore, etc.) since it's a fresh landing, not a return
+  // visit to resume.
+  const earlyParams = new URLSearchParams(window.location.search);
+  if (earlyParams.get('premium_signup') === '1' && earlyParams.get('session_id')) {
+    const premiumSessionId = earlyParams.get('session_id');
+    window.history.replaceState({}, '', window.location.pathname);
+    initPremiumSignupFlow(premiumSessionId);
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────
+
   // ── Restore master session across page reloads ─────────────────
   const storedToken = window._safeGetToken('user_token');
   if (storedToken === 'master_session_token') {
@@ -4703,6 +4965,11 @@ function handleCtaEmail() {
   } catch (e) {
     currentProfile = null;
   }
+
+  // If a sales-funnel signup got stuck waiting on email confirmation earlier
+  // in this browser, finish attaching their payment now that they have a
+  // live session.
+  await tryClaimPendingPremiumSession();
 
   // Verify Stripe session and eagerly upgrade profile if confirmed
   if (paymentStatus === 'success' && stripeSessionId) {

@@ -65,21 +65,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_customer_id') THEN
         ALTER TABLE public.profiles ADD COLUMN stripe_customer_id TEXT;
     END IF;
-    -- Remove NOT NULL constraint from country if it exists
-    BEGIN
-        ALTER TABLE public.profiles ALTER COLUMN country DROP NOT NULL;
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-    -- Migrate old column names
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='tracks_selected') THEN
-        UPDATE public.profiles SET sectors = tracks_selected WHERE sectors = '{}' OR sectors IS NULL;
+    -- Which subscription plan a paid user is on ('monthly' $9/mo or 'annual'
+    -- $90/yr founding rate). NULL for free users.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='plan_type') THEN
+        ALTER TABLE public.profiles ADD COLUMN plan_type TEXT CHECK (plan_type IN ('monthly', 'annual'));
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='registered_country') THEN
-        UPDATE public.profiles SET country = registered_country WHERE country IS NULL;
+    -- Where the account was created: 'app' (free signup, can upgrade later)
+    -- or 'sales_funnel' (paid first, then created the account).
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='signup_source') THEN
+        ALTER TABLE public.profiles ADD COLUMN signup_source TEXT DEFAULT 'app';
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='identity_status') THEN
-        UPDATE public.profiles SET id_status = identity_status WHERE id_status = 'unverified';
-    END IF;
+    -- NOTE: the old "DROP NOT NULL on country" step and the three legacy
+    -- "migrate old column names" UPDATE blocks (tracks_selected,
+    -- registered_country, identity_status) that used to live here have been
+    -- removed. country was never declared NOT NULL above, and those three
+    -- old column names don't exist anywhere in this schema — both blocks
+    -- were already permanently no-ops on your real database, so dropping
+    -- them changes nothing except making this script purely additive.
 END $$;
 
 -- 2. JOB REPOSITORY TABLE
@@ -126,6 +128,16 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
     target_address TEXT NOT NULL,
     status TEXT CHECK (status IN ('pending', 'disbursed', 'denied')) DEFAULT 'pending',
     handled_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 6. CLAIMED STRIPE SESSIONS — one row per Stripe Checkout Session that has
+-- been used to grant Pro access, so the sales-funnel "pay first, sign up
+-- after" flow can't be used to upgrade two different accounts off one
+-- payment. Service-role only (see /api/payment/claim-premium in worker).
+CREATE TABLE IF NOT EXISTS public.claimed_stripe_sessions (
+    session_id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    claimed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
 -- INDEXES
@@ -194,8 +206,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
+-- Atomic create-or-replace — no DROP TRIGGER needed, and no brief gap where
+-- a new signup could land without this trigger attached.
+CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
@@ -224,6 +237,7 @@ ALTER TABLE public.user_pinned_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.affiliate_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.claimed_stripe_sessions ENABLE ROW LEVEL SECURITY;
 
 -- POLICIES
 DO $$ 
