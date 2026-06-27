@@ -228,6 +228,31 @@ nav{
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;align-items:stretch;
   gap:6px;padding:18px 10px;
+  transition:transform .25s cubic-bezier(.16,1,.3,1);
+}
+.site-side-rail.rail-hidden{
+  transform:translateX(-84px);
+}
+/* Toggle tab button that rides on the right edge of the rail */
+#rail-toggle-btn{
+  position:fixed;top:50%;left:84px;transform:translateY(-50%);
+  z-index:281;
+  width:22px;height:48px;
+  background:rgba(28,28,30,0.92);
+  border:1px solid var(--border);border-left:none;
+  border-radius:0 10px 10px 0;
+  cursor:pointer;color:var(--t2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+  transition:left .25s cubic-bezier(.16,1,.3,1),color .15s,background .15s;
+  backdrop-filter:blur(20px);
+}
+#rail-toggle-btn:hover{color:var(--ink);background:rgba(40,40,44,0.98)}
+.site-side-rail.rail-hidden ~ #rail-toggle-btn,
+body.rail-hidden #rail-toggle-btn{
+  left:0;
+  border-left:1px solid var(--border);
+  border-radius:0 10px 10px 0;
 }
 .rail-item{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
@@ -1708,6 +1733,10 @@ footer {
     </div>
   </div>
 </aside>
+<!-- Rail toggle tab — rides on the right edge of the site-side-rail -->
+<button id="rail-toggle-btn" onclick="toggleSiteRail()" title="Toggle sidebar" aria-label="Toggle sidebar">
+  <i class="ti ti-chevron-left" id="rail-toggle-icon"></i>
+</button>
 
 <!-- mobile nav overlay -->
 <div id="mob-nav" style="display:none;position:fixed;top:62px;left:0;right:0;background:rgba(255,255,255,.96);border-bottom:1px solid var(--border);z-index:250;padding:20px 5vw;backdrop-filter:blur(20px)">
@@ -3209,6 +3238,19 @@ function closeRailExplore() {
 
 // Close on Escape key
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRailExplore(); });
+
+/* ─── SITE SIDE RAIL TOGGLE ─── */
+function toggleSiteRail() {
+  const rail = document.getElementById('site-side-rail');
+  const btn  = document.getElementById('rail-toggle-btn');
+  const icon = document.getElementById('rail-toggle-icon');
+  if (!rail) return;
+  const hidden = rail.classList.toggle('rail-hidden');
+  if (btn)  btn.style.left  = hidden ? '0px' : '84px';
+  if (icon) {
+    icon.className = hidden ? 'ti ti-chevron-right' : 'ti ti-chevron-left';
+  }
+}
 
 /* ─── SHARED API HELPER ───
    Centralizes: auth header, a request timeout, and correct error handling. */

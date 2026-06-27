@@ -369,7 +369,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       // Create Stripe Checkout Session
       const stripeBody = new URLSearchParams({
         "mode": "subscription",
-        "line_items[0][price]": env.STRIPE_PRICE_ID || "price_1TlpyNJTMtNFrTYFKT0DELxn",
+        "line_items[0][price]": env.STRIPE_PRO_PRICE_ID || "price_1TlpyNJTMtNFrTYFKT0DELxn",
         "line_items[0][quantity]": "1",
         "success_url": `${origin}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         "cancel_url": `${origin}/index.html?payment=cancelled`,
