@@ -307,3 +307,98 @@ BEGIN
         ALTER TABLE public.withdrawal_requests ADD COLUMN scheduled_payout_date DATE;
     END IF;
 END $$;
+
+-- ============================================================
+-- SUBSCRIPTION EXPIRY TRACKING (run this after the main schema)
+-- ============================================================
+
+-- Add stripe_subscription_id for webhook cancellation lookups
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_subscription_id') THEN
+        ALTER TABLE public.profiles ADD COLUMN stripe_subscription_id TEXT;
+    END IF;
+    -- Flag: has a 3-day expiry warning email already been sent this cycle?
+    -- Resets to FALSE on each successful renewal so warnings re-arm automatically.
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='expiry_warning_sent') THEN
+        ALTER TABLE public.profiles ADD COLUMN expiry_warning_sent BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;
+
+-- Index on stripe_customer_id so webhook lookups are fast
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer ON public.profiles(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_subscription_expiry ON public.profiles(subscription_expiry);
+
+-- ============================================================
+-- SUBSCRIPTION EXPIRY CRON JOB
+-- STEP 1: Enable pg_cron in Supabase Dashboard → Database → Extensions
+-- STEP 2: Run the function + cron schedule below
+-- ============================================================
+
+-- Function: find expiring accounts, call Worker to send warning email,
+-- and downgrade fully-expired accounts back to free tier.
+CREATE OR REPLACE FUNCTION public.check_subscription_expiry()
+RETURNS void AS $$
+DECLARE
+    rec RECORD;
+    worker_url TEXT := 'https://my-sniper-worker.daniellancce1.workers.dev';
+    internal_secret TEXT := current_setting('app.worker_internal_secret', true);
+BEGIN
+    -- 1. Send 3-day expiry warnings to paid users approaching their expiry date
+    FOR rec IN
+        SELECT id, email, full_name, subscription_expiry, plan_type
+        FROM public.profiles
+        WHERE current_tier = 'paid'
+          AND subscription_expiry IS NOT NULL
+          AND subscription_expiry <= (NOW() + INTERVAL '3 days')
+          AND subscription_expiry > NOW()
+          AND (expiry_warning_sent IS NULL OR expiry_warning_sent = FALSE)
+    LOOP
+        -- POST to the Worker's internal email endpoint
+        PERFORM net.http_post(
+            url     := worker_url || '/api/internal/send-expiry-email',
+            body    := json_build_object(
+                           'user_id',     rec.id,
+                           'email',       rec.email,
+                           'full_name',   rec.full_name,
+                           'expiry_date', rec.subscription_expiry,
+                           'plan_type',   rec.plan_type
+                       )::text,
+            headers := json_build_object(
+                           'Content-Type',       'application/json',
+                           'X-Internal-Secret',  internal_secret
+                       )::jsonb
+        );
+
+        -- Mark warned so we don't email them again this cycle
+        UPDATE public.profiles SET expiry_warning_sent = TRUE WHERE id = rec.id;
+    END LOOP;
+
+    -- 2. Downgrade accounts whose subscription has fully expired
+    UPDATE public.profiles
+    SET current_tier       = 'free',
+        expiry_warning_sent = FALSE   -- reset so warning arms again if they resubscribe
+    WHERE current_tier = 'paid'
+      AND subscription_expiry IS NOT NULL
+      AND subscription_expiry < NOW();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Store your Worker URL + internal secret as DB settings
+-- Run these two lines ONCE with your actual values:
+-- ALTER DATABASE postgres SET app.worker_url = 'https://my-sniper-worker.daniellancce1.workers.dev';
+-- ALTER DATABASE postgres SET app.worker_internal_secret = 'YOUR_WORKER_INTERNAL_SECRET_VALUE';
+
+-- Schedule the expiry check to run every day at 08:00 UTC
+-- Only run this AFTER enabling pg_cron in Dashboard → Database → Extensions
+SELECT cron.schedule(
+    'snipejob-subscription-expiry-check',   -- job name (unique)
+    '0 8 * * *',                            -- every day at 08:00 UTC
+    'SELECT public.check_subscription_expiry();'
+);
+
+-- Worker endpoint for sending expiry emails
+-- (Already handled in the Worker src/index.js — POST /api/internal/send-expiry-email)
+-- Add to Cloudflare Worker secrets:
+--   npx wrangler secret put RESEND_API_KEY
+--   npx wrangler secret put WORKER_INTERNAL_SECRET

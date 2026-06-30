@@ -630,7 +630,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           subscription_expiry: expiry.toISOString(),
           stripe_customer_id: session.customer || null,
           stripe_subscription_id: session.subscription || null,
-          signup_source: "sales_funnel",
+          signup_source: session.metadata?.source === "sales_funnel" ? "sales_funnel" : "app",
         }),
       });
 
@@ -718,15 +718,12 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         // Parse the verified Stripe event
         const event = JSON.parse(rawBody);
 
-        if (event.type === "checkout.session.completed" || event.type === "invoice.payment_succeeded") {
+        // checkout.session.completed fires when a NEW subscription starts in-app
+        // (client_reference_id holds the user UUID). Sales-funnel sessions have
+        // no client_reference_id — they are linked later by /api/payment/claim-premium.
+        if (event.type === "checkout.session.completed") {
           const session = event.data.object;
           const target_user_id = session.client_reference_id || session.metadata?.user_id;
-
-          // No target_user_id means this came from the anonymous sales-funnel
-          // checkout (/api/payment/create-checkout-public) — there's no
-          // account to attach yet. That gets linked separately by
-          // /api/payment/claim-premium right after the buyer signs up, so
-          // intentionally do nothing here for that case.
           if (target_user_id) {
             const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
             const expiry = getPlanExpiry(plan);
@@ -739,9 +736,41 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
                 subscription_expiry: expiry.toISOString(),
                 stripe_customer_id: session.customer || null,
                 stripe_subscription_id: session.subscription || null,
+                signup_source: "app",
               }),
             });
           }
+        }
+
+        // invoice.payment_succeeded fires on every subscription renewal.
+        // The invoice object has customer + subscription but NOT metadata/client_reference_id,
+        // so we look up the user by stripe_customer_id instead.
+        if (event.type === "invoice.payment_succeeded") {
+          const invoice = event.data.object;
+          // billing_reason = 'subscription_create' fires at the same moment as
+          // checkout.session.completed — skip it so we don't double-upgrade.
+          if (invoice.billing_reason === "subscription_create") { /* skip duplicate — checkout.session.completed handles this */ }
+          } else {
+            const customerId = invoice.customer;
+            if (customerId) {
+              const profileSearch = await supabase(`profiles?select=id,plan_type&stripe_customer_id=eq.${customerId}`, {
+                headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+              });
+              const found = (await profileSearch.json().catch(() => []))[0];
+              if (found) {
+                const plan = found.plan_type || "monthly";
+                const expiry = getPlanExpiry(plan);
+                await supabase(`profiles?id=eq.${found.id}`, {
+                  method: "PATCH",
+                  headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+                  body: JSON.stringify({
+                    current_tier: "paid",
+                    subscription_expiry: expiry.toISOString(),
+                  }),
+                });
+              }
+            }
+          } // end else
         }
 
         if (event.type === "customer.subscription.deleted") {
@@ -1273,6 +1302,50 @@ Return ONLY strict JSON, no markdown: {"score": 78, "feedback": "one sentence, u
         return new Response(JSON.stringify({ sector, trending_skills: [], recommended_certs: [], summary: "Trends for this sector haven't been generated yet." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(rows[0]), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ─── INTERNAL: subscription expiry email (called by Supabase pg_cron) ────
+    // Protected by X-Internal-Secret header. NOT a public endpoint.
+    if (url.pathname === "/api/internal/send-expiry-email" && method === "POST") {
+      const secret = request.headers.get("X-Internal-Secret");
+      if (!env.WORKER_INTERNAL_SECRET || secret !== env.WORKER_INTERNAL_SECRET) {
+        return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      }
+
+      if (!env.RESEND_API_KEY) {
+        console.warn("RESEND_API_KEY not set — expiry email not sent");
+        return new Response(JSON.stringify({ sent: false, reason: "RESEND_API_KEY not configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const body = await request.json().catch(() => ({}));
+      const { email, full_name, expiry_date, plan_type } = body;
+      if (!email) return new Response("Missing email", { status: 400, headers: corsHeaders });
+
+      const expiryFormatted = new Date(expiry_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const planLabel = plan_type === "annual" ? "Annual" : "Monthly";
+      const renewalUrl = `${APP_BASE_URL}/index.html#upgrade`;
+
+      const emailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "SnipeJob <noreply@snipejob.app>",
+          to: [email],
+          subject: `Your SnipeJob Pro ${planLabel} access expires in 3 days`,
+          html: `<!DOCTYPE html><html><body style="background:#1C1C1E;color:#F2F2F7;font-family:Arial,sans-serif;margin:0;padding:40px 20px"><div style="max-width:480px;margin:0 auto"><div style="font-weight:900;font-size:22px;background:linear-gradient(135deg,#7C5CFC,#00D4FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:24px">SnipeJob</div><h1 style="font-size:20px;margin:0 0 12px">Your Pro access expires on ${expiryFormatted}</h1><p style="color:#AEAEB2;font-size:14px;line-height:1.6;margin:0 0 24px">Hi ${full_name || "there"},<br><br>Your SnipeJob Pro ${planLabel} plan expires on <strong>${expiryFormatted}</strong>. After that your account moves to the free tier and you'll lose access to AI proposals, one-click apply, Side Task earnings, and interview prep.</p><a href="${renewalUrl}" style="display:inline-block;background:linear-gradient(135deg,#7C5CFC,#00D4FF);color:#0d0d12;font-weight:700;font-size:15px;text-decoration:none;border-radius:999px;padding:14px 28px;margin-bottom:24px">Renew my Pro access →</a><p style="color:#6B6B70;font-size:12px;line-height:1.6">If you've already renewed or cancelled intentionally, you can ignore this. Questions? Reply to this email.</p></div></body></html>`,
+        }),
+      });
+
+      if (!emailRes.ok) {
+        const errText = await emailRes.text().catch(() => "");
+        console.error("Resend email error:", errText.slice(0, 300));
+        return new Response(JSON.stringify({ sent: false, error: errText }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ sent: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response("Not Found", { status: 404, headers: corsHeaders });

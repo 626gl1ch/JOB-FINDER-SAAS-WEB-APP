@@ -1,3 +1,8 @@
+// ================================================================
+//  PROJECT: SNIPEJOB SAAS -- job-scraping cron script
+//  Save this file as: scraper.js (repo root)
+//  Run by: .github/workflows/sniper-cron.yml every 15 minutes
+// ================================================================
 const axios = require('axios');
 const cheerio = require('cheerio');
 const Parser = require('rss-parser');
@@ -25,7 +30,13 @@ const SECTORS = {
 };
 
 async function scrapeReddit() {
-  const subreddits = ['forhire', 'freelance_jobs', 'remotejs', 'designjobs', 'videoteditingjobs'];
+  // FIX (2026-06-28): 'videoteditingjobs' was a typo -- the real subreddit
+  // is r/videoeditingjobs (this is also the exact name your own sales
+  // funnel FAQ advertises as one of the 5 scanned sources). The typo'd name
+  // 404s on Reddit, so this source has been silently contributing zero
+  // jobs the whole time -- caught by the try/catch below and logged as an
+  // error, never surfaced anywhere a person would see it.
+  const subreddits = ['forhire', 'freelance_jobs', 'remotejs', 'designjobs', 'videoeditingjobs'];
   const jobs = [];
 
   for (const sub of subreddits) {

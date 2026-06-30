@@ -2167,7 +2167,7 @@ footer {
         <div class="plan-feat"><i class="ti ti-check" style="color:var(--lime)"></i>Priority alert delivery (fastest queue)</div>
         <div class="plan-feat"><i class="ti ti-check" style="color:var(--lime)"></i>Full project manager (open + closed)</div>
         <div class="plan-feat"><i class="ti ti-check" style="color:var(--lime)"></i>Side Task 30% earnings — all tasks</div>
-        <button class="plan-btn pro" onclick="startProCheckout()">Start 7-day free trial</button>
+        <button class="plan-btn pro" onclick="go('upgrade')">Get Pro — $9/month</button>
       </div>
     </div>
   </div>
@@ -2925,13 +2925,21 @@ footer {
       <div style="max-width:580px">
         <div class="settings-card">
           <div class="settings-sect">Personal info</div>
-          <div class="form-group"><label class="form-label">Display name</label><input class="form-input" type="text" value="Adewale Okonkwo"></div>
-          <div class="form-group"><label class="form-label">Email address</label><input class="form-input" type="email" value="adewale@email.com"></div>
-          <div class="form-group"><label class="form-label">Country</label><select class="form-input"><option selected>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option></select></div>
-          <div class="form-group"><label class="form-label">Phone number (for Side Task verification)</label><input class="form-input" type="tel" value="+234 801 234 5678"></div>
+          <div class="form-group"><label class="form-label">Display name</label><input class="form-input" type="text" id="cfg-fullname" placeholder="Your full name"></div>
+          <div class="form-group"><label class="form-label">Email address</label><input class="form-input" type="email" id="cfg-email" placeholder="you@example.com" disabled style="opacity:.6;cursor:not-allowed"></div>
+          <div class="form-group"><label class="form-label">Primary skill</label><input class="form-input" type="text" id="cfg-skill" placeholder="e.g. React developer"></div>
+          <div class="form-group"><label class="form-label">Country</label>
+            <select class="form-input" id="cfg-country">
+              <option value="">Select country…</option>
+              <option>Nigeria</option><option>Ghana</option><option>Kenya</option><option>South Africa</option><option>Ethiopia</option><option>Tanzania</option><option>India</option><option>Pakistan</option><option>Bangladesh</option><option>Philippines</option><option>United Kingdom</option><option>United States</option><option>Canada</option><option>Australia</option><option>Germany</option><option>France</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Bio / professional summary</label><textarea class="form-input" id="cfg-bio" rows="3" placeholder="2-3 sentence professional summary" style="resize:vertical"></textarea></div>
+          <div id="settings-save-status" style="display:none;margin-bottom:10px;font-size:13px;color:var(--green)"><i class="ti ti-check"></i> Saved successfully</div>
+          <button class="auth-btn" style="max-width:200px;padding:12px 24px;font-size:14px" onclick="saveProfileSettings()"><i class="ti ti-device-floppy"></i>&nbsp; Save changes</button>
         </div>
           <div class="settings-card">
-            <div class="settings-sect">Job sectors <span style="font-weight:400;color:var(--t3);font-size:11px;text-transform:none;letter-spacing:0">(3/3 selected — Free plan)</span></div>
+            <div class="settings-sect">Job sectors <span style="font-weight:400;color:var(--t3);font-size:11px;text-transform:none;letter-spacing:0" id="cfg-sector-label">(select up to 3 — Free plan)</span></div>
             <div class="sector-picker">
               <label class="sec-opt"><input type="checkbox" value="web" onchange="handleSectorCheck(this)"> Web Development</label>
               <label class="sec-opt"><input type="checkbox" value="data" onchange="handleSectorCheck(this)"> Data & AI</label>
@@ -2948,7 +2956,7 @@ footer {
               <label class="sec-opt"><input type="checkbox" value="finance" onchange="handleSectorCheck(this)"> Finance & Accounting</label>
               <label class="sec-opt"><input type="checkbox" value="legal" onchange="handleSectorCheck(this)"> Legal & Compliance</label>
             </div>
-            <div class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer"><i class="ti ti-lock"></i>Upgrade to Pro to unlock all job sectors and unlimited alerts</div>
+            <div id="cfg-sector-lock" class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer;display:none"><i class="ti ti-lock"></i>Upgrade to Pro to unlock all job sectors and unlimited alerts</div>
           </div>
         <div class="settings-card">
           <div class="settings-sect">Alert preferences</div>
@@ -2958,17 +2966,17 @@ footer {
             <div style="display:flex;align-items:center;justify-content:space-between;font-size:14px;color:var(--t2)"><span>Side Task completion alerts</span><div style="width:42px;height:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:50px;position:relative;cursor:pointer"><div style="width:18px;height:18px;background:var(--t3);border-radius:50%;position:absolute;top:2px;left:3px"></div></div></div>
           </div>
         </div>
-        <div class="settings-card">
+        <div class="settings-card" id="cfg-plan-card">
           <div class="settings-sect">Current plan</div>
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
             <div>
-              <div style="font-size:15px;font-weight:700;color:var(--ink)">Free plan</div>
-              <div style="font-size:13px;color:var(--t2);margin-top:4px">20 alerts / 2h · 3 sectors · Ads enabled</div>
+              <div style="font-size:15px;font-weight:700;color:var(--ink)" id="cfg-plan-name">Free plan</div>
+              <div style="font-size:13px;color:var(--t2);margin-top:4px" id="cfg-plan-desc">20 alerts / 2h · 3 sectors · Ads enabled</div>
             </div>
-            <button class="jbtn jbtn-v" onclick="go('signup')">Upgrade to Pro →</button>
+            <button class="jbtn jbtn-v" id="cfg-plan-btn" onclick="go('upgrade')">Upgrade to Pro →</button>
           </div>
+          <div id="cfg-expiry-line" style="display:none;margin-top:10px;font-size:12px;color:var(--t3)"></div>
         </div>
-        <button class="auth-btn" style="max-width:200px;padding:12px 24px;font-size:14px">Save changes</button>
       </div>
     </div>
 
@@ -3011,39 +3019,45 @@ footer {
   <div class="auth-card" style="max-width:540px">
     <div class="auth-logo"><div class="logo-mark" style="background:linear-gradient(135deg,#7C5CFC,#9b8aff)"><i class="ti ti-rocket"></i></div>SnipeJob Pro</div>
     <div class="auth-h" style="font-size:2rem">Go Unlimited.</div>
-    <div class="auth-sub">Unlock all sectors, unlimited job alerts, AI apply, and Side Task earnings — <strong style="color:var(--vlight)">$9/month</strong>. Cancel anytime.</div>
+    <div class="auth-sub">Unlock all sectors, unlimited job alerts, AI apply, and Side Task earnings. Cancel anytime.</div>
 
     <!-- Features list -->
-    <div style="display:flex;flex-direction:column;gap:10px;margin:24px 0 28px">
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
-        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
-        <span>Unlimited job alerts across <strong style="color:var(--ink)">all 14 sectors</strong></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
-        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
-        <span>One-click <strong style="color:var(--ink)">AI-written proposals</strong> for every job</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
-        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
-        <span>Side Task micro-earnings with <strong style="color:var(--ink)">instant payouts</strong></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
-        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
-        <span>AI resume rewriter + tailored <strong style="color:var(--ink)">interview prep</strong></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)">
-        <span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span>
-        <span>Zero ads — <strong style="color:var(--ink)">clean, distraction-free</strong> dashboard</span>
-      </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:20px 0 24px">
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Unlimited job alerts across <strong style="color:var(--ink)">all 14 sectors</strong></span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>One-click <strong style="color:var(--ink)">AI-written proposals</strong> for every job</span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Side Task micro-earnings with <strong style="color:var(--ink)">instant payouts</strong></span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>AI resume rewriter + tailored <strong style="color:var(--ink)">interview prep</strong></span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Zero ads — <strong style="color:var(--ink)">clean, distraction-free</strong> dashboard</span></div>
     </div>
 
-    <!-- Price display -->
-    <div style="text-align:center;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(124,92,252,.1),rgba(139,114,255,.05));border:1px solid rgba(124,92,252,.25);border-radius:16px">
-      <div style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:900;color:var(--ink);letter-spacing:-.05em">$9<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/mo</span></div>
-      <div style="font-size:12px;color:var(--t3);margin-top:4px">Billed monthly · Cancel anytime · Secure via Stripe</div>
+    <!-- Plan toggle: Monthly / Annual -->
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button id="plan-toggle-monthly" onclick="selectUpgradePlan('monthly')" style="flex:1;padding:14px 10px;border-radius:12px;border:2px solid var(--violet);background:rgba(124,92,252,.15);color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;transition:all .2s">
+        <div>Monthly</div><div style="font-size:11px;font-weight:400;color:var(--t2);margin-top:2px">$9 / mo</div>
+      </button>
+      <button id="plan-toggle-annual" onclick="selectUpgradePlan('annual')" style="flex:1;padding:14px 10px;border-radius:12px;border:2px solid var(--border);background:transparent;color:var(--t2);font-weight:700;font-size:14px;cursor:pointer;transition:all .2s;position:relative">
+        <div>Annual</div><div style="font-size:11px;font-weight:400;color:var(--t2);margin-top:2px">$90 / yr — save 17%</div>
+        <span style="position:absolute;top:-10px;right:8px;background:var(--lime);color:#08070F;font-size:9px;font-weight:800;padding:2px 7px;border-radius:50px;letter-spacing:.05em">BEST VALUE</span>
+      </button>
     </div>
 
-    <button class="auth-btn" id="checkout-btn" onclick="startProCheckout()"><i class="ti ti-lock"></i>&nbsp; Continue to Secure Checkout →</button>
+    <!-- Price display (updates with plan toggle) -->
+    <div style="text-align:center;margin-bottom:20px;padding:20px;background:linear-gradient(135deg,rgba(124,92,252,.1),rgba(139,114,255,.05));border:1px solid rgba(124,92,252,.25);border-radius:16px">
+      <div id="upgrade-price-display" style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:900;color:var(--ink);letter-spacing:-.05em">$9<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/mo</span></div>
+      <div id="upgrade-price-sub" style="font-size:12px;color:var(--t3);margin-top:4px">Billed monthly · Cancel anytime · Secure via Stripe</div>
+    </div>
+
+    <!-- Stripe checkout form (always shown, crypto removed — payment via Stripe only) -->
+    <div id="stripe-form">
+      <button class="auth-btn" id="checkout-btn" onclick="startProCheckout()"><i class="ti ti-lock"></i>&nbsp; Continue to Secure Checkout →</button>
+    </div>
+    <!-- Crypto placeholder (hidden by default, shown only if selectPayment('crypto') called) -->
+    <div id="crypto-form" style="display:none;padding:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;font-size:13.5px;color:var(--t2);text-align:center">
+      <i class="ti ti-currency-bitcoin" style="font-size:24px;color:#F7931A;display:block;margin-bottom:10px"></i>
+      Send exact USDT (TRC-20) to the address below, then message support with your transaction ID. Pro is activated manually within a few hours.
+      <div style="margin-top:10px;font-size:11px;background:rgba(255,255,255,.06);border-radius:8px;padding:10px;word-break:break-all;color:var(--ink);font-family:monospace">TRX: TQnP4...xD9kL2 <span style="color:var(--t3)">(contact support for address)</span></div>
+    </div>
+
     <div id="upgrade-error" style="display:none;margin-top:12px;padding:12px 16px;background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.2);border-radius:10px;font-size:13px;color:rgba(255,120,138,.9);text-align:center"></div>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--t3)"><i class="ti ti-shield-lock" style="font-size:13px"></i> Payments processed securely by Stripe. We never store card details.</div>
     <div class="auth-back" onclick="go('dashboard')">← Back to dashboard</div>
@@ -3311,10 +3325,13 @@ window.addEventListener('scroll', () => {
     }
 }, { passive: true });
 
-/* ─── API CONFIG ─── */
-const API_URL = 'https://my-sniper-worker.daniellancce1.workers.dev/api'; 
-const SUPABASE_URL = 'https://mdmpcxtjwnovbhidwwhj.supabase.co'; // ADD YOUR SUPABASE URL HERE
-const SUPABASE_ANON_KEY = 'sb_publishable_6l7eSezczJta6rW2gomSqA_btj4X1h_'; // ADD YOUR SUPABASE ANON KEY HERE
+/* ─── API CONFIG ─────────────────────────────────────────────────────────────
+   UPDATE THESE THREE VALUES IF YOU CHANGE YOUR WORKER URL OR SUPABASE PROJECT
+   ───────────────────────────────────────────────────────────────────────── */
+const API_URL        = 'https://my-sniper-worker.daniellancce1.workers.dev/api';
+const SUPABASE_URL   = 'https://mdmpcxtjwnovbhidwwhj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_6l7eSezczJta6rW2gomSqA_btj4X1h_';
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 // Initialize Supabase safely
 let sb;
@@ -4087,10 +4104,13 @@ async function initDashboard() {
     if (planLine) planLine.innerHTML = '<span style="color:var(--vlight);font-weight:700">✦ Pro Plan</span>';
     if (subLine) subLine.textContent = 'Unlimited alerts · All sectors · Zero ads';
     const upgradeBtn = settingsPlanCard.querySelector('button');
-    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open('https://billing.stripe.com/p/login', '_blank'); }
+    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open('https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg', '_blank'); }
   }
 
   await loadJobs();
+
+  // Pre-fill settings tab with real profile data
+  populateSettingsTab();
 
   // Ensure Side Task lock overlay reflects actual tier on dashboard load
   const stOverlay = document.getElementById('st-lock-overlay');
@@ -4348,14 +4368,124 @@ function dTab(tabName) {
     if (overlay) overlay.style.display = isPro ? 'none' : 'flex';
     if (isPro) loadSideTasks();
   }
+  if (tabName === 'settings') {
+    populateSettingsTab();
+  }
 }
 
 /* ─── SIGNUP SECTOR PICKER (max 3 on free plan) ─── */
 function handleSectorCheck(checkbox) {
-  const checked = document.querySelectorAll('.sec-opt input:checked');
-  if (checked.length > 3) {
-    checkbox.checked = false;
-    toast('Free plan allows up to 3 sectors. Upgrade to Pro for all sectors.', 'ti-lock');
+  const isPro = currentProfile && currentProfile.current_tier === 'paid';
+  if (!isPro) {
+    const checked = document.querySelectorAll('.sec-opt input:checked');
+    if (checked.length > 3) {
+      checkbox.checked = false;
+      toast('Free plan allows up to 3 sectors. Upgrade to Pro for all sectors.', 'ti-lock');
+    }
+  }
+}
+
+/* ─── SETTINGS: Populate form from live profile data ─── */
+function populateSettingsTab() {
+  if (!currentProfile) return;
+  const n = document.getElementById('cfg-fullname');
+  const e = document.getElementById('cfg-email');
+  const s = document.getElementById('cfg-skill');
+  const c = document.getElementById('cfg-country');
+  const b = document.getElementById('cfg-bio');
+
+  if (n) n.value = currentProfile.full_name || '';
+  if (e) e.value = currentProfile.email || '';
+  if (s) s.value = currentProfile.primary_skill || '';
+  if (c) c.value = currentProfile.country || '';
+  if (b) b.value = currentProfile.bio || '';
+
+  // Tick the user's saved sectors
+  const selectedSectors = currentProfile.sectors || [];
+  document.querySelectorAll('#tp-settings .sec-opt input').forEach(cb => {
+    cb.checked = selectedSectors.includes(cb.value);
+  });
+
+  const isPro = currentProfile.current_tier === 'paid';
+
+  // Sector label
+  const labelEl = document.getElementById('cfg-sector-label');
+  if (labelEl) labelEl.textContent = isPro ? '(all sectors unlocked — Pro)' : `(${selectedSectors.length}/3 selected — Free plan)`;
+
+  // Sector lock banner
+  const lockEl = document.getElementById('cfg-sector-lock');
+  if (lockEl) lockEl.style.display = isPro ? 'none' : 'block';
+
+  // Plan card
+  const planNameEl = document.getElementById('cfg-plan-name');
+  const planDescEl = document.getElementById('cfg-plan-desc');
+  const planBtnEl  = document.getElementById('cfg-plan-btn');
+  const expiryEl   = document.getElementById('cfg-expiry-line');
+
+  if (isPro) {
+    const planLabel = currentProfile.plan_type === 'annual' ? 'Pro — Annual Plan' : 'Pro — Monthly Plan';
+    if (planNameEl) planNameEl.innerHTML = `<span style="color:var(--vlight)">✦ ${planLabel}</span>`;
+    if (planDescEl) planDescEl.textContent = 'Unlimited alerts · All 14 sectors · AI tools · Zero ads';
+    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open('https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg', '_blank'); }
+    if (expiryEl && currentProfile.subscription_expiry) {
+      const exp = new Date(currentProfile.subscription_expiry);
+      expiryEl.innerHTML = `<i class="ti ti-calendar" style="font-size:12px"></i> Renews / expires: ${exp.toLocaleDateString(undefined, {year:'numeric',month:'long',day:'numeric'})}`;
+      expiryEl.style.display = 'block';
+    }
+  } else {
+    if (planNameEl) planNameEl.textContent = 'Free plan';
+    if (planDescEl) planDescEl.textContent = '20 alerts / 2h · 3 sectors · Ads enabled';
+    if (planBtnEl)  { planBtnEl.textContent = 'Upgrade to Pro →'; planBtnEl.onclick = () => go('upgrade'); }
+    if (expiryEl)   expiryEl.style.display = 'none';
+  }
+}
+
+/* ─── SETTINGS: Save profile changes ─── */
+async function saveProfileSettings() {
+  if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  const session = await refreshSession();
+  if (!session) { go('signin'); return; }
+
+  const fullName = document.getElementById('cfg-fullname')?.value.trim();
+  const primarySkill = document.getElementById('cfg-skill')?.value.trim();
+  const country = document.getElementById('cfg-country')?.value;
+  const bio = document.getElementById('cfg-bio')?.value.trim();
+  const sectors = Array.from(document.querySelectorAll('#tp-settings .sec-opt input:checked')).map(el => el.value);
+
+  const isPro = currentProfile && currentProfile.current_tier === 'paid';
+  if (!isPro && sectors.length > 3) {
+    return toast('Free plan allows up to 3 sectors.', 'ti-lock');
+  }
+
+  const btn = event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Saving...'; }
+
+  const statusEl = document.getElementById('settings-save-status');
+  if (statusEl) statusEl.style.display = 'none';
+
+  try {
+    const updated = await apiFetch('/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ full_name: fullName, primary_skill: primarySkill, country, bio, sectors }),
+    });
+    Object.assign(currentProfile, updated);
+    populateSettingsTab();
+    if (statusEl) { statusEl.style.display = 'block'; setTimeout(() => { if(statusEl) statusEl.style.display = 'none'; }, 3000); }
+
+    // Update greeting name in dashboard header
+    const greetEl = document.querySelector('.dash-greeting');
+    if (greetEl && fullName) greetEl.textContent = `Welcome back, ${fullName.split(' ')[0]} 👋`;
+
+    // Update avatar initials
+    const userAvEl = document.querySelector('.user-av');
+    if (userAvEl && fullName) {
+      const parts = fullName.trim().split(' ');
+      userAvEl.textContent = parts.length >= 2 ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase() : parts[0].slice(0,2).toUpperCase();
+    }
+  } catch (e) {
+    toast(e.message || 'Could not save settings. Please try again.', 'ti-alert-triangle');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i>&nbsp; Save changes'; }
   }
 }
 
@@ -4586,16 +4716,41 @@ async function submitKyc() {
   }
 }
 
-/* ─── PRO UPGRADE / PAYMENT (FIX: previously referenced but never defined) ─── */
+/* ─── PRO UPGRADE / PAYMENT ─── */
 let selectedPaymentMethod = 'stripe';
+let selectedUpgradePlan = 'monthly'; // 'monthly' | 'annual'
+
+function selectUpgradePlan(plan) {
+  selectedUpgradePlan = plan;
+  const monthlyBtn = document.getElementById('plan-toggle-monthly');
+  const annualBtn  = document.getElementById('plan-toggle-annual');
+  const priceEl    = document.getElementById('upgrade-price-display');
+  const subEl      = document.getElementById('upgrade-price-sub');
+
+  if (monthlyBtn) {
+    monthlyBtn.style.borderColor = plan === 'monthly' ? 'var(--violet)' : 'var(--border)';
+    monthlyBtn.style.background  = plan === 'monthly' ? 'rgba(124,92,252,.15)' : 'transparent';
+    monthlyBtn.style.color       = plan === 'monthly' ? 'var(--ink)' : 'var(--t2)';
+  }
+  if (annualBtn) {
+    annualBtn.style.borderColor = plan === 'annual' ? 'var(--violet)' : 'var(--border)';
+    annualBtn.style.background  = plan === 'annual' ? 'rgba(124,92,252,.15)' : 'transparent';
+    annualBtn.style.color       = plan === 'annual' ? 'var(--ink)' : 'var(--t2)';
+  }
+  if (priceEl) priceEl.innerHTML = plan === 'annual'
+    ? '$90<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/yr</span>'
+    : '$9<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/mo</span>';
+  if (subEl) subEl.textContent = plan === 'annual'
+    ? 'Billed annually ($7.50/mo) · Save 17% · Secure via Stripe'
+    : 'Billed monthly · Cancel anytime · Secure via Stripe';
+}
 
 function selectPayment(method) {
   selectedPaymentMethod = method;
-  document.querySelectorAll('input[name="pay-method"]').forEach((r, i) => {
-    r.checked = (method === 'stripe' && i === 0) || (method === 'crypto' && i === 1);
-  });
-  document.getElementById('stripe-form').style.display = method === 'stripe' ? 'block' : 'none';
-  document.getElementById('crypto-form').style.display = method === 'crypto' ? 'block' : 'none';
+  const stripeForm = document.getElementById('stripe-form');
+  const cryptoForm = document.getElementById('crypto-form');
+  if (stripeForm) stripeForm.style.display = method === 'stripe' ? 'block' : 'none';
+  if (cryptoForm) cryptoForm.style.display = method === 'crypto' ? 'block' : 'none';
 }
 
 async function processUpgrade() {
@@ -4618,7 +4773,11 @@ async function startProCheckout() {
   if (errEl) errEl.style.display = 'none';
 
   try {
-    const result = await apiFetch('/payment/create-checkout', { method: 'POST' });
+    // Pass selected plan (monthly or annual) to the worker so it picks the correct Stripe price
+    const result = await apiFetch('/payment/create-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ plan: selectedUpgradePlan || 'monthly' })
+    });
     if (result && result.url) {
       window.location.href = result.url;
     } else {
