@@ -2,6 +2,14 @@
 
 -- EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- pg_cron installs its objects into the "cron" schema, owned by a
+-- separate role on Supabase. Grant usage so the postgres role running
+-- this script (and your dashboard SQL editor sessions) can call
+-- cron.schedule(...) further down without a permission/lookup error.
+GRANT USAGE ON SCHEMA cron TO postgres;
 
 -- 1. USER PROFILES TABLE
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -331,8 +339,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_subscription_expiry ON public.profiles(s
 
 -- ============================================================
 -- SUBSCRIPTION EXPIRY CRON JOB
--- STEP 1: Enable pg_cron in Supabase Dashboard → Database → Extensions
--- STEP 2: Run the function + cron schedule below
+-- pg_cron and pg_net are now enabled at the top of this script, so this
+-- section no longer needs a manual "enable extension in dashboard" step.
 -- ============================================================
 
 -- Function: find expiring accounts, call Worker to send warning email,
@@ -389,8 +397,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ALTER DATABASE postgres SET app.worker_url = 'https://my-sniper-worker.daniellancce1.workers.dev';
 -- ALTER DATABASE postgres SET app.worker_internal_secret = 'YOUR_WORKER_INTERNAL_SECRET_VALUE';
 
--- Schedule the expiry check to run every day at 08:00 UTC
--- Only run this AFTER enabling pg_cron in Dashboard → Database → Extensions
+-- Schedule the expiry check to run every day at 08:00 UTC.
+-- Unschedule any prior run of the same job name first so re-running this
+-- script doesn't create duplicate cron jobs.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'snipejob-subscription-expiry-check') THEN
+        PERFORM cron.unschedule('snipejob-subscription-expiry-check');
+    END IF;
+END $$;
+
 SELECT cron.schedule(
     'snipejob-subscription-expiry-check',   -- job name (unique)
     '0 8 * * *',                            -- every day at 08:00 UTC
