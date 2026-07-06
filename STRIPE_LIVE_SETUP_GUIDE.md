@@ -1,4 +1,4 @@
-﻿# SnipeJob — Stripe Live Account Setup Guide
+# SnipeJob — Stripe Live Account Setup Guide
 
 > **This guide is for setting up a brand-new Stripe account from scratch.**
 > You are NOT migrating test → live on an existing account — you are starting fresh.
@@ -219,6 +219,7 @@ Open `funnel/snipe_jobs_sales_funnel.html`:
 | Error | Cause | Fix |
 |---|---|---|
 | "No such price" | Test price ID with live secret key | Use price_live_... IDs in live mode |
+| "Could not start checkout" (Annual) | `STRIPE_PRO_ANNUAL_PRICE_ID` secret is missing in Wrangler | Run `npx wrangler secret put STRIPE_PRO_ANNUAL_PRICE_ID` and redeploy |
 | 400 "Webhook signature mismatch" | Wrong whsec_ value | Re-copy from live webhook endpoint → re-run wrangler secret put STRIPE_WEBHOOK_SECRET → redeploy |
 | Checkout shows "TEST MODE" | pk_test_ still in index.html | Update STRIPE_PUBLISHABLE_KEY to pk_live_... and push |
 | "Could not start checkout" | Worker not deployed after secret update | Run npx wrangler deploy inside my-sniper-worker/ |
