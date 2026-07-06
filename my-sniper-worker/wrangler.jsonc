@@ -21,14 +21,20 @@
 		"nodejs_compat"
 	],
 	/**
-	 * Cron Triggers — runs the scheduled() export in src/index.js once a day
-	 * at 06:00 UTC to sweep for expired/grace-period subscriptions (see
-	 * runExpiryCheck() in src/index.js and GRACE_PERIOD_EMAIL_SYSTEM_SETUP.txt).
+	 * Cron Triggers — REMOVED (audit pass). This block previously configured
+	 * a daily 06:00 UTC trigger pointing at a scheduled() export that does
+	 * not exist anywhere in src/index.js (only `fetch` is exported), so it
+	 * was firing every day and doing nothing but logging an error in the
+	 * Cloudflare dashboard. The real expiry-check mechanism is Supabase's
+	 * own pg_cron job (see schema.sql `cron.schedule(...)`), which calls
+	 * this Worker's POST /api/internal/send-expiry-email on its own —
+	 * that part is correctly wired up and needs no Worker-side cron at all.
+	 * If you ever want a second, Worker-native cron for something else,
+	 * add a `triggers.crons` block back AND export an async
+	 * `scheduled(event, env, ctx)` handler alongside `fetch` in
+	 * src/index.js, or it'll go dead again.
 	 * https://developers.cloudflare.com/workers/configuration/cron-triggers/
 	 */
-	"triggers": {
-		"crons": ["0 6 * * *"]
-	}
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

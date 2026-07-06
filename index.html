@@ -987,31 +987,77 @@ select.form-input option{background:#2C2C2E;color:var(--ink)}
   .plans-grid{grid-template-columns:1fr 1fr}
   .footer-top{grid-template-columns:1fr 1fr;gap:30px}
   .stat-grid{grid-template-columns:1fr 1fr}
+  /* Resume Hub responsiveness — tablet */
+  .rh-sub-tabs{flex-wrap:wrap;gap:6px}
+  .rh-builder-grid{grid-template-columns:1fr}
+  .rh-ats-grid{grid-template-columns:1fr}
+  .rh-tailor-grid{grid-template-columns:1fr}
+  .rh-template-preview{min-height:320px}
 }
 @media(max-width:768px){
   nav{padding:0 4vw}
   .nav-links{display:none}
   .hamburger{display:flex}
-  .hero{padding:56px 4vw 60px}
-  .section{padding:68px 4vw}
+  .hero{padding:48px 4vw 56px}
+  .section{padding:60px 4vw}
   .hiw-steps{grid-template-columns:1fr}
   .testi-grid{grid-template-columns:1fr}
   .plans-grid{grid-template-columns:1fr}
   .dash-shell{grid-template-columns:1fr}
   /* sidebar hidden inline replaced by drawer — see drawer CSS below */
   .d-stats{grid-template-columns:1fr 1fr}
-  .tab-bar{overflow-x:auto}
+  .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .auth-card{padding:28px 20px}
   .stat-grid{grid-template-columns:1fr 1fr}
   .cta-form{flex-direction:column}
   .footer-top{grid-template-columns:1fr}
+  /* Job cards — stack action buttons vertically on mobile */
+  .jcard-actions{flex-direction:column;gap:6px}
+  .jcard-actions .jbtn{width:100%;justify-content:center}
+  /* Dash main padding — keep readable without wasting space */
+  .dash-main{padding:18px 16px 100px}
+  /* Resume Hub responsiveness — mobile */
+  .rh-header{flex-direction:column;align-items:flex-start;gap:10px}
+  .rh-export-btns{flex-wrap:wrap;gap:8px}
+  .rh-export-btns .jbtn{flex:1;min-width:120px;text-align:center;justify-content:center}
+  .rh-score-ring-row{flex-wrap:wrap;gap:12px}
+  .rh-score-ring-wrap{min-width:calc(50% - 8px)}
+  .rh-tailor-match-bar{font-size:13px}
+  .rh-sub-tabs .rh-stab{font-size:11.5px;padding:7px 12px}
+  /* Hide scrollbar on rh-sub-tabs for cleaner mobile look */
+  .rh-sub-tabs{-ms-overflow-style:none;scrollbar-width:none}
+  .rh-sub-tabs::-webkit-scrollbar{display:none}
 }
 @media(max-width:480px){
   .hero h1{font-size:1.5rem}
   .d-stats{grid-template-columns:1fr}
   .sector-grid{grid-template-columns:1fr 1fr}
-  .hero-btns{flex-direction:column}
+  .hero-btns{flex-direction:column;align-items:stretch}
+  .hero-btns .btn-primary,.hero-btns .btn-ghost{text-align:center;justify-content:center}
   .stat-grid{grid-template-columns:1fr}
+  .dash-main{padding:14px 12px 96px}
+  /* Resume Hub — very small screens */
+  .rh-score-ring-wrap{min-width:100%}
+  .rh-template-btns{flex-direction:column}
+  .rh-preview-modal-inner{padding:20px 14px}
+  /* Plan cards — remove side padding compression on tiny screens */
+  .plan{padding:22px 16px}
+  /* Compare table — allow horizontal scroll */
+  .compare-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+/* ─── VERY SMALL PHONES (≤380px) ─────────────────────────────────────────── */
+@media(max-width:380px){
+  nav{padding:0 12px}
+  .hero{padding:36px 12px 48px}
+  .section{padding:48px 12px}
+  .hero h1{font-size:1.35rem;line-height:1.25}
+  .d-stats{grid-template-columns:1fr}
+  .sector-grid{grid-template-columns:1fr}
+  .dash-main{padding:12px 10px 96px}
+  .auth-card{padding:22px 14px}
+  .tab-bar .tbtn{padding:9px 10px;font-size:11px}
+  /* Bottom nav bar safe-area bump */
+  .bnav{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
 }
 
 /* ─── LARGE MONITORS / ULTRA-WIDE ───
@@ -1698,7 +1744,7 @@ footer {
 <div class="mob-bottom-nav" id="mob-bottom-nav">
   <a class="mob-nav-item act" onclick="dTab('feed')"><i class="ti ti-bell"></i>Feed</a>
   <a class="mob-nav-item" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned</a>
-  <a class="mob-nav-item" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</a>
+  <a class="mob-nav-item" onclick="dTab('resume')"><i class="ti ti-file-cv"></i>Resume</a>
   <a class="mob-nav-item" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Earn</a>
   <a class="mob-nav-item" onclick="dTab('settings')"><i class="ti ti-settings"></i>Settings</a>
 </div>
@@ -2586,6 +2632,7 @@ footer {
     <button class="snav act" id="sn-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed<span class="snav-badge" id="feed-badge">0</span></button>
     <button class="snav" id="sn-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned Jobs</button>
     <button class="snav" id="sn-prep" onclick="dTab('prep')"><i class="ti ti-target-arrow"></i>Career Prep</button>
+    <button class="snav" id="sn-resume" onclick="dTab('resume')"><i class="ti ti-file-cv"></i>Resume Hub <span style="background:rgba(123,97,255,.18);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">NEW</span></button>
     <button class="snav" id="sn-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
     <button class="snav" id="sn-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income <span style="background:var(--vpale);color:var(--vlight);font-size:9px;padding:2px 6px;border-radius:4px;margin-left:auto;font-weight:800">PRO</span></button>
     <div class="sidebar-sep"></div>
@@ -2691,6 +2738,7 @@ footer {
       <button class="tbtn act" id="tb-feed" onclick="dTab('feed')"><i class="ti ti-bell"></i>Job Feed</button>
       <button class="tbtn" id="tb-pinned" onclick="dTab('pinned')"><i class="ti ti-bookmark"></i>Pinned</button>
       <button class="tbtn" id="tb-prep" onclick="dTab('prep')"><i class="ti ti-target-arrow"></i>Career Prep</button>
+      <button class="tbtn" id="tb-resume" onclick="dTab('resume')"><i class="ti ti-file-cv"></i>Resume Hub</button>
       <button class="tbtn" id="tb-projects" onclick="dTab('projects')"><i class="ti ti-briefcase"></i>Projects</button>
       <button class="tbtn" id="tb-income" onclick="dTab('income')"><i class="ti ti-chart-bar"></i>Income</button>
       <button class="tbtn" id="tb-sidetask" onclick="dTab('sidetask')"><i class="ti ti-coin"></i>Side Task</button>
@@ -2730,32 +2778,8 @@ footer {
     <!-- ─── PINNED ─── -->
     <div class="tab-pane" id="tp-pinned">
       <div style="font-size:13.5px;color:var(--t2);margin-bottom:18px">Jobs you've bookmarked — track application status here.</div>
-      <div class="jcard">
-        <div class="jcard-ico" style="background:rgba(124,92,252,.18);color:var(--vlight)">R</div>
-        <div style="flex:1">
-          <div class="jcard-title">React SaaS Dashboard Build</div>
-          <div class="jcard-meta">TechStartup Inc · Remote · $2,400 fixed · Pinned 2 days ago</div>
-          <div class="jcard-tags"><span class="badge b-wait">Awaiting reply</span></div>
-        </div>
-        <div class="jcard-actions"><button class="jbtn jbtn-v">View proposal</button><button class="jbtn jbtn-g"><i class="ti ti-trash" style="font-size:13px"></i></button></div>
-      </div>
-      <div class="jcard">
-        <div class="jcard-ico" style="background:rgba(0,224,150,.14);color:var(--green)">D</div>
-        <div style="flex:1">
-          <div class="jcard-title">ML Pipeline for E-commerce</div>
-          <div class="jcard-meta">DataCo Analytics · Remote · $85/hr · Pinned 4 days ago</div>
-          <div class="jcard-tags"><span class="badge b-done"><i class="ti ti-check" style="font-size:10px"></i>Interview scheduled</span></div>
-        </div>
-        <div class="jcard-actions"><button class="jbtn jbtn-g">Open job →</button></div>
-      </div>
-      <div class="jcard">
-        <div class="jcard-ico" style="background:rgba(0,210,255,.14);color:var(--cyan)">F</div>
-        <div style="flex:1">
-          <div class="jcard-title">Full-stack Node.js App</div>
-          <div class="jcard-meta">FinTech Solutions · Remote · $4,200 fixed · Pinned 6 days ago</div>
-          <div class="jcard-tags"><span class="badge b-hot">Declined</span></div>
-        </div>
-        <div class="jcard-actions"><button class="jbtn jbtn-g"><i class="ti ti-trash" style="font-size:13px"></i></button></div>
+      <div id="pinned-jobs-list">
+        <div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Loading your pinned jobs...</div></div>
       </div>
     </div>
 
@@ -2766,10 +2790,13 @@ footer {
         <!-- RESUME SCORE -->
         <div class="settings-card" style="margin:0">
           <div class="settings-sect">Resume score</div>
-          <div id="resume-score-empty" style="text-align:center;padding:20px 10px">
-            <i class="ti ti-file-analytics" style="font-size:28px;color:var(--t3)"></i>
-            <div style="font-size:13px;color:var(--t2);margin:10px 0 14px">See how your profile reads to employers.</div>
-            <button class="jbtn jbtn-v" onclick="runResumeScore()" id="resume-score-btn">Score my resume</button>
+          <div id="resume-score-empty">
+            <i class="ti ti-file-analytics" style="font-size:28px;color:var(--t3);display:block;text-align:center;margin-bottom:8px"></i>
+            <div style="font-size:13px;color:var(--t2);margin-bottom:12px;text-align:center">Paste your resume below to get an AI score on clarity, impact and keyword strength.</div>
+            <textarea id="resume-score-input" class="form-input" style="height:110px;resize:none;margin-bottom:12px" placeholder="Paste your resume text here (or leave blank to score based on your saved bio & profile)…"></textarea>
+            <div style="text-align:center">
+              <button class="jbtn jbtn-v" onclick="runResumeScore()" id="resume-score-btn">Score my resume</button>
+            </div>
           </div>
           <div id="resume-score-result" style="display:none">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
@@ -2777,6 +2804,7 @@ footer {
               <div style="flex:1;font-size:12.5px;color:var(--t2)">out of 100, based on clarity, impact, and keyword strength</div>
             </div>
             <ul id="resume-score-tips" style="margin:0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.7"></ul>
+            <button class="jbtn jbtn-g" style="margin-top:14px;font-size:12px" onclick="document.getElementById('resume-score-result').style.display='none';document.getElementById('resume-score-empty').style.display=''">← Score again</button>
             <div id="resume-rewrite-upsell" style="display:none;margin-top:14px" class="upgrade-banner" onclick="go('upgrade')" style="cursor:pointer">
               <i class="ti ti-lock"></i>Upgrade to Pro for a full tailored rewrite per job
             </div>
@@ -2802,6 +2830,259 @@ footer {
         <div id="interview-session" style="display:none"></div>
       </div>
     </div>
+
+    <!-- ─── RESUME HUB ─── -->
+    <div class="tab-pane" id="tp-resume">
+
+      <!-- Sub-tab header -->
+      <div class="rh-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.35rem;margin:0">Resume Hub <span style="background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;color:transparent">— AI Powered</span></h2>
+          <p style="color:var(--t2);font-size:13px;margin:4px 0 0">Build, analyse, optimise, tailor and export your resume in minutes.</p>
+        </div>
+        <div class="rh-export-btns" style="display:flex;gap:8px">
+          <button class="jbtn jbtn-g" id="rh-export-pdf-btn" onclick="rhExportPDF()" title="Export as PDF"><i class="ti ti-file-type-pdf"></i> PDF</button>
+          <button class="jbtn jbtn-g" id="rh-export-docx-btn" onclick="rhExportDOCX()" title="Export as DOCX"><i class="ti ti-file-type-doc"></i> DOCX</button>
+        </div>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div class="rh-sub-tabs" style="display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--border);padding-bottom:14px;overflow-x:auto">
+        <button class="rh-stab act" id="rh-tab-builder" onclick="rhTab('builder')"><i class="ti ti-sparkles"></i> Builder</button>
+        <button class="rh-stab" id="rh-tab-ats" onclick="rhTab('ats')"><i class="ti ti-chart-bar"></i> ATS Analysis</button>
+        <button class="rh-stab" id="rh-tab-optimize" onclick="rhTab('optimize')"><i class="ti ti-wand"></i> Optimize</button>
+        <button class="rh-stab" id="rh-tab-tailor" onclick="rhTab('tailor')"><i class="ti ti-arrows-diff"></i> Tailor</button>
+        <button class="rh-stab" id="rh-tab-preview" onclick="rhTab('preview')"><i class="ti ti-eye"></i> Preview &amp; Templates</button>
+      </div>
+
+      <!-- ── BUILDER ── -->
+      <div class="rh-pane act" id="rhp-builder">
+        <div class="rh-builder-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+          <!-- Source selector -->
+          <div class="settings-card" style="margin:0">
+            <div class="settings-sect">Choose source</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+              <label class="rh-source-opt" id="rh-src-profile" onclick="rhSelectSource('profile')">
+                <span class="rh-src-radio"></span>
+                <span class="rh-src-ico" style="background:rgba(123,97,255,.14);color:var(--vlight)"><i class="ti ti-user-circle"></i></span>
+                <span><strong>Existing Profile</strong><br><small style="color:var(--t3)">Generate from your saved profile data</small></span>
+              </label>
+              <label class="rh-source-opt" id="rh-src-upload" onclick="rhSelectSource('upload')">
+                <span class="rh-src-radio"></span>
+                <span class="rh-src-ico" style="background:rgba(0,212,255,.14);color:var(--cyan)"><i class="ti ti-upload"></i></span>
+                <span><strong>Upload Resume</strong><br><small style="color:var(--t3)">Paste text or upload a PDF to rewrite</small></span>
+              </label>
+              <label class="rh-source-opt" id="rh-src-manual" onclick="rhSelectSource('manual')">
+                <span class="rh-src-radio"></span>
+                <span class="rh-src-ico" style="background:rgba(170,255,58,.14);color:var(--lime)"><i class="ti ti-forms"></i></span>
+                <span><strong>Manual Entry</strong><br><small style="color:var(--t3)">Fill in a quick form and let AI do the rest</small></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Dynamic input area -->
+          <div class="settings-card" style="margin:0">
+            <!-- Upload source -->
+            <div id="rh-input-upload" style="display:none">
+              <div class="settings-sect">Paste or upload your resume</div>
+              <textarea id="rh-upload-text" class="form-input" style="height:140px;resize:none;margin-top:8px" placeholder="Paste your existing resume text here..."></textarea>
+              <div class="scan-zone" style="margin-top:10px" id="rh-drop-zone" onclick="document.getElementById('rh-file-input').click()">
+                <div class="scan-zone-text">Drop a PDF here or click to browse</div>
+                <input type="file" id="rh-file-input" accept="application/pdf" style="display:none" onchange="rhHandleFile(this)">
+              </div>
+              <div id="rh-file-name" style="font-size:12px;color:var(--t3);margin-top:6px"></div>
+            </div>
+            <!-- Manual source -->
+            <div id="rh-input-manual" style="display:none">
+              <div class="settings-sect">Quick profile form</div>
+              <div class="form-group" style="margin-top:8px"><label class="form-label">Full name</label><input type="text" class="form-input" id="rh-m-name" placeholder="Jane Doe"></div>
+              <div class="form-group"><label class="form-label">Primary skill</label><input type="text" class="form-input" id="rh-m-skill" placeholder="e.g. React Developer"></div>
+              <div class="form-group"><label class="form-label">Experience level</label>
+                <select class="form-input" id="rh-m-level"><option>Entry-level</option><option>Mid-level</option><option>Senior</option><option>Expert/Lead</option></select></div>
+              <div class="form-group"><label class="form-label">Short bio / background</label><textarea class="form-input" id="rh-m-bio" style="height:70px;resize:none" placeholder="Your background, key achievements..."></textarea></div>
+              <div class="form-group"><label class="form-label">Education</label><input type="text" class="form-input" id="rh-m-edu" placeholder="e.g. B.Sc Computer Science, XYZ Uni"></div>
+            </div>
+            <!-- Profile source (default) -->
+            <div id="rh-input-profile">
+              <div class="settings-sect">Using your saved profile</div>
+              <p style="font-size:13px;color:var(--t2);margin-top:8px">SnipeJob will use your name, bio, skills and education from your profile to generate a professional resume. Make sure your profile is up to date in Settings.</p>
+              <div id="rh-profile-preview" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;font-size:13px;color:var(--t2)">
+                <i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading profile preview...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generate button -->
+        <div style="margin-top:18px;text-align:center">
+          <button class="jbtn jbtn-v" id="rh-generate-btn" onclick="rhGenerate()" style="padding:14px 36px;font-size:15px">
+            <i class="ti ti-sparkles"></i> Generate Resume with AI
+          </button>
+          <div id="rh-generate-error" style="display:none;margin-top:10px;font-size:13px;color:var(--red)"></div>
+        </div>
+
+        <!-- Generated output -->
+        <div id="rh-builder-output" style="display:none;margin-top:20px">
+          <div class="settings-card" style="margin:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div class="settings-sect" style="margin:0">Generated Resume</div>
+              <div style="display:flex;gap:8px">
+                <button class="jbtn jbtn-g" onclick="rhSendToPreview()"><i class="ti ti-eye"></i> Preview</button>
+                <button class="jbtn jbtn-g" onclick="rhCopy('rh-builder-text')"><i class="ti ti-copy"></i> Copy</button>
+              </div>
+            </div>
+            <textarea id="rh-builder-text" class="form-input" style="height:320px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ATS ANALYSIS ── -->
+      <div class="rh-pane" id="rhp-ats" style="display:none">
+        <div class="settings-card" style="margin:0 0 18px">
+          <div class="settings-sect">Paste resume to analyse</div>
+          <textarea id="rh-ats-input" class="form-input" style="height:140px;resize:none;margin-top:8px" placeholder="Paste your resume text here for ATS analysis..."></textarea>
+          <button class="jbtn jbtn-v" style="margin-top:12px" id="rh-ats-btn" onclick="rhRunATS()">
+            <i class="ti ti-chart-bar"></i> Run ATS Analysis
+          </button>
+        </div>
+
+        <div id="rh-ats-results" style="display:none">
+          <!-- Score rings row -->
+          <div class="rh-score-ring-row" style="display:flex;gap:16px;margin-bottom:22px;flex-wrap:wrap">
+            <div class="rh-score-ring-wrap settings-card" style="flex:1;min-width:140px;margin:0;text-align:center">
+              <div class="rh-ring-label" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">ATS Compatibility</div>
+              <svg class="rh-ring" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="7"/><circle id="rh-ring-ats" cx="40" cy="40" r="32" fill="none" stroke="var(--vlight)" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/></svg>
+              <div id="rh-score-ats" style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.5rem;color:var(--vlight);margin-top:6px">—</div>
+            </div>
+            <div class="rh-score-ring-wrap settings-card" style="flex:1;min-width:140px;margin:0;text-align:center">
+              <div class="rh-ring-label" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Formatting</div>
+              <svg class="rh-ring" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="7"/><circle id="rh-ring-fmt" cx="40" cy="40" r="32" fill="none" stroke="var(--cyan)" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/></svg>
+              <div id="rh-score-fmt" style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.5rem;color:var(--cyan);margin-top:6px">—</div>
+            </div>
+            <div class="rh-score-ring-wrap settings-card" style="flex:1;min-width:140px;margin:0;text-align:center">
+              <div class="rh-ring-label" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Keywords</div>
+              <svg class="rh-ring" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="7"/><circle id="rh-ring-kw" cx="40" cy="40" r="32" fill="none" stroke="var(--lime)" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/></svg>
+              <div id="rh-score-kw" style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.5rem;color:var(--lime);margin-top:6px">—</div>
+            </div>
+            <div class="rh-score-ring-wrap settings-card" style="flex:1;min-width:140px;margin:0;text-align:center">
+              <div class="rh-ring-label" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Content</div>
+              <svg class="rh-ring" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="32" fill="none" stroke="var(--border)" stroke-width="7"/><circle id="rh-ring-cnt" cx="40" cy="40" r="32" fill="none" stroke="var(--orange)" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1s ease"/></svg>
+              <div id="rh-score-cnt" style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.5rem;color:var(--orange);margin-top:6px">—</div>
+            </div>
+          </div>
+          <!-- Feedback lists -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" class="rh-ats-grid">
+            <div class="settings-card" style="margin:0"><div class="settings-sect"><i class="ti ti-shield-check" style="color:var(--vlight)"></i> ATS Compatibility</div><ul id="rh-fb-ats" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul></div>
+            <div class="settings-card" style="margin:0"><div class="settings-sect"><i class="ti ti-layout" style="color:var(--cyan)"></i> Formatting</div><ul id="rh-fb-fmt" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul></div>
+            <div class="settings-card" style="margin:0"><div class="settings-sect"><i class="ti ti-tag" style="color:var(--lime)"></i> Keywords</div><ul id="rh-fb-kw" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul></div>
+            <div class="settings-card" style="margin:0"><div class="settings-sect"><i class="ti ti-file-text" style="color:var(--orange)"></i> Content</div><ul id="rh-fb-cnt" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── OPTIMIZE ── -->
+      <div class="rh-pane" id="rhp-optimize" style="display:none">
+        <div class="settings-card" style="margin:0 0 18px">
+          <div class="settings-sect">Paste resume to optimise</div>
+          <textarea id="rh-opt-input" class="form-input" style="height:140px;resize:none;margin-top:8px" placeholder="Paste your resume text here for AI optimisation..."></textarea>
+          <button class="jbtn jbtn-v" style="margin-top:12px" id="rh-opt-btn" onclick="rhRunOptimize()">
+            <i class="ti ti-wand"></i> Optimize with AI
+          </button>
+        </div>
+        <div id="rh-opt-results" style="display:none">
+          <div class="settings-card" style="margin:0 0 14px">
+            <div class="settings-sect"><i class="ti ti-quote" style="color:var(--vlight)"></i> Improved Summary</div>
+            <p id="rh-opt-summary" style="font-size:13.5px;color:var(--ink);margin:10px 0 0;line-height:1.75"></p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" class="rh-ats-grid">
+            <div class="settings-card" style="margin:0">
+              <div class="settings-sect"><i class="ti ti-list-check" style="color:var(--lime)"></i> Better Bullet Points</div>
+              <ul id="rh-opt-bullets" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul>
+            </div>
+            <div class="settings-card" style="margin:0">
+              <div class="settings-sect"><i class="ti ti-trophy" style="color:var(--yellow)"></i> Better Achievements</div>
+              <ul id="rh-opt-achieve" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul>
+            </div>
+          </div>
+          <div class="settings-card" style="margin:14px 0 0">
+            <div class="settings-sect"><i class="ti ti-rocket" style="color:var(--cyan)"></i> Stronger Positioning</div>
+            <ul id="rh-opt-position" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAILOR ── -->
+      <div class="rh-pane" id="rhp-tailor" style="display:none">
+        <div class="rh-tailor-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+          <div class="settings-card" style="margin:0">
+            <div class="settings-sect">Your current resume</div>
+            <textarea id="rh-tailor-resume" class="form-input" style="height:180px;resize:none;margin-top:8px" placeholder="Paste your current resume here..."></textarea>
+          </div>
+          <div class="settings-card" style="margin:0">
+            <div class="settings-sect">Job description</div>
+            <textarea id="rh-tailor-jd" class="form-input" style="height:180px;resize:none;margin-top:8px" placeholder="Paste the job description you're targeting..."></textarea>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <button class="jbtn jbtn-v" id="rh-tailor-btn" onclick="rhRunTailor()" style="padding:13px 32px">
+            <i class="ti ti-arrows-diff"></i> Tailor Resume to this Job
+          </button>
+        </div>
+        <div id="rh-tailor-results" style="display:none;margin-top:20px">
+          <!-- Match score bar -->
+          <div class="settings-card rh-tailor-match-bar" style="margin:0 0 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="font-size:13px;color:var(--t2);flex-shrink:0">Job match score:</div>
+            <div style="flex:1;min-width:120px">
+              <div style="height:8px;background:var(--border);border-radius:10px;overflow:hidden">
+                <div id="rh-tailor-bar" style="height:100%;background:var(--grad-accent);border-radius:10px;width:0%;transition:width 1s ease"></div>
+              </div>
+            </div>
+            <div id="rh-tailor-pct" style="font-family:'Syne',sans-serif;font-weight:900;font-size:1.3rem;color:var(--vlight)">—%</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="rh-ats-grid">
+            <div class="settings-card" style="margin:0">
+              <div class="settings-sect"><i class="ti ti-alert-circle" style="color:var(--red)"></i> Missing Requirements</div>
+              <ul id="rh-tailor-missing" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul>
+            </div>
+            <div class="settings-card" style="margin:0">
+              <div class="settings-sect"><i class="ti ti-bulb" style="color:var(--yellow)"></i> Suggested Improvements</div>
+              <ul id="rh-tailor-suggest" style="margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--t2);line-height:1.8"></ul>
+            </div>
+          </div>
+          <div class="settings-card" style="margin:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div class="settings-sect" style="margin:0"><i class="ti ti-file-check" style="color:var(--lime)"></i> Tailored Resume</div>
+              <div style="display:flex;gap:8px">
+                <button class="jbtn jbtn-g" onclick="rhSendTailoredToPreview()"><i class="ti ti-eye"></i> Preview</button>
+                <button class="jbtn jbtn-g" onclick="rhCopy('rh-tailor-output')"><i class="ti ti-copy"></i> Copy</button>
+              </div>
+            </div>
+            <textarea id="rh-tailor-output" class="form-input" style="height:280px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PREVIEW & TEMPLATES ── -->
+      <div class="rh-pane" id="rhp-preview" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div class="settings-sect" style="margin:0">Template</div>
+          <div class="rh-template-btns" style="display:flex;gap:8px">
+            <button class="jbtn act" id="rh-tpl-pro" onclick="rhSetTemplate('professional')"><i class="ti ti-briefcase"></i> Professional</button>
+            <button class="jbtn jbtn-g" id="rh-tpl-mod" onclick="rhSetTemplate('modern')"><i class="ti ti-bolt"></i> Modern</button>
+            <button class="jbtn jbtn-g" id="rh-tpl-exe" onclick="rhSetTemplate('executive')"><i class="ti ti-crown"></i> Executive</button>
+          </div>
+        </div>
+        <div id="rh-preview-area" class="rh-template-preview rh-tpl-professional" style="background:#fff;color:#111;border-radius:14px;padding:40px 44px;min-height:420px;line-height:1.75;font-size:13.5px;max-height:600px;overflow-y:auto;border:1px solid var(--border)">
+          <div id="rh-preview-content" style="white-space:pre-wrap;font-family:Georgia,serif">← Generate or tailor a resume first, then click "Preview" to see it styled here.</div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="jbtn jbtn-v" onclick="rhExportPDF()"><i class="ti ti-file-type-pdf"></i> Export PDF</button>
+          <button class="jbtn jbtn-g" onclick="rhExportDOCX()"><i class="ti ti-file-type-doc"></i> Export DOCX</button>
+        </div>
+      </div>
+
+    </div><!-- end #tp-resume -->
 
     <!-- ─── PROJECTS ─── -->
     <div class="tab-pane" id="tp-projects">
@@ -3023,7 +3304,7 @@ footer {
 
     <!-- Features list -->
     <div style="display:flex;flex-direction:column;gap:10px;margin:20px 0 24px">
-      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Unlimited job alerts across <strong style="color:var(--ink)">all 14 sectors</strong></span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Unlimited job alerts across <strong style="color:var(--ink)">all 16 sectors</strong></span></div>
       <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>One-click <strong style="color:var(--ink)">AI-written proposals</strong> for every job</span></div>
       <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>Side Task micro-earnings with <strong style="color:var(--ink)">instant payouts</strong></span></div>
       <div style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2)"><span style="width:28px;height:28px;background:rgba(184,255,60,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-check" style="color:var(--lime);font-size:14px"></i></span><span>AI resume rewriter + tailored <strong style="color:var(--ink)">interview prep</strong></span></div>
@@ -3331,6 +3612,13 @@ window.addEventListener('scroll', () => {
 const API_URL        = 'https://my-sniper-worker.daniellancce1.workers.dev/api';
 const SUPABASE_URL   = 'https://mdmpcxtjwnovbhidwwhj.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_6l7eSezczJta6rW2gomSqA_btj4X1h_';
+// FIX (audit pass): "Manage subscription" used to hardcode a Stripe
+// TEST-mode portal login link in two separate places in this file. Once
+// you switch Stripe to live mode (see master doc §6), enable the Customer
+// Portal under Settings → Billing in your live Stripe Dashboard, copy the
+// live portal login link it gives you, and paste it here — this single
+// constant now drives both "Manage subscription" buttons.
+const STRIPE_CUSTOMER_PORTAL_URL = 'https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg';
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 // Initialize Supabase safely
@@ -3407,11 +3695,16 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
   if (window._masterSession) {
     const method = (options.method || 'GET').toUpperCase();
     if (method === 'GET' || !options.method) {
+      // FIX (audit pass): these prefixes previously didn't match any real
+      // apiFetch() call in the app (real calls use /pinned, /offers,
+      // /earnings — not /pins, /tasks, /affiliate), so master-mode stubs
+      // for those routes silently fell through to `return null` instead of
+      // returning an empty list, making the dashboard tabs render broken.
       if (path.startsWith('/profile'))    return currentProfile;
-      if (path.startsWith('/jobs'))       return [];
-      if (path.startsWith('/pins'))       return [];
-      if (path.startsWith('/affiliate'))  return { logs: [], balance: 0 };
-      if (path.startsWith('/tasks'))      return [];
+      if (path.startsWith('/jobs'))       return { items: [] };
+      if (path.startsWith('/pinned'))     return [];
+      if (path.startsWith('/earnings'))   return { logs: [], balance: 0 };
+      if (path.startsWith('/offers'))     return [];
       if (path.startsWith('/interview'))  return { sessions: [] };
       if (path.startsWith('/payment'))    return { active: true };
       return null;
@@ -3797,6 +4090,18 @@ async function handleSignUp() {
 
 /* ─── SIGN IN ─── */
 // ─── MASTER CREDENTIALS (full Pro access, no Supabase required) ───
+// FIX (audit pass): this whole block used to be live on the deployed
+// GitHub Pages site with a real email + real plaintext password anyone
+// could read via view-source. Note it never granted real backend access —
+// the Worker (src/index.js) has no knowledge of 'master_session_token', so
+// none of the actual API routes (AI features, withdrawals, profile data)
+// ever honored it; it only faked a local Pro-tier dashboard render in your
+// own browser. Still bad practice to ship real credentials in cleartext
+// client JS, so this now only activates when the page is served from
+// localhost/127.0.0.1 — i.e. it works exactly as before on your own dev
+// machine, and is completely inert on the live snipejob.app / github.io
+// site, since IS_LOCAL_DEV will be false there.
+const IS_LOCAL_DEV = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const _MASTER_EMAIL    = 'daniellancce1@gmail.com';
 const _MASTER_PASSWORD = 'B3pC*HzmTXg26uPs';
 
@@ -3809,7 +4114,8 @@ async function handleSignIn() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Signing in...'; }
 
   // ── Master login: bypass Supabase, grant full Pro access instantly ──
-  if (email === _MASTER_EMAIL && password === _MASTER_PASSWORD) {
+  // (local dev only — see IS_LOCAL_DEV note above)
+  if (IS_LOCAL_DEV && email === _MASTER_EMAIL && password === _MASTER_PASSWORD) {
     try {
       // Store a sentinel so refreshSession / bootstrapAuth knows this is
       // a master session (not a real Supabase JWT).
@@ -4104,7 +4410,7 @@ async function initDashboard() {
     if (planLine) planLine.innerHTML = '<span style="color:var(--vlight);font-weight:700">✦ Pro Plan</span>';
     if (subLine) subLine.textContent = 'Unlimited alerts · All sectors · Zero ads';
     const upgradeBtn = settingsPlanCard.querySelector('button');
-    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open('https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg', '_blank'); }
+    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open(STRIPE_CUSTOMER_PORTAL_URL, '_blank'); }
   }
 
   await loadJobs();
@@ -4196,9 +4502,10 @@ function renderJobs(showMatchScore = false) {
         </div>
         ${hasMatch && job.match_reason ? `<div style="font-size:11.5px;color:var(--t3);margin-top:6px"><i class="ti ti-sparkles" style="font-size:12px"></i> ${escapeHtml(job.match_reason)}</div>` : ''}
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
+      <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="tbtn" style="padding:8px 12px" onclick="pinJob('${job.id}')" title="Pin job"><i class="ti ti-bookmark"></i></button>
         <button class="tbtn" style="padding:8px 12px" onclick="openAiApply('${job.id}')" title="AI Apply"><i class="ti ti-sparkles"></i></button>
+        <button class="tbtn" style="padding:8px 12px" onclick="openAiResume('${job.id}')" title="Tailor Resume"><i class="ti ti-file-cv"></i></button>
         <a class="tbtn" style="padding:8px 12px;text-decoration:none" href="${job.job_url}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i> View</a>
       </div>
     </div>`;
@@ -4226,8 +4533,84 @@ async function pinJob(jobId) {
   try {
     await apiFetch('/pin', { method: 'POST', body: JSON.stringify({ job_id: jobId }) });
     toast('Job pinned.', 'ti-bookmark');
+    // If the Pinned tab happens to already be open, refresh it so the
+    // newly-pinned job shows up without needing a manual tab switch.
+    const pinnedPane = document.getElementById('tp-pinned');
+    if (pinnedPane && pinnedPane.classList.contains('act')) loadPinnedJobs();
   } catch (e) {
     toast(e.message || 'Could not pin job.', 'ti-alert-triangle');
+  }
+}
+
+/* ─── PINNED JOBS TAB ───
+   FIX (audit pass): this tab used to render three hardcoded fake jobs
+   (TechStartup Inc / DataCo Analytics / FinTech Solutions) no matter what
+   a user actually pinned — GET /api/pinned existed on the backend and was
+   never called from the frontend at all. Now wired up for real. */
+async function loadPinnedJobs() {
+  const listEl = document.getElementById('pinned-jobs-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Loading your pinned jobs...</div></div>';
+
+  try {
+    const rows = await apiFetch('/pinned');
+    renderPinnedJobs(Array.isArray(rows) ? rows : []);
+  } catch (e) {
+    console.error('Failed to load pinned jobs:', e);
+    listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
+      <i class="ti ti-wifi-off" style="font-size:22px"></i>
+      <div style="margin-top:8px">Couldn't load your pinned jobs right now.</div>
+      <button class="tbtn" style="margin-top:10px" onclick="loadPinnedJobs()">Retry</button>
+    </div>`;
+  }
+}
+
+function renderPinnedJobs(rows) {
+  const listEl = document.getElementById('pinned-jobs-list');
+  if (!listEl) return;
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
+      <i class="ti ti-bookmark" style="font-size:22px"></i>
+      <div style="margin-top:8px">No pinned jobs yet — bookmark a job from the feed to track it here.</div>
+    </div>`;
+    return;
+  }
+
+  const statusBadge = {
+    pinned:      '<span class="badge b-wait">Awaiting reply</span>',
+    in_progress: '<span class="badge b-done"><i class="ti ti-check" style="font-size:10px"></i>In progress</span>',
+    completed:   '<span class="badge" style="background:rgba(0,224,150,.14);color:var(--green)">Completed</span>',
+  };
+
+  listEl.innerHTML = rows.map(row => {
+    const job = row.job || {};
+    const initial = (job.company || '?').charAt(0).toUpperCase();
+    const timeAgo = formatTimeAgo(row.created_at);
+    const badge = statusBadge[row.system_status] || statusBadge.pinned;
+    return `
+    <div class="jcard">
+      <div class="jcard-ico" style="background:rgba(124,92,252,.18);color:var(--vlight)">${initial}</div>
+      <div style="flex:1">
+        <div class="jcard-title">${escapeHtml(job.title || 'Untitled listing')}</div>
+        <div class="jcard-meta">${escapeHtml(job.company || 'Unknown company')} · ${escapeHtml(job.listing_source || '')} · Pinned ${timeAgo}</div>
+        <div class="jcard-tags">${badge}</div>
+      </div>
+      <div class="jcard-actions">
+        ${job.job_url ? `<a class="jbtn jbtn-g" style="text-decoration:none" href="${job.job_url}" target="_blank" rel="noopener">Open job →</a>` : ''}
+        <button class="jbtn jbtn-g" onclick="unpinJob('${row.job_id}')" title="Remove pin"><i class="ti ti-trash" style="font-size:13px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function unpinJob(jobId) {
+  try {
+    await apiFetch('/pin', { method: 'DELETE', body: JSON.stringify({ job_id: jobId }) });
+    toast('Job removed from pinned.', 'ti-trash');
+    loadPinnedJobs();
+  } catch (e) {
+    toast(e.message || 'Could not remove pin.', 'ti-alert-triangle');
   }
 }
 
@@ -4357,6 +4740,9 @@ function dTab(tabName) {
     closeDashSidebar();
   }
 
+  if (tabName === 'pinned') {
+    loadPinnedJobs();
+  }
   if (tabName === 'prep' && !dTab._trendsLoaded) {
     dTab._trendsLoaded = true;
     loadTrends();
@@ -4425,8 +4811,8 @@ function populateSettingsTab() {
   if (isPro) {
     const planLabel = currentProfile.plan_type === 'annual' ? 'Pro — Annual Plan' : 'Pro — Monthly Plan';
     if (planNameEl) planNameEl.innerHTML = `<span style="color:var(--vlight)">✦ ${planLabel}</span>`;
-    if (planDescEl) planDescEl.textContent = 'Unlimited alerts · All 14 sectors · AI tools · Zero ads';
-    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open('https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg', '_blank'); }
+    if (planDescEl) planDescEl.textContent = 'Unlimited alerts · All 16 sectors · AI tools · Zero ads';
+    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open(STRIPE_CUSTOMER_PORTAL_URL, '_blank'); }
     if (expiryEl && currentProfile.subscription_expiry) {
       const exp = new Date(currentProfile.subscription_expiry);
       expiryEl.innerHTML = `<i class="ti ti-calendar" style="font-size:12px"></i> Renews / expires: ${exp.toLocaleDateString(undefined, {year:'numeric',month:'long',day:'numeric'})}`;
@@ -4519,20 +4905,27 @@ function closeMob() {
 /* ─── CAREER PREP: RESUME SCORE ─── */
 async function runResumeScore() {
   const btn = document.getElementById('resume-score-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Scoring...'; }
-
+  const resumeInput = document.getElementById('resume-score-input')?.value?.trim() || '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Scoring...';
+  }
   try {
-    const result = await apiFetch('/resume/score', { method: 'POST' });
+    // Pass resume_text if user pasted something; fallback to profile bio if blank
+    const body = resumeInput ? JSON.stringify({ resume_text: resumeInput }) : JSON.stringify({});
+    const result = await apiFetch('/resume/score', { method: 'POST', body });
     document.getElementById('resume-score-empty').style.display = 'none';
     document.getElementById('resume-score-result').style.display = 'block';
-    document.getElementById('resume-score-num').textContent = result.score;
+    document.getElementById('resume-score-num').textContent = result.score ?? '—';
     document.getElementById('resume-score-tips').innerHTML = (result.tips || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
     if (!result.full_rewrite_available) {
       document.getElementById('resume-rewrite-upsell').style.display = 'block';
     }
+    toast('Resume scored!', 'ti-check');
   } catch (e) {
     toast(e.message || 'Could not score your resume. Add a bio in Settings first.', 'ti-alert-triangle');
-    if (btn) { btn.disabled = false; btn.textContent = 'Score my resume'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Score my resume'; }
   }
 }
 
@@ -5065,7 +5458,7 @@ function handleCtaEmail() {
 
   // ── Restore master session across page reloads ─────────────────
   const storedToken = window._safeGetToken('user_token');
-  if (storedToken === 'master_session_token') {
+  if (IS_LOCAL_DEV && storedToken === 'master_session_token') {
     window._masterSession = true;
     currentProfile = {
       id: 'master',
@@ -5194,6 +5587,449 @@ function handleCtaEmail() {
     }
   }, 1000);
 })();
+
+/* ═══════════════════════════════════════════════════════════
+   RESUME HUB — styles injected via JS so they don't inflate
+   the static CSS bundle but are always in scope when the tab loads
+   ═══════════════════════════════════════════════════════════ */
+(function injectResumeHubCSS(){
+  const s=document.createElement('style');
+  s.textContent=`
+  /* Sub-tab buttons */
+  .rh-stab{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:8px 16px;border-radius:50px;font-size:13px;font-weight:600;
+    border:1px solid var(--border2);color:var(--t2);background:transparent;
+    cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;
+  }
+  .rh-stab:hover{border-color:var(--vlight);color:var(--vlight)}
+  .rh-stab.act{background:var(--violet);border-color:var(--violet);color:#fff}
+  /* Source option cards */
+  .rh-source-opt{
+    display:flex;align-items:center;gap:12px;padding:13px 15px;
+    border-radius:12px;border:1.5px solid var(--border);cursor:pointer;
+    transition:border-color .2s,background .2s;
+  }
+  .rh-source-opt:hover{border-color:var(--border2)}
+  .rh-source-opt.sel{border-color:var(--violet);background:rgba(123,97,255,.07)}
+  .rh-src-radio{
+    width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);
+    flex-shrink:0;transition:border-color .2s,background .2s;
+  }
+  .rh-source-opt.sel .rh-src-radio{
+    border-color:var(--violet);background:var(--violet);
+    box-shadow:0 0 0 3px rgba(123,97,255,.25);
+  }
+  .rh-src-ico{
+    width:36px;height:36px;border-radius:9px;display:flex;
+    align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
+  }
+  /* Template preview area color-modes */
+  .rh-tpl-professional{font-family:Georgia,serif!important}
+  .rh-tpl-modern{font-family:'Inter',sans-serif!important}
+  .rh-tpl-executive{font-family:'Syne',sans-serif!important;letter-spacing:-.01em}
+  /* AI Resume Modal */
+  #rh-ai-resume-modal{
+    display:none;position:fixed;inset:0;z-index:1100;
+    background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
+    align-items:center;justify-content:center;padding:20px;
+  }
+  #rh-ai-resume-modal.open{display:flex}
+  .rh-preview-modal-inner{
+    background:var(--bg2);border:1px solid var(--border2);border-radius:22px;
+    padding:32px 36px;width:100%;max-width:760px;max-height:90vh;
+    overflow-y:auto;display:flex;flex-direction:column;gap:18px;
+  }
+  /* Print stylesheet for PDF export */
+  @media print{
+    body > *:not(#rh-print-root){display:none!important}
+    #rh-print-root{display:block!important;all:unset}
+    .rh-print-page{
+      font-size:12pt;line-height:1.7;color:#111;
+      max-width:760px;margin:0 auto;padding:40px;
+      font-family:Georgia,serif;
+    }
+    .rh-print-page.modern{font-family:Arial,sans-serif}
+    .rh-print-page.executive{font-family:'Times New Roman',serif;letter-spacing:-.01em}
+  }
+  #rh-print-root{display:none}
+  `;
+  document.head.appendChild(s);
+})();
+
+/* ─── RESUME HUB: state ─── */
+let _rhSource = 'profile';
+let _rhCurrentResume = '';
+let _rhCurrentTemplate = 'professional';
+let _rhFileBase64 = null;
+
+/* ─── Sub-tab switcher ─── */
+function rhTab(name) {
+  document.querySelectorAll('.rh-pane').forEach(p => { p.style.display='none'; });
+  document.querySelectorAll('.rh-stab').forEach(b => b.classList.remove('act'));
+  const pane = document.getElementById('rhp-'+name);
+  if (pane) pane.style.display = '';
+  const btn = document.getElementById('rh-tab-'+name);
+  if (btn) { btn.classList.add('act'); btn.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); }
+  // On entering builder tab — populate profile preview
+  if (name === 'builder') rhPopulateProfilePreview();
+  // Scroll Resume Hub pane to top on tab switch
+  const main = document.querySelector('.dash-main');
+  if (main) main.scrollTo({ top: main.scrollTop > 200 ? main.scrollTop : 0, behavior: 'smooth' });
+}
+
+/* ─── Source selector ─── */
+function rhSelectSource(src) {
+  _rhSource = src;
+  document.querySelectorAll('.rh-source-opt').forEach(el => el.classList.remove('sel'));
+  const el = document.getElementById('rh-src-'+src);
+  if (el) el.classList.add('sel');
+  ['upload','manual','profile'].forEach(s => {
+    const d = document.getElementById('rh-input-'+s);
+    if (d) d.style.display = (s === src) ? '' : 'none';
+  });
+}
+
+/* ─── Profile preview in builder ─── */
+function rhPopulateProfilePreview() {
+  const el = document.getElementById('rh-profile-preview');
+  if (!el) return;
+  if (!currentProfile) { el.innerHTML = '<span style="color:var(--t3)">Profile not loaded yet.</span>'; return; }
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px">
+      <div><span style="color:var(--t3)">Name:</span> ${escapeHtml(currentProfile.full_name||'—')}</div>
+      <div><span style="color:var(--t3)">Skill:</span> ${escapeHtml(currentProfile.primary_skill||'—')}</div>
+      <div><span style="color:var(--t3)">Level:</span> ${escapeHtml(currentProfile.exp_level||'—')}</div>
+      <div><span style="color:var(--t3)">Education:</span> ${escapeHtml(currentProfile.education||'—')}</div>
+    </div>
+    <div style="margin-top:8px;color:var(--t2);font-size:12.5px"><span style="color:var(--t3)">Bio:</span> ${escapeHtml((currentProfile.bio||'').substring(0,180))}${(currentProfile.bio||'').length>180?'…':''}</div>
+  `;
+}
+
+/* ─── File upload ─── */
+function rhHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('rh-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = () => { _rhFileBase64 = reader.result.split(',')[1]; };
+  reader.readAsDataURL(file);
+}
+
+/* ─── BUILDER: Generate ─── */
+async function rhGenerate() {
+  const btn = document.getElementById('rh-generate-btn');
+  const errEl = document.getElementById('rh-generate-error');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating...';
+  try {
+    let body = { source: _rhSource };
+    if (_rhSource === 'upload') {
+      const txt = (document.getElementById('rh-upload-text')?.value||'').trim();
+      if (!txt && !_rhFileBase64) throw new Error('Paste your resume text or upload a PDF first.');
+      body.resume_text = txt || '[PDF uploaded — extract and rewrite]';
+    } else if (_rhSource === 'manual') {
+      body.manual_data = {
+        full_name: document.getElementById('rh-m-name')?.value||'',
+        primary_skill: document.getElementById('rh-m-skill')?.value||'',
+        exp_level: document.getElementById('rh-m-level')?.value||'',
+        bio: document.getElementById('rh-m-bio')?.value||'',
+        education: document.getElementById('rh-m-edu')?.value||''
+      };
+    }
+    const result = await apiFetch('/resume/generate', { method:'POST', body: JSON.stringify(body) });
+    _rhCurrentResume = result.resume || '';
+    const ta = document.getElementById('rh-builder-text');
+    if (ta) ta.value = _rhCurrentResume;
+    document.getElementById('rh-builder-output').style.display = '';
+    toast('Resume generated!', 'ti-check');
+  } catch(e) {
+    errEl.textContent = e.message || 'Generation failed.';
+    errEl.style.display = '';
+    toast(e.message || 'Resume generation failed.', 'ti-alert-triangle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Resume with AI';
+  }
+}
+
+/* ─── ATS: Run analysis ─── */
+async function rhRunATS() {
+  const input = document.getElementById('rh-ats-input')?.value?.trim();
+  if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
+  const btn = document.getElementById('rh-ats-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Analysing...';
+  try {
+    const raw = await apiFetch('/resume/analyze-ats', { method:'POST', body: JSON.stringify({resume_text:input}) });
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // Animate score rings
+    const circumference = 201;
+    function setRing(id, score, labelId) {
+      const ring = document.getElementById(id);
+      const lbl = document.getElementById(labelId);
+      if (!ring || !lbl) return;
+      const offset = circumference - (score / 100) * circumference;
+      ring.style.strokeDashoffset = offset;
+      lbl.textContent = score + '/100';
+    }
+    setTimeout(() => {
+      setRing('rh-ring-ats', data.ats_score||0, 'rh-score-ats');
+      setRing('rh-ring-fmt', data.formatting_score||0, 'rh-score-fmt');
+      setRing('rh-ring-kw',  data.keyword_score||0,    'rh-score-kw');
+      setRing('rh-ring-cnt', data.content_score||0,    'rh-score-cnt');
+    }, 80);
+    // Populate feedback lists
+    function setList(id, items) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = (items||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('')||'<li style="color:var(--t3)">No issues found.</li>';
+    }
+    setList('rh-fb-ats', data.compatibility_feedback);
+    setList('rh-fb-fmt', data.formatting_feedback);
+    setList('rh-fb-kw',  data.keyword_feedback);
+    setList('rh-fb-cnt', data.content_feedback);
+    document.getElementById('rh-ats-results').style.display = '';
+    toast('ATS analysis complete!', 'ti-check');
+  } catch(e) {
+    toast(e.message||'Analysis failed. Please try again.', 'ti-alert-triangle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-chart-bar"></i> Run ATS Analysis';
+  }
+}
+
+/* ─── OPTIMIZE: Run ─── */
+async function rhRunOptimize() {
+  const input = document.getElementById('rh-opt-input')?.value?.trim();
+  if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
+  const btn = document.getElementById('rh-opt-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Optimising...';
+  try {
+    const raw = await apiFetch('/resume/optimize', { method:'POST', body: JSON.stringify({resume_text:input}) });
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    document.getElementById('rh-opt-summary').textContent = data.improved_summary || '';
+    const toList = (id, arr) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
+    };
+    toList('rh-opt-bullets',  data.better_bullet_points);
+    toList('rh-opt-achieve',  data.better_achievements);
+    toList('rh-opt-position', data.positioning_suggestions);
+    document.getElementById('rh-opt-results').style.display = '';
+    toast('Optimisation complete!', 'ti-check');
+  } catch(e) {
+    toast(e.message||'Optimisation failed.', 'ti-alert-triangle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-wand"></i> Optimize with AI';
+  }
+}
+
+/* ─── TAILOR: Run ─── */
+async function rhRunTailor() {
+  const resume = document.getElementById('rh-tailor-resume')?.value?.trim();
+  const jd     = document.getElementById('rh-tailor-jd')?.value?.trim();
+  if (!resume || !jd) return toast('Paste both your resume and the job description first.', 'ti-alert-triangle');
+  const btn = document.getElementById('rh-tailor-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Tailoring...';
+  try {
+    const raw = await apiFetch('/resume/tailor', { method:'POST', body: JSON.stringify({resume_text:resume, job_description:jd}) });
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // Match bar
+    const pct = Math.min(100, Math.max(0, data.comparison_match||0));
+    setTimeout(() => {
+      const bar = document.getElementById('rh-tailor-bar');
+      if (bar) bar.style.width = pct+'%';
+    }, 80);
+    document.getElementById('rh-tailor-pct').textContent = pct+'%';
+    // Lists
+    const toList = (id, arr) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
+    };
+    toList('rh-tailor-missing',  data.missing_requirements);
+    toList('rh-tailor-suggest',  data.suggested_improvements);
+    const out = document.getElementById('rh-tailor-output');
+    if (out) out.value = data.tailored_resume || '';
+    document.getElementById('rh-tailor-results').style.display = '';
+    toast('Resume tailored!', 'ti-check');
+  } catch(e) {
+    toast(e.message||'Tailoring failed.', 'ti-alert-triangle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-arrows-diff"></i> Tailor Resume to this Job';
+  }
+}
+
+/* ─── PREVIEW helpers ─── */
+function rhSendToPreview() {
+  const text = document.getElementById('rh-builder-text')?.value||'';
+  _rhCurrentResume = text;
+  rhTab('preview');
+  dTab('resume');
+  document.getElementById('rh-preview-content').textContent = text;
+}
+function rhSendTailoredToPreview() {
+  const text = document.getElementById('rh-tailor-output')?.value||'';
+  _rhCurrentResume = text;
+  rhTab('preview');
+  document.getElementById('rh-preview-content').textContent = text;
+}
+function rhSetTemplate(tpl) {
+  _rhCurrentTemplate = tpl;
+  const area = document.getElementById('rh-preview-area');
+  if (!area) return;
+  area.className = 'rh-template-preview rh-tpl-'+tpl;
+  ['pro','mod','exe'].forEach(id => {
+    const b = document.getElementById('rh-tpl-'+id);
+    if (b) { b.classList.remove('act'); b.classList.add('jbtn-g'); }
+  });
+  const map = {professional:'pro', modern:'mod', executive:'exe'};
+  const active = document.getElementById('rh-tpl-'+map[tpl]);
+  if (active) { active.classList.add('act'); active.classList.remove('jbtn-g'); }
+}
+
+/* ─── COPY helper ─── */
+function rhCopy(textareaId) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  navigator.clipboard?.writeText(ta.value).catch(()=>{});
+  toast('Copied to clipboard!', 'ti-check');
+}
+
+/* ─── EXPORT: PDF (print-based) ─── */
+function rhExportPDF() {
+  const text = _rhCurrentResume || document.getElementById('rh-builder-text')?.value || document.getElementById('rh-tailor-output')?.value || '';
+  if (!text.trim()) return toast('Generate or tailor a resume first.', 'ti-alert-triangle');
+  let root = document.getElementById('rh-print-root');
+  if (!root) { root = document.createElement('div'); root.id='rh-print-root'; document.body.appendChild(root); }
+  root.innerHTML = `<div class="rh-print-page ${_rhCurrentTemplate}" style="white-space:pre-wrap">${escapeHtml(text)}</div>`;
+  root.style.display = 'block';
+  window.print();
+  setTimeout(() => { root.style.display = 'none'; }, 1500);
+}
+
+/* ─── EXPORT: DOCX (blob) ─── */
+function rhExportDOCX() {
+  const text = _rhCurrentResume || document.getElementById('rh-builder-text')?.value || document.getElementById('rh-tailor-output')?.value || '';
+  if (!text.trim()) return toast('Generate or tailor a resume first.', 'ti-alert-triangle');
+  // Build minimal Word XML
+  const lines = text.split('\n');
+  const bodyXml = lines.map(line => {
+    const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<w:p><w:r><w:t xml:space="preserve">${escaped}</w:t></w:r></w:p>`;
+  }).join('');
+  const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>${bodyXml}<w:sectPr/></w:body></w:document>`;
+  const blob = new Blob([xml], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'resume.docx'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast('Resume downloaded as DOCX!', 'ti-check');
+}
+
+/* ─── 1-TAP TAILORED RESUME from job card ─── */
+// Creates/reuses a modal to show the tailored resume in-line
+function openAiResume(jobId) {
+  if (!currentProfile || currentProfile.current_tier !== 'paid') {
+    toast('Tailored resume is a Pro feature.', 'ti-lock');
+    go('upgrade');
+    return;
+  }
+  // Build modal if first use
+  let modal = document.getElementById('rh-ai-resume-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'rh-ai-resume-modal';
+    modal.innerHTML = `
+      <div class="rh-preview-modal-inner">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h3 style="font-family:'Syne',sans-serif;margin:0"><i class="ti ti-file-cv" style="color:var(--vlight)"></i> Tailored Resume</h3>
+          <button class="tbtn" onclick="closeAiResume()" title="Close"><i class="ti ti-x"></i></button>
+        </div>
+        <div id="rh-modal-loading" style="text-align:center;padding:30px">
+          <i class="ti ti-loader-2" style="font-size:28px;animation:spin 1s linear infinite;color:var(--vlight)"></i>
+          <div style="margin-top:10px;color:var(--t2);font-size:13px">Crafting your tailored resume...</div>
+        </div>
+        <div id="rh-modal-content" style="display:none">
+          <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="jbtn jbtn-g" onclick="rhCopy('rh-modal-text')"><i class="ti ti-copy"></i> Copy</button>
+            <button class="jbtn jbtn-g" onclick="rhModalSendToHub()"><i class="ti ti-arrow-right"></i> Open in Hub</button>
+            <button class="jbtn jbtn-v" onclick="rhModalPDF()"><i class="ti ti-file-type-pdf"></i> PDF</button>
+            <button class="jbtn jbtn-g" onclick="rhModalDOCX()"><i class="ti ti-file-type-doc"></i> DOCX</button>
+          </div>
+          <textarea id="rh-modal-text" class="form-input" style="height:340px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;resize:vertical;margin-top:10px"></textarea>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeAiResume(); });
+  }
+  document.getElementById('rh-modal-loading').style.display = 'block';
+  document.getElementById('rh-modal-content').style.display = 'none';
+  modal.classList.add('open');
+
+  apiFetch('/ai-resume', { method:'POST', body: JSON.stringify({ job_id: jobId }) })
+    .then(result => {
+      const text = result.resume || '';
+      _rhCurrentResume = text;
+      document.getElementById('rh-modal-text').value = text;
+      document.getElementById('rh-modal-loading').style.display = 'none';
+      document.getElementById('rh-modal-content').style.display = '';
+    })
+    .catch(e => {
+      closeAiResume();
+      toast(e.message || 'Could not generate tailored resume.', 'ti-alert-triangle');
+    });
+}
+
+function closeAiResume() {
+  const modal = document.getElementById('rh-ai-resume-modal');
+  if (modal) modal.classList.remove('open');
+}
+function rhModalSendToHub() {
+  const text = document.getElementById('rh-modal-text')?.value||'';
+  _rhCurrentResume = text;
+  closeAiResume();
+  dTab('resume');
+  rhTab('preview');
+  document.getElementById('rh-preview-content').textContent = text;
+}
+function rhModalPDF() {
+  const text = document.getElementById('rh-modal-text')?.value||'';
+  _rhCurrentResume = text;
+  rhExportPDF();
+}
+function rhModalDOCX() {
+  const text = document.getElementById('rh-modal-text')?.value||'';
+  _rhCurrentResume = text;
+  rhExportDOCX();
+}
+
+/* ─── Wire Resume Hub into dTab ─── */
+(function patchDTab() {
+  const original = dTab;
+  window.dTab = function(tabName) {
+    original(tabName);
+    if (tabName === 'resume') {
+      // Initialise default: builder sub-tab + profile source selected
+      const firstPane = document.getElementById('rhp-builder');
+      if (firstPane && firstPane.style.display === 'none') {
+        // All panes hidden → show builder
+        document.querySelectorAll('.rh-pane').forEach(p=>p.style.display='none');
+        firstPane.style.display='';
+      }
+      rhSelectSource('profile');
+      rhPopulateProfilePreview();
+    }
+  };
+})();
+
 </script>
 </body>
 </html>

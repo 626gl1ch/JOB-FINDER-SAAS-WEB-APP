@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SnipeJob — Full Marketing Playbook</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0A0A14;
+    --surface: #111120;
+    --card: #161628;
+    --border: #1E1E38;
+    --text: #E8E8F0;
+    --muted: #6B6B8E;
+    --fb: #1877F2;
+    --ig: #E1306C;
+    --li: #0A66C2;
+    --accent: #FF6B35;
+    --green: #22C55E;
+    --gold: #F59E0B;
+    --purple: #7C3AED;
+    --font-display: 'Syne', system-ui, sans-serif;
+    --font-body: 'Inter', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0A0A14 0%, #111126 50%, #0A0A14 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 32px 24px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%; transform: translateX(-50%);
+    width: 400px; height: 200px;
+    background: radial-gradient(ellipse, rgba(255,107,53,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-badge {
+    display: inline-block;
+    background: rgba(255,107,53,0.12);
+    border: 1px solid rgba(255,107,53,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 5vw, 40px);
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .header h1 span { color: var(--accent); }
+  .header p {
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* LAYER LEGEND */
+  .layer-legend {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .layer-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .layer-badge.l1 { color: #60A5FA; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.08); }
+  .layer-badge.l2 { color: var(--green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); }
+  .layer-badge.l3 { color: var(--accent); border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); }
+  .layer-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* MAIN TABS */
+  .platform-tabs {
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    scrollbar-width: none;
+    padding: 0 16px;
+  }
+  .platform-tabs::-webkit-scrollbar { display: none; }
+  .platform-tab {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+  }
+  .platform-tab:hover { color: var(--text); }
+  .platform-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .platform-tab .tab-icon { margin-right: 7px; }
+
+  /* CONTENT PANELS */
+  .panel { display: none; padding: 24px 20px; max-width: 900px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* SECTION HEADERS */
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 32px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* LAYER HEADING */
+  .layer-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 16px;
+  }
+  .layer-heading:first-child { margin-top: 8px; }
+  .layer-pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .layer-pill.l1 { background: rgba(96,165,250,0.15); color: #60A5FA; }
+  .layer-pill.l2 { background: rgba(34,197,94,0.15); color: var(--green); }
+  .layer-pill.l3 { background: rgba(255,107,53,0.15); color: var(--accent); }
+  .layer-heading h3 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .layer-heading p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+    text-align: right;
+  }
+
+  /* POST CARDS */
+  .post-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px; }
+
+  .post-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .post-card:hover { border-color: rgba(255,107,53,0.25); }
+
+  .post-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .post-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .post-label .variant-tag {
+    background: var(--border);
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .post-label .strategy-tag {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  .post-body {
+    padding: 16px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+    font-family: var(--font-body);
+  }
+  .post-body em { color: var(--muted); font-style: italic; }
+
+  .post-card-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tip-tag {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .tip-tag.hot { background: rgba(255,107,53,0.12); color: var(--accent); }
+  .tip-tag.info { background: rgba(96,165,250,0.1); color: #60A5FA; }
+  .tip-tag.green { background: rgba(34,197,94,0.1); color: var(--green); }
+
+  /* PLATFORM ACCENT BARS */
+  .panel.fb .post-card { border-left: 3px solid var(--fb); }
+  .panel.ig .post-card { border-left: 3px solid var(--ig); }
+  .panel.li .post-card { border-left: 3px solid var(--li); }
+  .panel.video .post-card { border-left: 3px solid var(--purple); }
+  .panel.strategy .post-card { border-left: 3px solid var(--gold); }
+
+  /* VIDEO PROMPTS */
+  .scene-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--purple);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .scene-header {
+    background: rgba(124,58,237,0.1);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .scene-number {
+    background: var(--purple);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .scene-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .scene-time {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--purple);
+    font-weight: 600;
+    background: rgba(124,58,237,0.15);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .scene-body { padding: 16px; }
+  .scene-field { margin-bottom: 14px; }
+  .scene-field:last-child { margin-bottom: 0; }
+  .scene-field-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .scene-field-label span { font-size: 14px; }
+  .scene-field-value {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  /* STRATEGY SECTION */
+  .strategy-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .strategy-block h4 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .strategy-block ul { padding-left: 18px; }
+  .strategy-block li {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .strategy-block li strong { color: var(--accent); }
+
+  /* MONETIZATION FUNNEL VISUAL */
+  .funnel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin: 20px 0;
+  }
+  .funnel-stage {
+    border-radius: 8px;
+    padding: 16px 20px;
+    position: relative;
+  }
+  .funnel-stage.s1 { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
+  .funnel-stage.s2 { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); }
+  .funnel-stage.s3 { background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.2); }
+  .funnel-stage h5 {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .funnel-stage.s1 h5 { color: #60A5FA; }
+  .funnel-stage.s2 h5 { color: var(--green); }
+  .funnel-stage.s3 h5 { color: var(--accent); }
+  .funnel-stage p { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .funnel-arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    padding: 2px 0;
+    line-height: 1;
+  }
+
+  /* HASHTAG BLOCKS */
+  .hashtag-block {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 2;
+    margin-top: 8px;
+  }
+  .hashtag-block span { color: #60A5FA; }
+
+  /* CHECKLIST */
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .check-icon {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    background: rgba(34,197,94,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--green);
+    margin-top: 1px;
+  }
+
+  /* INFO BOX */
+  .info-box {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: #FCD34D;
+    line-height: 1.6;
+  }
+  .info-box strong { color: var(--gold); }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .panel { padding: 16px 14px; }
+    .post-body { font-size: 13px; }
+    .layer-heading h3 { font-size: 14px; }
+    .layer-heading p { display: none; }
+  }
+
+  /* SCROLL TO TOP */
+  .back-to-top {
+    display: block;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    text-decoration: none;
+    padding: 24px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    font-family: var(--font-body);
+  }
+  .back-to-top:hover { color: var(--accent); }
+
+  /* EDITING TIPS GRID */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .tip-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .tip-card .tip-icon { font-size: 20px; margin-bottom: 8px; }
+  .tip-card h5 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .tip-card p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header" id="top">
+  <div class="header-badge">SnipeJob × Algorithm Playbook</div>
+  <h1>Scale Your <span>Revenue</span> on Every Platform</h1>
+  <p>Algorithm-optimized posts · 3-stage monetization funnel · AI video prompts · Group strategy</p>
+</div>
+
+<!-- LAYER LEGEND -->
+<div class="layer-legend">
+  <div class="layer-badge l1"><span class="dot"></span> Layer 1 · Discovery — Earn attention from strangers</div>
+  <div class="layer-badge l2"><span class="dot"></span> Layer 2 · Nurture — Build trust & connection</div>
+  <div class="layer-badge l3"><span class="dot"></span> Layer 3 · Conversion — Direct offer & action</div>
+</div>
+
+<!-- PLATFORM TABS -->
+<div class="platform-tabs">
+  <button class="platform-tab active" onclick="showPanel('fb', this)"><span class="tab-icon">📘</span>Facebook</button>
+  <button class="platform-tab" onclick="showPanel('ig', this)"><span class="tab-icon">📸</span>Instagram</button>
+  <button class="platform-tab" onclick="showPanel('li', this)"><span class="tab-icon">💼</span>LinkedIn</button>
+  <button class="platform-tab" onclick="showPanel('video', this)"><span class="tab-icon">🎬</span>AI Video Prompts</button>
+  <button class="platform-tab" onclick="showPanel('strategy', this)"><span class="tab-icon">⚡</span>Monetization & Strategy</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     FACEBOOK PANEL
+═══════════════════════════════════════════════════ -->
+<div class="panel fb active" id="panel-fb">
+
+  <div class="info-box">
+    <strong>Facebook Algorithm Rule:</strong> Posts that get comments in the first 30 minutes get pushed 10–40× further. Optimize every post for a comment response (not just likes). Always ask a direct question or use a keyword trigger like "comment SNIPE."
+  </div>
+
+  <!-- L1 DISCOVERY -->
+  <div class="layer-heading">
+    <div class="layer-pill l1">Layer 1</div>
+    <h3>Discovery — Earn Attention from Cold Audiences</h3>
+    <p>4 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-D1</span>
+          <span class="strategy-tag">Pain-First Pattern Interrupt</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-d1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-d1">You applied to 47 jobs this month.
+
+You got 1 reply.
+
+It's not your skills.
+It's not your experience.
+
+It's TIMING.
+
+The best freelance jobs disappear in 15 minutes.
+By the time you find them, 50 people already applied.
+Your proposal? Written from scratch. Just like everyone else's.
+Your interview prep? Panic-googling the night before.
+
+That ends today.
+
+SnipeJob scans 5 platforms every 15 minutes.
+Matches jobs to YOUR skills automatically.
+Writes a tailored proposal with ONE click.
+Preps you for the interview using the actual job post.
+And earns you side income between gigs.
+
+$9/month.
+
+Comment "SNIPE" below and I'll DM you early access before I open this publicly 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Pain hook = high share rate</span>
+        <span class="tip-tag info">Post at 7–9am or 6–9pm</span>
+        <span class="tip-tag green">Ask for comment trigger = algorithm boost</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-D2</span>
+          <span class="strategy-tag">Story Hook / Social Proof</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-d2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-d2">A friend of mine landed 3 freelance contracts in 10 days.
+
+I asked him how.
+
+He said: "I stopped searching for jobs manually."
+
+He wasn't luckier than you. He wasn't more talented.
+
+He just had a tool doing the work most freelancers grind through every morning — refreshing Upwork, checking 4 other sites, rewriting the same proposal 20 different ways, and still missing the best gigs.
+
+That tool is SnipeJob.
+
+🔍 Scans 5 platforms — updated every 15 minutes
+🤖 Writes tailored proposals in one click
+🎯 Preps your interview from the actual job post
+💸 Earns you side cash between gigs (PayPal / crypto / bank)
+
+While other freelancers refreshed their feeds at 7am, his dashboard already had 40 fresh job matches — scored against HIS skills, with proposals ready to send.
+
+This is a $9/month tool that could land your next contract this week.
+
+Drop "TELL ME MORE" in the comments and I'll show you exactly how it works 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Story format = 3× longer read time</span>
+        <span class="tip-tag info">Works best in freelance groups</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-D3</span>
+          <span class="strategy-tag">Ultra-Short Scroll Stopper</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-d3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-d3">Stop searching for jobs manually.
+
+Let AI find them, match them to your skills, write your proposal, and prep your interview.
+
+All of it. One dashboard. 60 seconds.
+
+SnipeJob. $9/month.
+
+DM me "TEST" right now 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Best for boosted/paid posts</span>
+        <span class="tip-tag info">Pair with a video or product screenshot</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-D4</span>
+          <span class="strategy-tag">Question Hook / Audience Mirror</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-d4')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-d4">Quick question for anyone who freelances or job hunts online 👇
+
+How much time do you spend every day on:
+
+— Refreshing Upwork, LinkedIn, Indeed
+— Writing proposals from scratch
+— Prepping for interviews with zero info
+— Waiting. Just... waiting.
+
+Because the average freelancer burns 3–4 hours a day on all of that.
+
+And still misses the best jobs because they were gone in 15 minutes.
+
+I built SnipeJob to solve exactly this.
+
+✅ Scans 5 platforms every 15 minutes — you see jobs when they're FRESH
+✅ Scores every job against your actual skills
+✅ Writes a tailored, ready-to-send proposal in one click
+✅ Preps you for the interview using the real job post
+✅ Earns you side cash between gigs — PayPal, crypto, or bank transfer
+
+Pro plan: $9/month.
+
+Honest question — would YOU pay $9/month to get those 3 hours back?
+
+Drop 🙋 in the comments if yes.
+I'll DM everyone who responds with a free trial link 🔓</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Emoji response = comment flood</span>
+        <span class="tip-tag green">Triggers algorithm with engagement</span>
+        <span class="tip-tag info">Best for large groups (10k+ members)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L2 NURTURE -->
+  <div class="layer-heading">
+    <div class="layer-pill l2">Layer 2</div>
+    <h3>Nurture — Build Trust, Show Value, Connect Product to Need</h3>
+    <p>3 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-N1</span>
+          <span class="strategy-tag">Educational / The 15-Minute Problem</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-n1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-n1">Most freelancers don't have a skills problem.
+
+They have a TIMING problem.
+
+Here's something most people don't know:
+
+The best freelance jobs on Upwork get 20–50 applications in the first hour.
+
+After that — the client has already shortlisted their favorites. You're invisible.
+
+This is called application decay. And it's why talented freelancers lose contracts to less-skilled people who just applied FIRST.
+
+I built SnipeJob to fix this.
+
+It scans 5 major platforms every 15 minutes and alerts you in real time — not when a job is 6 hours old, but when it's brand new.
+
+That alone changes everything.
+
+But SnipeJob also:
+→ Matches each job to your exact skills (so you apply to the RIGHT ones)
+→ Writes a tailored proposal in one click (not a template — a targeted pitch)
+→ Preps you for the interview using the actual job questions
+→ Earns you side income while you wait for responses
+
+Talent gets you the job.
+Timing gets you the interview.
+
+Want to see how the 15-minute refresh works?
+
+Drop "HOW" in the comments 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">🎓 Teaches a concept → builds authority</span>
+        <span class="tip-tag info">Post 2–3 days after a Discovery post</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-N2</span>
+          <span class="strategy-tag">Expose the Broken System / Proposal Pain</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-n2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-n2">Here's why most proposals get ignored (and it's not what you think).
+
+A client posts a job. Gets 60 proposals.
+
+Most of them open with:
+"I'm an experienced professional with X years in Y..."
+"I can definitely help you with this..."
+"Please review my portfolio at..."
+
+Identical. Forgettable. Deleted.
+
+The proposals that WIN do something different:
+→ They mirror the client's exact language from the job post
+→ They address their specific problem in the first 2 lines
+→ They make the client feel understood — not sold to
+
+SnipeJob's AI reads the job posting and writes an opening that does all three — in one click.
+
+Not a template. A targeted pitch that feels personal.
+
+One click. Done. Ready to send.
+
+That's the difference between a 2% response rate and landing clients consistently.
+
+DM me "PROPOSAL" if you want to see it in action 👁</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">🎓 Builds desire for the product naturally</span>
+        <span class="tip-tag hot">🔥 High save rate — people share this</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-N3</span>
+          <span class="strategy-tag">Side Income Angle / Micro-Tasks</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-n3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-n3">What do you do between gigs?
+
+Most freelancers do one of two things:
+→ Panic-apply to anything that moves
+→ Sit. Wait. Stress.
+
+There's a third option.
+
+SnipeJob has a built-in Side Task feature.
+
+While you're waiting for a client to reply — you can complete small micro-tasks inside the platform and get paid.
+
+PayPal. Crypto. Bank transfer.
+
+Real cash, real withdrawals, zero gimmicks.
+
+It's not going to replace your main income. But it means the platform isn't just a job finder — it's an income layer you didn't have before.
+
+Jobs are refreshed every 15 minutes from 5 platforms.
+Proposals are written in one click.
+Interview prep is generated from the actual job post.
+And between all of that — you're earning from micro-tasks.
+
+$9/month for the Pro plan.
+
+Comment "TASKS" if you want to know how the micro-task system works 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">🎓 Unique angle — most competitors don't have this</span>
+        <span class="tip-tag info">Great for "make money online" groups</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L3 CONVERSION -->
+  <div class="layer-heading">
+    <div class="layer-pill l3">Layer 3</div>
+    <h3>Conversion — Direct Offer, Urgency, Clear Action</h3>
+    <p>3 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-C1</span>
+          <span class="strategy-tag">Limited Access / FOMO</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-c1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-c1">⚠️ Closing this in 48 hours.
+
+The first 100 people who DM me "SNIPE" get:
+
+✅ 30-day free trial of SnipeJob Pro
+✅ Locked price of $9/month (going to $19 next month)
+✅ Direct access to me for setup questions
+
+Here's what SnipeJob Pro does:
+
+🔍 Scans Upwork, Reddit, WWR, Remotive + more every 15 minutes
+🤖 Writes tailored proposals in one click — zero templates
+🎯 Generates interview prep from the ACTUAL job post
+💸 Pays you for micro-tasks between gigs — PayPal, crypto, bank
+
+I've been testing this with a quiet group for 8 weeks. The results are real.
+
+This is your window before the public launch.
+
+Comment "SNIPE" or DM me right now.
+First 100 only. I won't extend this. 👇</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 FOMO + urgency = high conversion</span>
+        <span class="tip-tag info">Pin this post at the top of your profile</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-C2</span>
+          <span class="strategy-tag">ROI Math / Direct Pitch</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-c2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-c2">If you search for freelance jobs manually in 2024, you're already losing.
+
+Here's the math:
+
+❌ Manual search: 3–4 hours/day, always late, always behind
+❌ Generic proposals: 2% response rate
+❌ Zero interview prep: losing contracts you were qualified for
+❌ Dead time between gigs: zero income in the gaps
+
+✅ SnipeJob: Fresh jobs from 5 platforms every 15 minutes
+✅ One-click proposals: tailored, fast, high-converting
+✅ AI interview prep: pulled from the real job post
+✅ Side income between gigs: PayPal / crypto / bank transfer
+
+The average freelance contract is worth $500–$2,000.
+
+SnipeJob is $9/month.
+
+One contract pays for 4+ YEARS of this tool.
+
+You don't need to think about this one very long.
+
+DM me "GO" and I'll set you up today.
+Or drop "YES" in the comments and I'll send the link ✊</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 ROI math = logic-based buyers respond</span>
+        <span class="tip-tag green">Multiple CTA options = more conversions</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">FB-C3</span>
+          <span class="strategy-tag">Pure Value Stack / Hard Close</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'fb-c3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="fb-c3">Everything you spend hours doing manually — SnipeJob does in 60 seconds.
+
+Here's what you get for $9/month:
+
+→ Live job feed from 5 platforms, refreshed every 15 minutes
+→ AI that reads your resume and builds your profile automatically
+→ Job match scoring — know exactly why you're a fit before you apply
+→ One-click proposal generation — tailored to each specific job post
+→ Interview prep AI — questions pulled from the ACTUAL posting
+→ Side income through built-in micro-tasks — real withdrawals via PayPal, crypto, or bank
+
+That's 6 features that normally take 3–4 hours of manual work.
+
+For $9.
+
+If this isn't a no-brainer for you, I don't know what is.
+
+DM me "READY" and let's get you started 🎯</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Value stack = best for warm audiences</span>
+        <span class="tip-tag info">Post after nurture content for maximum effect</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     INSTAGRAM PANEL
+═══════════════════════════════════════════════════ -->
+<div class="panel ig" id="panel-ig">
+
+  <div class="info-box">
+    <strong>Instagram Algorithm Rule:</strong> Reels get 3× the organic reach of static posts. Carousels get saved more. Captions should be skimmable on mobile — short paragraphs, line breaks every 1–2 sentences. Use 5–10 targeted hashtags (not 30 generic ones).
+  </div>
+
+  <!-- L1 DISCOVERY -->
+  <div class="layer-heading">
+    <div class="layer-pill l1">Layer 1</div>
+    <h3>Discovery — Reel Captions & Carousel Hooks</h3>
+    <p>4 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-D1</span>
+          <span class="strategy-tag">Reel Caption — POV Format</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-d1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-d1">POV: You just landed a freelance contract without spending 3 hours searching for it 🤯
+
+SnipeJob does the job hunting for you.
+
+🔍 Pulls fresh jobs from 5 platforms every 15 minutes
+📄 Reads your resume, builds your profile automatically
+🤖 Writes your proposals in ONE click
+🎯 Preps your interviews from the REAL job post
+💸 Pays you for side tasks between gigs
+
+$9/month. Link in bio.
+
+DM me "SNIPE" for early access 👇
+
+#freelance #remotework #workfromhome #upwork #sidehustle #aitools #onlinejobs #remotejobs #jobsearch #makemoneyonline #freelancelife #workfromanywhere #digitalmarketing</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🎬 Best paired with a screen-recording Reel</span>
+        <span class="tip-tag info">POV format = high Reel engagement</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-D2</span>
+          <span class="strategy-tag">Carousel — Slide-by-Slide Script</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-d2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-d2">CAROUSEL SLIDE COPY (7 slides):
+
+[Slide 1 — Hook]
+"You lost 3 clients today.
+You just don't know it yet. 👉"
+
+[Slide 2 — Pain 1]
+"The best remote jobs disappear in 15 minutes.
+You saw them 3 hours later."
+
+[Slide 3 — Pain 2]
+"Your proposal looked exactly like 60 other people's.
+The client stopped reading after line 2."
+
+[Slide 4 — Pain 3]
+"You prepped for the interview by Googling.
+They asked exactly what you didn't study."
+
+[Slide 5 — Solution Intro]
+"There's a tool that fixes all of this.
+It's called SnipeJob. And it's $9/month."
+
+[Slide 6 — Features]
+"🔍 5 platforms, refreshed every 15 mins
+🤖 Proposals written in one click
+🎯 Interview prep from the real job post
+💸 Side income while you wait"
+
+[Slide 7 — CTA]
+"One dashboard. One price.
+DM me 'SNIPE' or tap the link in bio 🔗"
+
+— — —
+CAPTION:
+Stop doing this the hard way.
+
+SnipeJob handles the parts of job hunting that eat your time and kill your momentum.
+
+$9/month. Link in bio.
+
+DM me "SNIPE" 👇
+
+#freelancer #remotejobs #aitools #workfromhome #upwork #sidehustle #jobsearch #digitallife</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Carousels get saved = algorithm boost</span>
+        <span class="tip-tag info">Design: Dark background, bold white text, orange accent</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-D3</span>
+          <span class="strategy-tag">Relatable Story — Mirror Their Day</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-d3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-d3">Tell me you're a freelancer without telling me you're a freelancer:
+
+You have 14 tabs open.
+None are jobs you actually want.
+
+Your proposal draft has been sitting there for 2 hours.
+You've refreshed Upwork 11 times today.
+
+Your "quick" job search just turned into 4 hours.
+
+...yeah. I've been there.
+
+That's why I built SnipeJob.
+
+5 platforms. 15-minute refresh. One-click proposals.
+Interview prep. Side income. $9/month.
+
+DM me "TEST" for early access.
+
+#freelancelife #remotework #workfromhome #upwork #sidehustle #aitools #onlinework #makemoneyonline</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 "Tell me without telling me" = viral format</span>
+        <span class="tip-tag green">High comment & share rate</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-D4</span>
+          <span class="strategy-tag">Bold Statement Hook / Reel Text</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-d4')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-d4">AI just made manual job searching completely pointless.
+
+This tool:
+✅ Finds jobs before you even wake up
+✅ Scores them against your actual skills
+✅ Writes your proposal while you have coffee
+✅ Preps your interview while you're on the bus
+
+$9/month.
+
+It's called SnipeJob and the link is in my bio.
+
+DM me "REPLACE" and I'll show you what it replaced in your day 👇
+
+#aitools #freelance #remotework #worksmart #jobsearch #sidehustle #upwork #digitalnomad #workfromanywhere</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🎬 Works as Reel text overlay on a fast cut video</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L2 NURTURE -->
+  <div class="layer-heading">
+    <div class="layer-pill l2">Layer 2</div>
+    <h3>Nurture — Save-Worthy Value Content</h3>
+    <p>3 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-N1</span>
+          <span class="strategy-tag">Tips Carousel — Proposal Mistakes</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-n1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-n1">3 reasons your Upwork proposals get ignored
+(and how to fix them fast) 👇
+
+1/ You're applying to old jobs.
+Clients shortlist in the first hour.
+If you see it 6 hours later, you're invisible.
+→ Fix: SnipeJob alerts you in real time, every 15 mins.
+
+2/ Your opening sounds like everyone else's.
+"I'm an experienced professional with X years..."
+Clients skip that in 1 second.
+→ Fix: AI rewrites your opening to mirror the client's exact words.
+
+3/ You're not addressing their specific pain.
+Clients want to feel understood. Not sold to.
+→ Fix: SnipeJob's proposal AI targets the exact problem in the posting.
+
+These 3 fixes alone can take you from 2% to 20%+ response rates.
+
+Save this. Share it with a freelancer who needs it.
+
+And if you want the tool that automates all 3 — DM me "FIX" 👇
+
+#freelancetips #upworktips #remotework #proposalwriting #aitools #clientwork #onlinework</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">🎓 Saves = algorithm fuel</span>
+        <span class="tip-tag hot">🔥 Position as expert, then pitch tool</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-N2</span>
+          <span class="strategy-tag">The "Before vs. After" Story</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-n2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-n2">Before SnipeJob vs. After SnipeJob:
+
+BEFORE:
+⏰ 4 hours of daily job searching
+📋 Writing proposals from scratch every time
+🤷 Never knowing if you're a good fit
+😩 Missing the best jobs because they were already gone
+💸 Zero income on slow days
+
+AFTER:
+⚡ 20 minutes/day, maximum
+🤖 Proposals generated in one click
+📊 Job match score for every opportunity
+🔔 Real-time alerts from 5 platforms
+💰 Side income from micro-tasks between gigs
+
+Same skills.
+Same you.
+Different tool.
+
+$9/month. Link in bio.
+
+DM me "AFTER" to get started 👇
+
+#freelancelife #remotework #aitools #worksmarter #upwork #sidehustle #jobhunting #makemoneyonline</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">Before/After format = high conversion content</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-N3</span>
+          <span class="strategy-tag">Mini FAQ — Objection Handling</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-n3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-n3">Answering the questions I keep getting about SnipeJob 👇
+
+Q: Is $9/month really worth it?
+A: The average freelance contract is $500–$2,000. One contract pays for 4 years of this tool.
+
+Q: What platforms does it scan?
+A: Upwork, Reddit, We Work Remotely, Remotive, and more — refreshed every 15 minutes.
+
+Q: Are the proposals just templates?
+A: No. The AI reads each specific job post and writes a proposal tailored to that client's exact language and pain points.
+
+Q: What if there are no jobs that day?
+A: The side task feature pays you for micro-work while you wait. Withdraw via PayPal, crypto, or bank.
+
+Q: How fast can I set it up?
+A: Upload your resume → auto-fill profile → done. Under 60 seconds.
+
+Still have questions? DM me. I answer every one.
+
+#snipejob #freelance #remotework #aitools #upwork #sidehustle #workfromhome #jobsearch</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">🎓 Objection content = trust builder</span>
+        <span class="tip-tag info">Post after a Discovery post generates questions</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L3 CONVERSION -->
+  <div class="layer-heading">
+    <div class="layer-pill l3">Layer 3</div>
+    <h3>Conversion — Direct Offers & Hard CTAs</h3>
+    <p>2 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-C1</span>
+          <span class="strategy-tag">Limited Spots Offer</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-c1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-c1">🚨 50 free trials. First come, first served.
+
+DM me "SNIPE" right now and I'll hook you up with:
+
+✅ 30 days of SnipeJob Pro — completely free
+✅ Locked $9/month rate (going up next month)
+
+What you get:
+🔍 Fresh jobs from 5 platforms every 15 mins
+🤖 One-click tailored proposals
+🎯 AI interview prep from the real job post
+💸 Side cash between gigs
+
+You're spending hours doing something that takes 20 minutes with the right tool.
+
+This is the right tool.
+
+DM me "SNIPE" now — don't wait 👇
+
+#freelance #remotework #aitools #jobsearch #sidehustle #upwork #workfromhome #makemoneyonline</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Scarcity + free trial = highest conversion combo</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">IG-C2</span>
+          <span class="strategy-tag">Reel Caption — Hard Close</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'ig-c2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="ig-c2">If you're still doing this manually, you're leaving money on the table. 💸
+
+SnipeJob handles:
+→ Finding fresh jobs (5 platforms, every 15 mins)
+→ Matching them to your skills
+→ Writing your proposals in one click
+→ Prepping your interviews
+→ Paying you between gigs
+
+$9/month.
+
+Link in bio. Or DM me "START" and I'll walk you through setup personally. 🎯
+
+#snipejob #freelancer #remotejobs #aitools #upwork #sidehustle #worksmarter #digitalnomad</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🎬 Best as Reel caption with a fast product demo video</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     LINKEDIN PANEL
+═══════════════════════════════════════════════════ -->
+<div class="panel li" id="panel-li">
+
+  <div class="info-box">
+    <strong>LinkedIn Algorithm Rule:</strong> LinkedIn rewards dwell time — posts that people read slowly get pushed more. Use line breaks every 1–2 sentences. Start with a hook that creates curiosity or tension. Never use outbound links IN the post (put them in comments). The first 2 lines must be compelling enough to expand the post.
+  </div>
+
+  <!-- L1 DISCOVERY -->
+  <div class="layer-heading">
+    <div class="layer-pill l1">Layer 1</div>
+    <h3>Discovery — Professional Authority & Pattern Interrupts</h3>
+    <p>3 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-D1</span>
+          <span class="strategy-tag">Founder Story / Credibility</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-d1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-d1">I spent 3 years doing job searches the hard way.
+
+4 hours a day. 5 websites. Dozens of proposals written from scratch.
+
+Still losing contracts to people who applied 30 minutes before me.
+
+So I built something.
+
+SnipeJob is an AI-powered job intelligence platform that:
+
+→ Scans 5 major freelance platforms every 15 minutes
+→ Scores each opportunity against your exact skills
+→ Writes a tailored proposal in one click — not a template, a targeted pitch
+→ Generates interview prep from the actual job posting
+→ Pays you for micro-tasks between gigs via PayPal, crypto, or bank
+
+I built it because I was the target user.
+
+And the results in private testing have been better than I expected.
+
+Pro plan: $9/month.
+
+I'm opening early access this week for my LinkedIn network.
+
+The first 50 people to comment "INTERESTED" or DM me get a free 30-day trial.
+
+If you're a freelancer or remote worker who's tired of grinding — this is for you.
+
+#freelancing #remotework #artificialintelligence #jobsearch #productlaunch #saas</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">LinkedIn loves founder origin stories</span>
+        <span class="tip-tag info">Don't put the link in the post — put it in the first comment</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-D2</span>
+          <span class="strategy-tag">Industry Insight / Thought Leadership</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-d2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-d2">The freelance job market has a hidden tax.
+
+It's not commission. It's not platform fees.
+
+It's time.
+
+The average freelancer spends 25–30 hours per week on tasks that don't pay:
+
+→ Searching for new clients
+→ Writing proposals from scratch
+→ Prepping for pitches they're unqualified for
+→ Managing a pipeline that barely converts
+
+That's nearly a full-time job — on top of the actual work.
+
+I built SnipeJob to reclaim that time.
+
+AI-powered job scanning across 5 platforms. One-click proposal generation. Smart skill-matching. Interview prep. Side income between gigs.
+
+All in one dashboard. $9/month.
+
+The question isn't whether AI will transform freelancing.
+
+It already has.
+
+The question is whether you're using it.
+
+→ Comment "BUILD" if you want to see how SnipeJob works.
+
+#freelancing #futureofwork #ai #productivity #remotework #upwork #saas</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Thought leadership post = high share rate on LinkedIn</span>
+        <span class="tip-tag green">Positions you as an expert, not just a seller</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-D3</span>
+          <span class="strategy-tag">Contrarian / Bold Opening Hook</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-d3')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-d3">Unpopular opinion: most freelancers aren't losing because of their skills.
+
+They're losing because of their systems.
+
+Here's what I mean.
+
+The top freelancers on Upwork aren't necessarily the most talented. They're the ones who:
+
+→ Apply within the first 30 minutes a job is posted
+→ Lead with the client's exact pain, not their own resume
+→ Know their fit before they apply — and skip everything else
+→ Have a consistent pipeline, not a monthly panic cycle
+
+These aren't talent gaps. They're system gaps.
+
+I built SnipeJob to close all four.
+
+15-minute job refresh. Smart skill matching. One-click tailored proposals. Interview prep from the real posting.
+
+$9/month.
+
+If you're a freelancer building a sustainable practice — this is the infrastructure layer most people are missing.
+
+DM me or comment "SYSTEM" to learn more.
+
+#freelancing #upwork #productivity #remotework #ai #saas #futureofwork</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 Contrarian takes perform 2× better on LinkedIn</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L2 NURTURE -->
+  <div class="layer-heading">
+    <div class="layer-pill l2">Layer 2</div>
+    <h3>Nurture — Data, Insight, Trust-Building</h3>
+    <p>2 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-N1</span>
+          <span class="strategy-tag">Data Insight / Application Decay</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-n1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-n1">Here's a data point that should make every freelancer uncomfortable:
+
+On Upwork, the average job posting gets 20–50 proposals in the first hour.
+
+After the first hour — response rates drop by over 70%.
+
+This means the platform you rely on for work is essentially a speed test.
+
+Not a skills test.
+
+The freelancers winning aren't always the best. They're the ones who:
+1. See new jobs within minutes of posting
+2. Submit strong, tailored proposals immediately
+3. Repeat this every single day without burning out
+
+That window — the first 15 to 60 minutes — is where income is made or lost.
+
+SnipeJob was built around that reality. 15-minute refresh. Instant matching. One-click proposals.
+
+If you're interested in how early access works, comment "FIRST" below.
+
+#upwork #freelancing #remotework #productivity #proposalwriting #ai #saas</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">Data-backed posts get 4× more shares on LinkedIn</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-N2</span>
+          <span class="strategy-tag">Breakdown Post / What It Actually Does</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-n2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-n2">I've been asked a lot about SnipeJob lately. Here's exactly what it does.
+
+For freelancers and remote job seekers, it's a single dashboard that handles 6 things:
+
+1. Job Discovery — Scans Upwork, Reddit, WWR, Remotive, and more every 15 minutes. You see fresh jobs before most people even open their laptops.
+
+2. Resume Parsing — Upload your CV once. It auto-fills your entire profile. No manual entry.
+
+3. Skill Matching — Every job is scored against your skills. You know your fit percentage before you apply.
+
+4. Proposal Generation — One click. The AI reads the job post, identifies the client's pain, and writes a tailored proposal in your voice.
+
+5. Interview Prep — AI-generated questions pulled from the actual job posting. Not generic. Specific.
+
+6. Side Income — Built-in micro-tasks that pay you between gigs. Withdrawals via PayPal, crypto, or bank transfer.
+
+All of this for $9/month.
+
+If you've been curious — DM me or comment "DETAILS" and I'll send you the full breakdown.
+
+#productlaunch #freelancing #ai #remotework #saas #upwork #jobsearch</div>
+      <div class="post-card-footer">
+        <span class="tip-tag green">Numbered lists perform well on LinkedIn mobile</span>
+        <span class="tip-tag info">Save this as a pinned post</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- L3 CONVERSION -->
+  <div class="layer-heading">
+    <div class="layer-pill l3">Layer 3</div>
+    <h3>Conversion — Professional Direct Offer</h3>
+    <p>2 Variations</p>
+  </div>
+  <div class="post-grid">
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-C1</span>
+          <span class="strategy-tag">Soft Launch Announcement</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-c1')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-c1">I've been quiet about this for 8 weeks.
+
+SnipeJob has been in private beta testing. And the results have exceeded what I expected.
+
+Early users are:
+→ Spending 20 minutes/day on job searching instead of 4 hours
+→ Getting proposals out in under 2 minutes per application
+→ Using the side task feature to generate income while waiting for responses
+→ Landing interviews they would have missed by being 6 hours late
+
+I'm opening it to the public this week.
+
+Pro plan: $9/month.
+
+For my LinkedIn network — the first 50 people to comment "READY" or DM me will get a free 30-day trial before the public launch announcement.
+
+This is the quiet window before it opens wide.
+
+Take it.
+
+(Link in first comment.)
+
+#saas #freelancing #remotework #productlaunch #ai #upwork #jobsearch</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">🔥 "Quiet window" creates genuine urgency</span>
+        <span class="tip-tag info">Put the product link in the FIRST COMMENT — not in the post</span>
+      </div>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="post-label">
+          <span class="variant-tag">LI-C2</span>
+          <span class="strategy-tag">ROI Case / Professional Pitch</span>
+        </div>
+        <button class="copy-btn" onclick="copyPost(this, 'li-c2')">📋 Copy</button>
+      </div>
+      <div class="post-body" id="li-c2">The ROI math on SnipeJob is straightforward.
+
+The average freelance contract: $500–$2,000.
+SnipeJob Pro: $9/month ($108/year).
+
+One contract — just one — pays for 4+ years of the tool.
+
+But the real value isn't the money. It's the time.
+
+Freelancers using SnipeJob go from 3–4 hours of daily job searching to 20 minutes.
+
+That's 2–3 hours reclaimed every single day.
+
+What could you do with 2–3 extra hours?
+→ Take on more clients
+→ Improve your skills
+→ Build a second income stream
+→ Sleep
+
+SnipeJob handles the job hunt. You handle the work.
+
+If this sounds like something you need — comment "MATH" or DM me.
+
+I'll send you the early access link today.
+
+#freelancing #roi #productivity #remotework #saas #upwork #ai</div>
+      <div class="post-card-footer">
+        <span class="tip-tag hot">ROI framing = strongest LinkedIn conversion angle</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     VIDEO PROMPTS PANEL
+═══════════════════════════════════════════════════ -->
+<div class="panel video" id="panel-video">
+
+  <div class="info-box">
+    <strong>Recommended Free AI Tools:</strong> Kling AI (kling.ai), Pika Labs (pika.art), Runway Gen-3, CapCut AI (free editing), HeyGen (AI avatar voiceover), ElevenLabs (voice), Canva Video (transitions/text). Export: 9:16 for Reels/TikTok, 1:1 for Facebook Feed, 16:9 for LinkedIn.
+  </div>
+
+  <div class="layer-heading" style="margin-top: 8px;">
+    <div class="layer-pill l1">Video #1</div>
+    <h3>The "Pain to Solution" Hook Video — 25 Seconds</h3>
+  </div>
+
+  <div class="scene-card">
+    <div class="scene-header">
+      <div class="scene-number">1</div>
+      <div class="scene-title">SCENE 1 — The Hook (0–5 sec)</div>
+      <div class="scene-time">0:00 – 0:05</div>
+    </div>
+    <div class="scene-body">
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎬</span> AI Visual Prompt</div>
+        <div class="scene-field-value">Close-up shot of tired person at a laptop. Multiple browser tabs visible (Upwork, LinkedIn, Indeed). Face shows exhaustion and frustration. Cinematic dark lighting. Slow zoom in. High contrast. Modern, moody atmosphere. Realistic style.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>💬</span> On-Screen Text</div>
+        <div class="scene-field-value">Still refreshing job sites manually in 2024?</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎤</span> Voiceover</div>
+        <div class="scene-field-value">If you're spending hours every morning searching for jobs — you've already lost.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎵</span> Music Direction</div>
+        <div class="scene-field-value">Low tension build. Cinematic downtempo electronic. Think: Epidemic Sound "Dark Tension" category. Volume: 30%.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-card">
+    <div class="scene-header">
+      <div class="scene-number">2</div>
+      <div class="scene-title">SCENE 2 — The Problem Exposed (5–10 sec)</div>
+      <div class="scene-time">0:05 – 0:10</div>
+    </div>
+    <div class="scene-body">
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎬</span> AI Visual Prompt</div>
+        <div class="scene-field-value">Close-up of a phone or laptop screen showing a job posting timestamp. Text reading "Posted 6 hours ago" clearly visible. Notification showing "47 applicants." Red visual indicator of "too late." Dark, urgent aesthetic. Zoom to the screen.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>💬</span> On-Screen Text</div>
+        <div class="scene-field-value">The best jobs are gone in 15 minutes. ⏱️</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎤</span> Voiceover</div>
+        <div class="scene-field-value">The best freelance jobs disappear in 15 minutes. By the time you see them, 50 people already applied.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-card">
+    <div class="scene-header">
+      <div class="scene-number">3</div>
+      <div class="scene-title">SCENE 3 — The Solution Reveal (10–15 sec)</div>
+      <div class="scene-time">0:10 – 0:15</div>
+    </div>
+    <div class="scene-body">
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎬</span> AI Visual Prompt</div>
+        <div class="scene-field-value">Smooth transition to a clean, dark SaaS dashboard UI. Job listings appear in real time, pulsing. Green match scores (87%, 94%, 91%) appearing next to job titles. Numbers ticking. Satisfying, smooth animations. Modern tech aesthetic. Blue and orange accent colors.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>💬</span> On-Screen Text</div>
+        <div class="scene-field-value">SnipeJob. 5 platforms. Every 15 minutes. ⚡</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎤</span> Voiceover</div>
+        <div class="scene-field-value">SnipeJob scans 5 job platforms every 15 minutes and sends you fresh matches before anyone else even looks.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎵</span> Music Direction</div>
+        <div class="scene-field-value">Music lifts here — slightly brighter, more energy. Still cinematic but hopeful. Volume rises to 45%.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-card">
+    <div class="scene-header">
+      <div class="scene-number">4</div>
+      <div class="scene-title">SCENE 4 — Feature Showcase (15–20 sec)</div>
+      <div class="scene-time">0:15 – 0:20</div>
+    </div>
+    <div class="scene-body">
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎬</span> AI Visual Prompt</div>
+        <div class="scene-field-value">Fast-cut split screen (3 panels). Panel 1: cursor clicks "Generate Proposal," text appears instantly — full tailored paragraph. Panel 2: Interview question list appearing with AI animation. Panel 3: "Withdrawal Successful — $24.50 via PayPal" notification ping. Clean, modern UI. Each panel: 2 seconds max.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>💬</span> On-Screen Text (fast flashes)</div>
+        <div class="scene-field-value">One-click proposal ✓ | AI interview prep ✓ | Side income ✓</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎤</span> Voiceover</div>
+        <div class="scene-field-value">It writes your proposal in one click. Preps your interviews. And earns you cash between gigs.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-card">
+    <div class="scene-header">
+      <div class="scene-number">5</div>
+      <div class="scene-title">SCENE 5 — CTA Punch (20–25 sec)</div>
+      <div class="scene-time">0:20 – 0:25</div>
+    </div>
+    <div class="scene-body">
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎬</span> AI Visual Prompt</div>
+        <div class="scene-field-value">Clean product logo centered on dark background. Price appears: "$9/month" in bold white. Below it: glowing orange CTA button "Start Free Trial." Minimal. Confident. Strong contrast. Short pulse animation on the button. Hold 3 seconds.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>💬</span> On-Screen Text</div>
+        <div class="scene-field-value">SnipeJob. $9/month. DM "SNIPE" to start. 🎯</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎤</span> Voiceover</div>
+        <div class="scene-field-value">Nine dollars a month. Less than a takeout order. For a tool that finds your next contract. DM me "SNIPE" right now.</div>
+      </div>
+      <div class="scene-field">
+        <div class="scene-field-label"><span>🎵</span> Music Direction</div>
+        <div class="scene-field-value">Music peaks here then fades clean on the last word. Confident close. No fade out — hard stop.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITING TIPS -->
+  <div class="layer-heading">
+    <div class="layer-pill l2">Editing</div>
+    <h3>Simple Editing Tips to Elevate Every Video</h3>
+  </div>
+
+  <div class="tips-grid">
+    <div class="tip-card">
+      <div class="tip-icon">✂️</div>
+      <h5>Jump Cuts Only</h5>
+      <p>Cut every 2–4 seconds. Slow videos get dropped. Use CapCut's "Auto Cut" for AI-assisted timing. Never let a scene breathe longer than 5 seconds.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">📝</div>
+      <h5>Bold Captions Always</h5>
+      <p>95% of people watch without sound. Use CapCut's Auto Caption, then style them: bold white text, black stroke, bottom third. Never center-screen captions.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">⚡</div>
+      <h5>Flash Transitions</h5>
+      <p>Between scenes: add a 1-frame white or black flash. In CapCut: "Transition → Flash." This gives a professional, punchy feel between cuts.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🎵</div>
+      <h5>Music at 20–40%</h5>
+      <p>Background music should support, not compete. Keep voice at 100%, music at 20–40%. Use "Audio Duck" in CapCut to auto-lower music when voice is active.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🎤</div>
+      <h5>Voice Direction</h5>
+      <p>Use ElevenLabs (free tier) — voice type: "Adam" or "Rachel" for authority + warmth. Speed: slightly faster than normal speech. Confident, not aggressive.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">📐</div>
+      <h5>Export in Both Formats</h5>
+      <p>Export 9:16 (vertical, 1080×1920) for Reels & TikTok. Export 1:1 (1080×1080) for Facebook feed. Same video, two crops. Double the placements.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🖼️</div>
+      <h5>Thumbnail Rule</h5>
+      <p>Use a frustrated face from Scene 1 as thumbnail. Add orange text overlay: "You're losing jobs you never saw." High contrast. Faces + text = highest CTR.</p>
+    </div>
+    <div class="tip-card">
+      <div class="tip-icon">🔊</div>
+      <h5>Sound Effects</h5>
+      <p>Add: a short "whoosh" between scene transitions, a soft "ping" when features appear, and a satisfying "ding" on the $9/month reveal. Subtle but effective.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MONETIZATION & STRATEGY PANEL
+═══════════════════════════════════════════════════ -->
+<div class="panel strategy" id="panel-strategy">
+
+  <div class="section-title">The 3-Stage Monetization Funnel</div>
+
+  <div class="funnel">
+    <div class="funnel-stage s1">
+      <h5>🔍 Stage 1 — Discovery (Earn Attention)</h5>
+      <p>Your job at this stage is to earn attention from people who have never heard of you. Use pain-first hooks, relatable stories, bold claims, and curiosity. Never pitch at this stage. The goal is a comment, a share, a save, or a DM. <strong>Content types:</strong> Hook posts, pattern interrupts, relatable stories, bold statements, question posts.</p>
+    </div>
+    <div class="funnel-arrow">↓</div>
+    <div class="funnel-stage s2">
+      <h5>💡 Stage 2 — Nurture (Give Them a Reason to Stay)</h5>
+      <p>This is where most people skip ahead to the pitch — and lose. At this stage, teach something valuable that naturally connects to the product. Build trust. Show expertise. Create the moment where they think: "This person knows what they're talking about." <strong>Content types:</strong> Educational breakdowns, tips carousels, data insights, before/after content, FAQ posts, objection handling.</p>
+    </div>
+    <div class="funnel-arrow">↓</div>
+    <div class="funnel-stage s3">
+      <h5>💰 Stage 3 — Conversion (Make the Offer Clear)</h5>
+      <p>Now you earn the right to ask. Be direct. Use urgency when real, scarcity when honest, and a clear single CTA. Remove friction — tell them exactly what to do next. One action only. <strong>Content types:</strong> Limited offers, ROI math posts, free trial offers, direct pitches, value stack posts.</p>
+    </div>
+  </div>
+
+  <div class="section-title">Posting Schedule</div>
+
+  <div class="strategy-block">
+    <h4>📅 Weekly Content Rhythm (Per Platform)</h4>
+    <ul>
+      <li><strong>Facebook:</strong> 5 posts/week. Mon & Thu = Discovery. Tue & Fri = Nurture. Wed = Conversion. Rotate variations each week.</li>
+      <li><strong>Instagram:</strong> 4 posts + 2 Reels/week. Mon = Reel (Discovery). Wed = Carousel (Nurture). Fri = Reel (Conversion). Sat = Story series.</li>
+      <li><strong>LinkedIn:</strong> 3 posts/week. Mon = Thought Leadership (Discovery). Wed = Insight/Data (Nurture). Fri = Direct Offer (Conversion).</li>
+      <li><strong>Best times to post — Facebook:</strong> 7–9am, 12–1pm, 6–9pm local time. Wednesday and Friday get the highest organic reach.</li>
+      <li><strong>Best times — Instagram:</strong> 6–8am, 12–2pm, 7–9pm. Tuesday, Wednesday, Thursday are peak days.</li>
+      <li><strong>Best times — LinkedIn:</strong> Tuesday–Thursday, 7:30–8:30am and 5–6pm. Never post on weekends.</li>
+    </ul>
+  </div>
+
+  <div class="section-title">Group Posting Protocol</div>
+
+  <div class="strategy-block">
+    <h4>🏆 The 5-Step Group Posting System</h4>
+    <ul>
+      <li><strong>Step 1 — Contribute First:</strong> Before posting, comment on 3–5 existing threads. Answer a question. Add a tip. Groups reward engaged members with higher reach. This is non-negotiable.</li>
+      <li><strong>Step 2 — Pick the Right Post for the Group:</strong> "Hiring freelancers" groups → use Discovery posts (pain hooks). "Upwork Tips" groups → use Nurture posts (proposal advice). "Remote Jobs Africa" groups → use Conversion posts (direct offer, side income angle).</li>
+      <li><strong>Step 3 — Post at Peak Time:</strong> Check the group's activity — when are the most recent posts from? Match that window. Don't post when the group is quiet.</li>
+      <li><strong>Step 4 — Comment Back Fast:</strong> Every comment on your post = algorithm signal. Reply to EVERY comment within the first hour. Even a simple "DM sent!" keeps the thread alive.</li>
+      <li><strong>Step 5 — Rotate the Post, Not the Group:</strong> Don't post the same thing twice in the same group. But do come back with a different variation (D1 this week, N2 next week, C1 the week after).</li>
+    </ul>
+  </div>
+
+  <div class="section-title">Algorithm Checklist</div>
+
+  <div class="strategy-block">
+    <h4>✅ Before You Post — Self-Audit Every Post</h4>
+    <div class="checklist">
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Is the hook clear and attention-grabbing in under 3 seconds? If someone scrolls past it, do they still feel something?</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Would my target audience (freelancers, remote workers, job hunters) immediately know this is for them?</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Does the post ask for a specific comment response ("SNIPE", "YES", emoji) to trigger the comment-boost algorithm signal?</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Is the text easy to skim on a phone? Short paragraphs (1–3 lines max), line breaks between ideas?</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Is the pain point specific and concrete — not vague? (e.g. "3 hours a day" not "a lot of time")</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Is there ONE clear call to action? Not two, not three. One thing to do.</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>For LinkedIn: is the product link in the first COMMENT, not in the post itself?</span>
+      </div>
+      <div class="checklist-item">
+        <div class="check-icon">✓</div>
+        <span>Am I rotating through Discovery → Nurture → Conversion in sequence, not pitching every single time?</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Priority Groups to Join</div>
+
+  <div class="strategy-block">
+    <h4>🎯 Top Priority Groups (Post in This Order)</h4>
+    <ul>
+      <li><strong>Upwork Freelancers & Clients (45k members):</strong> Use Nurture posts (proposal tips). These people live the exact problem SnipeJob solves.</li>
+      <li><strong>Superstar SEO (76k members):</strong> Use Discovery posts with the AI angle. Tech-forward audience, receptive to tools.</li>
+      <li><strong>Cult of Copy Job Board (42k members):</strong> Use Discovery + Conversion. Writers who hunt jobs constantly — a perfect fit.</li>
+      <li><strong>Remote Work Europe (pan-EU):</strong> Use Nurture posts. Tier 1 clients = higher purchase intent, better ROI on effort.</li>
+      <li><strong>Freelance South Africa (70k members):</strong> Use all 3 layers. This audience actively targets global clients and is highly motivated.</li>
+      <li><strong>UK Small Business Forum (200k members):</strong> Use the LinkedIn-style professional posts. Clients in this group hire freelancers regularly.</li>
+      <li><strong>AI tools for job seekers groups:</strong> Use the AI angle heavily. These audiences are already pre-sold on automation tools.</li>
+    </ul>
+  </div>
+
+</div>
+
+<button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ Back to top</button>
+
+<script>
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({ top: document.querySelector('.platform-tabs').offsetTop - 10, behavior: 'smooth' });
+}
+
+function copyPost(btn, id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '✅ Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copy';
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>

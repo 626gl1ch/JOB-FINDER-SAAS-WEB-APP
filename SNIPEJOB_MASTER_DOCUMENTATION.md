@@ -1,13 +1,5 @@
 # SnipeJob — Master Documentation & Setup Guide
 
-**This is the one file to keep.** It replaces every other `.txt`/`.md` guide floating around the two project folders (deployment steps, CORS fixes, payment directions, bug logs, audit reports, grace-period setup, funnel hosting guide, PRD). Everything useful from those files has been folded in here, de-duplicated, and — where two documents disagreed — reconciled against what the actual code in your latest zips does.
-
-**Last consolidated:** July 2026
-**Covers:** SnipeJob SaaS app + Cloudflare Worker API + Supabase database + Sales Funnel + Stripe (test & live) + Resend expiry emails + affiliate network + GitHub Actions scraper
-
-> Once you've confirmed this file has everything you need, you can safely delete: `FINAL_DEPLOYMENT_STEPS.txt`, `HOSTING.md`, `MANUAL_STEPS_TO_FIX_CORS_AND_DEPLOY.txt`, `PAYMENT_SETUP_DIRECTIONS.txt`, `SnipeJob_Fix_And_Launch_Guide.txt`, `developer_notes.txt`, `MASTER_README.txt`, `SETUP_GUIDE__master_deployment.txt`, `SETUP_GUIDE__stripe_live.txt`, `SETUP_GUIDE__bug_fix_log.txt`, `BUG_FIX_AUDIT_REPORT.txt`, `GRACE_PERIOD_EMAIL_SYSTEM_SETUP.txt`, `SALES_FUNNEL_INTEGRATION_STEPS.txt`, `SnipeJob_Funnel_Hosting_Payment_Verification_Guide.txt`. Keep `SnipeJob_PRD.md` if you want the full sales/acquisition write-up — its useful facts are summarized in Section 1 here too.
-
----
 
 ## Table of Contents
 
@@ -51,11 +43,11 @@
 
 **Monetization (3 streams):** Stripe subscriptions, affiliate revenue share (CPALead), display ads on free tier.
 
-**Honest gaps to know about (from the original PRD, still true unless you've since changed them):**
+**Honest gaps to know about (from the original PRD — updated 2026-07-06):**
 - No live user base / revenue history yet — marketing testimonials are placeholder copy.
 - "Job alerts" are a polling cron (every ~15 min), not real push/email/SMS — align marketing copy with this.
 - Affiliate network integration code is complete but a real network (CPALead) must be connected with your own credentials.
-- AI full-resume-rewrite has a working backend endpoint but may still need a frontend trigger — verify against your current `index.html`.
+- ~~AI full-resume-rewrite has no frontend trigger~~ **RESOLVED** — Full Resume Hub is built and live: Builder, ATS Analysis, Optimize, Tailor, Preview & Templates tabs are all functional in `index.html`. Both frontend and backend are complete.
 
 ---
 
@@ -147,8 +139,12 @@ snipe_jobs_sales_funnel.html   → standalone marketing + checkout-entry page
 | `/api/pin` | POST/PATCH/DELETE | Pin/unpin/update a job |
 | `/api/profile` | GET/PATCH | Read/update profile (Settings tab uses PATCH) |
 | `/api/profile/autofill` | POST | AI resume/bio autofill |
-| `/api/resume/score` | POST | AI resume scoring |
-| `/api/ai-resume` | POST | Full AI resume rewrite |
+| `/api/resume/score` | POST | AI resume scoring (free tier; accepts optional `resume_text` body, falls back to profile bio) |
+| `/api/ai-resume` | POST | 1-tap tailored resume rewrite from job card (Pro only) |
+| `/api/resume/generate` | POST | Resume Builder — generate from profile/upload/manual (Resume Hub) |
+| `/api/resume/analyze-ats` | POST | ATS Analysis — score resume for ATS compatibility, formatting, keywords, content |
+| `/api/resume/optimize` | POST | Resume Optimization — improved summary, bullet points, achievements, positioning |
+| `/api/resume/tailor` | POST | Resume Tailoring — compare resume vs job description, generate tailored version |
 | `/api/ai-apply` | POST | One-click AI proposal writer |
 | `/api/interview/start` | POST | Start mock interview session |
 | `/api/interview/answer` | POST | Submit interview answer for AI scoring |
@@ -332,9 +328,11 @@ The funnel is a standalone static file — it can live anywhere, on a different 
 
 ---
 
-## 6. Switching Stripe: Test → Live
+## 6. Switching Stripe: Test → Live / New Stripe Account
 
-Do this only after everything passes in test mode (§7).
+> **Starting a brand new Stripe account?** Use the dedicated standalone guide: **`STRIPE_LIVE_SETUP_GUIDE.md`** (in the project root). It covers account creation, activation, product setup, keys, webhooks, Worker secrets, and frontend updates in one printable checklist.
+
+Do this only after everything passes in test mode (§7), or when setting up live from scratch.
 
 1. **Activate your live Stripe account** — Dashboard → orange "Activate account" banner → business details, bank account, ID verification. Wait for "Payments enabled."
 2. **Create live products/prices** (test and live have completely separate catalogs):
@@ -348,7 +346,7 @@ Do this only after everything passes in test mode (§7).
 7. **Test with your own real card** (cheapest: $9 monthly). Complete a real payment on both the funnel and the in-app upgrade flow, confirm the Supabase profile updates correctly, then **refund yourself** from Stripe Dashboard → Payments.
 8. **Verify webhook deliveries** show `200` for `checkout.session.completed` and `invoice.payment_succeeded`.
 9. **Verify session reuse is blocked** — reusing a `session_id` to create a second account should fail with "already been used to activate a different account."
-10. **(Optional) Enable the Stripe Customer Portal** — Settings → Billing → Customer portal → enable, allow cancel/update payment method/view invoices. Update the "Manage subscription →" link in `index.html` (search for `billing.stripe.com`) to your real portal URL.
+10. **(Optional) Enable the Stripe Customer Portal** — Settings → Billing → Customer portal → enable, allow cancel/update payment method/view invoices. Update `STRIPE_CUSTOMER_PORTAL_URL` in `index.html` to your real live portal URL.
 11. **Check payout schedule** — Balances → Payouts. First payout is usually held 7 days; confirm your bank account is correct before going live.
 
 **Common test→live mistakes:** using a test price ID with a live secret key ("No such price"); pasting the test webhook's signing secret for the live endpoint (400 "signature mismatch"); forgetting to redeploy after changing a secret (secrets only apply at next deploy).
@@ -420,12 +418,22 @@ Run this fully before sending real traffic — and again after any Worker/schema
 
 Carried forward from the audit passes — these were deliberately **not** changed because they're bigger decisions or content only you should sign off on.
 
-1. **Hardcoded master login** (`_MASTER_EMAIL` / `_MASTER_PASSWORD`) sits in plaintext in `index.html`'s client-side source — anyone viewing page source can read it and get full Pro access, bypassing Supabase entirely. Fine for your own testing; a real exposure once you're driving real signups/paid traffic. Move it server-side (a Worker-only admin check) when ready.
-2. **Missing legal pages** — Privacy Policy / Terms of Service / Refund Policy are linked in the footer but don't resolve to real content. Required before Stripe's live-mode review and before charging real cards in most jurisdictions. Free quick-start options: Termly or GetTerms.
-3. **Schema/code mismatch** — the Worker's `src/index.js` queries `interview_sessions`, `interview_answers`, and `sector_trends`, but the current `schema.sql` does not define these three tables. Confirm they exist in your live Supabase project (they may have been added via a migration that isn't in this delivery); if not, Interview Prep and Sector Trends will silently fail. Recreate them from the Worker's query shapes if missing.
-4. **`OFFER_DEADLINE` hardcoded in the funnel** — the countdown timer's deadline is a fixed date in the funnel's `<script>` block. It's a real, visible promise to visitors — search for `OFFER_DEADLINE` and update or extend it before it quietly expires, or before it misleads a visitor.
-5. **Two overlapping expiry-email designs exist across old docs** — an earlier design used a `payment_failed_at` column + immediate webhook-triggered grace period; the version actually implemented in the current `schema.sql`/`src/index.js` uses `expiry_warning_sent` + a daily `pg_cron` check (documented in §5 Part A/G and §7). Go with the `expiry_warning_sent` version — it's what's actually in your code. If you find `payment_failed_at` references anywhere, they're leftover from the earlier design and can be ignored or cleaned up.
-6. **Two responsive/CORS layout passes exist in history** — already applied, no action needed, just noting this history isn't repeated as a to-do here.
+1. **Hardcoded master login** (`_MASTER_EMAIL` / `_MASTER_PASSWORD`) is now gated behind `IS_LOCAL_DEV` (`window.location.hostname === 'localhost'`) — completely inert on the live deployed site. Safe to ship. Long-term: use a real Supabase admin role.
+2. **Missing legal pages** — Privacy Policy / Terms of Service / Refund Policy are linked in the footer but don't resolve to real content. **Required before Stripe's live-mode review and before charging real cards in most jurisdictions.** Free quick-start options: Termly or GetTerms.
+3. **Schema/code mismatch** — the Worker's `src/index.js` queries `interview_sessions`, `interview_answers`, and `sector_trends`, but confirm these exist in your live Supabase project (they may have been added via a migration not in this delivery). If not, Interview Prep and Sector Trends will silently fail. Recreate from the Worker's query shapes if missing.
+4. **`OFFER_DEADLINE` hardcoded in the funnel** — the countdown timer deadline is a fixed date. Search for `OFFER_DEADLINE` in the funnel HTML and update it before it expires or misleads visitors.
+5. **Two overlapping expiry-email designs** — go with the `expiry_warning_sent` version (the one actually in your code). Any `payment_failed_at` references are leftover from an earlier design and can be ignored.
+6. **DOCX export** — `rhExportDOCX()` creates minimal Word XML that opens in Word but is plain-text styled, not a fully formatted DOCX. This is a V1 browser-API limitation; a proper DOCX library (e.g., `docx` npm package) would be needed server-side for richer output. Acceptable for V1.
+
+**Resolved (no longer outstanding):**
+- ✅ AI full-resume-rewrite frontend trigger — **COMPLETE**: Full Resume Hub with 5 sub-tabs built in `index.html`; 4 new backend routes added to worker (`/api/resume/generate`, `/api/resume/analyze-ats`, `/api/resume/optimize`, `/api/resume/tailor`).
+- ✅ `runResumeScore()` sent empty body — **FIXED**: now accepts optional `resume_text` paste; worker accepts and uses it.
+- ✅ AI Apply broken (`payload_resume` column) — **FIXED**.
+- ✅ Withdrawal race condition — **FIXED** (atomic RPC).
+- ✅ Pinned Jobs tab fake data — **FIXED** (wired to real `/api/pinned`).
+- ✅ Settings tab hardcoded data — **FIXED**.
+- ✅ Stripe Customer Portal URL — **FIXED** (single `STRIPE_CUSTOMER_PORTAL_URL` constant).
+- ✅ "14 sectors" copy typo — **FIXED** (corrected to 16).
 
 ---
 
@@ -546,26 +554,46 @@ UptimeRobot — add monitors for the funnel URL, the app URL, and `/debug/env`, 
 
 Condensed history of what's been found and fixed across all prior audit/fix passes. Kept for reference — no action needed unless you're trying to understand *why* something behaves the way it does.
 
-**SnipeJob SaaS (`index.html` + `src/index.js` + `schema.sql`)**
-- Settings tab had fully hardcoded dummy data (name/email/country/phone) with a dead "Save changes" button — replaced with live profile data + a working save handler.
-- "Upgrade to Pro" in Settings incorrectly linked to signup instead of the upgrade page.
-- `stripe-form`/`crypto-form` elements were referenced by JS but didn't exist in the HTML, crashing the payment method toggle — added the missing elements.
-- In-app upgrade page had no Monthly/Annual selector even though the backend and funnel both already supported both plans — added the toggle and wired plan selection through to checkout.
-- "Start 7-day free trial" button was misleading (no trial existed anywhere) — copy corrected.
-- Stripe webhook incorrectly read invoice objects using checkout-session field names, silently breaking every subscription renewal — split into separate, correctly-typed handlers.
-- Pro users were still limited to 3 sectors in Settings — fixed to respect tier.
-- Pro users' Settings plan card always said "Free plan" — now reflects real tier/expiry.
-- No subscription-expiry warning/downgrade system existed at all — added `expiry_warning_sent` tracking, `check_subscription_expiry()` pg_cron function, and the `/api/internal/send-expiry-email` endpoint.
-- `stripe_subscription_id` / `expiry_warning_sent` columns were missing from `schema.sql` despite being referenced elsewhere — added.
-- `signup_source` for funnel purchases wasn't reliably distinguishing funnel vs. in-app checkouts — now read from session metadata.
-- AI Apply was completely broken for every user (including paying Pro users) due to a `select=` query referencing a non-existent `payload_resume` column — fixed.
-- Withdrawals had a check-then-write race condition that could push a wallet balance negative — fixed by switching to an atomic `process_withdrawal` RPC + a DB-level `CHECK (wallet_balance >= 0)` constraint.
-- `interview_sessions`, `interview_answers`, `sector_trends`, and the `affiliate_logs` SELECT policy previously only existed in a separate `updates.sql` — folded into `schema.sql` in one audit pass (see §8 item 3 — verify this actually landed in your current copy).
-- Two dead functions (`selectPayment()`, `processUpgrade()`) referencing nonexistent page elements — removed as unused.
-- `scraper.js` had a typo'd subreddit name (`videoteditingjobs` → `videoeditingjobs`) silently contributing zero jobs from that source — fixed.
-- In-app upgrade's post-payment redirect was built from the request's `Origin` header, missing the GitHub Pages sub-path — would have 404'd real paying customers. Now built from a single `APP_BASE_URL` constant.
-- An earlier, unauthenticated webhook (`{user_id, status}` trusted with no verification) could have let anyone grant themselves Pro for free — replaced with Stripe signature verification.
-- Affiliate postback endpoint previously had no shared-secret check — closed a self-payout exploit path.
+**Pass 2026-07-06 (Resume Hub, Bug Fixes, Stripe Guide)**
+- **Full Resume Hub built** — 5 sub-tabs in `index.html`: Builder (generate from profile/upload/manual), ATS Analysis (4-score ring chart), Optimize (summary + bullets + achievements + positioning), Tailor (vs job description + match % bar), Preview & Templates (3 styles + PDF/DOCX export).
+- **4 new worker routes added**: `/api/resume/generate`, `/api/resume/analyze-ats`, `/api/resume/optimize`, `/api/resume/tailor` — all fully wired to Gemini and returning structured JSON.
+- **`runResumeScore()` fixed** — was sending empty body, causing 400 errors; now passes `resume_text` from Career Prep textarea; worker updated to accept it and fall back to profile bio if not provided.
+- **Resume Hub sub-tab scrollbar** hidden on mobile (iOS & Android) for cleaner UX.
+- **Manual source radio button** ordering fixed (cosmetic — radio dot was after the icon, now before).
+- **`rhTab()` enhanced** — active tab scrolls into view on mobile; scroll-to-top on tab switch.
+- **"Score again" button** added to resume score result view.
+- **Standalone `STRIPE_LIVE_SETUP_GUIDE.md`** created — covers new account creation, product setup, API keys, webhooks, Worker secrets, frontend key updates, live testing.
+- **`SNIPEJOB_MASTER_DOCUMENTATION.md`** updated: API route table expanded to 30 routes, known issues updated (resolved items marked), roadmap updated, section 6 references new guide.
+
+**Pass 2026-07-03 (Audit & Code Fix)**
+- AI Apply fixed (`payload_resume` → real profile fields).
+- Withdrawal race condition → atomic RPC.
+- Master credentials gated behind `IS_LOCAL_DEV`.
+- Dead Cloudflare cron trigger removed from `wrangler.jsonc`.
+- Pinned Jobs tab wired to real `GET /api/pinned` data.
+- Master-mode API stub path mismatches fixed.
+- Stripe Customer Portal URL → single `STRIPE_CUSTOMER_PORTAL_URL` constant.
+- "14 sectors" copy typo corrected to 16.
+
+**SnipeJob SaaS (`index.html` + `src/index.js` + `schema.sql`) — Earlier passes**
+- Settings tab had fully hardcoded dummy data — replaced with live profile data + working save handler.
+- "Upgrade to Pro" in Settings incorrectly linked to signup — fixed.
+- `stripe-form`/`crypto-form` elements were referenced by JS but didn't exist — added.
+- In-app upgrade page had no Monthly/Annual selector — added and wired.
+- "Start 7-day free trial" button was misleading — copy corrected.
+- Stripe webhook incorrectly read invoice objects using checkout-session field names — split into separate handlers.
+- Pro users still limited to 3 sectors in Settings — fixed.
+- Pro users' Settings plan card always said "Free plan" — fixed.
+- No subscription-expiry warning/downgrade system — added `expiry_warning_sent`, `check_subscription_expiry()` pg_cron function, `/api/internal/send-expiry-email`.
+- `stripe_subscription_id` / `expiry_warning_sent` columns missing from `schema.sql` — added.
+- `signup_source` for funnel purchases — now read from session metadata.
+- Withdrawals check-then-write race condition — fixed with atomic `process_withdrawal` RPC.
+- `interview_sessions`, `interview_answers`, `sector_trends`, `affiliate_logs` SELECT policy — folded into `schema.sql`.
+- Dead functions (`selectPayment()`, `processUpgrade()`) — removed.
+- `scraper.js` subreddit typo (`videoteditingjobs` → `videoeditingjobs`) — fixed.
+- In-app upgrade post-payment redirect used `Origin` header missing GitHub sub-path — fixed.
+- Unauthenticated webhook replaced with Stripe signature verification.
+- Affiliate postback shared-secret check added.
 
 **Sales Funnel** — no functional bugs found across any audit pass; checkout wiring, error toasts, countdown timer, and FAQ accordion all confirmed clean.
 
@@ -576,12 +604,14 @@ Condensed history of what's been found and fixed across all prior audit/fix pass
 Ideas for what's next, not commitments:
 
 - Real push notifications (email/browser) to close the gap between marketing copy and the current 15-minute polling delivery.
-- Finish wiring the AI full-resume-rewrite UI (backend already complete).
+- ~~Finish wiring the AI full-resume-rewrite UI~~ **DONE** — Resume Hub is complete with Builder, ATS Analysis, Optimize, Tailor, Preview & Templates.
 - Persist the project/contract tracker to the database (currently session-only).
+- DOCX export: use a real server-side Word library for richer formatting (V1 exports plain-text Word XML).
 - Automate crypto subscription payments (e.g. NOWPayments) alongside Stripe.
 - Employer-side "post a job here" flow — would turn SnipeJob into a two-sided marketplace.
 - Expand job sources (LinkedIn, Indeed Remote, Wellfound, niche Discord/Slack boards).
 - Native mobile client on top of the existing REST API.
+- Resume Job URL tailoring (paste a job URL; system fetches and tailors resume to it).
 
 ---
 
@@ -603,6 +633,206 @@ Custom domain (if any):       ____________________________________________
 Founding-rate offer deadline set (must match OFFER_DEADLINE in the funnel):
                                ____________________________________________
 ```
+
+---
+
+## 14. Walk Me Through Stripe Live Setup
+
+> **Goal:** switch SnipeJob from Stripe test-mode to live-mode so real payments can be processed.
+> Estimated time: 30–60 minutes.
+
+### Step 1 — Activate your Stripe account
+1. Go to **[https://dashboard.stripe.com](https://dashboard.stripe.com)** and sign in.
+2. Click **Activate account** in the top banner (if not already activated).
+3. Complete the identity / business verification form. You will need:
+   - Legal business name (or your personal name if sole trader)
+   - Business address & phone number
+   - Bank account details for payouts
+4. Wait for Stripe to verify (usually instant, sometimes up to 2 business days).
+
+### Step 2 — Create your live products & price IDs
+1. In the Stripe dashboard, make sure you are in **Live mode** (toggle top-left).
+2. Go to **Products → + Add product**.
+3. Create **"SnipeJob Pro — Monthly"**:
+   - Price: **$9.00 / month**, recurring.
+   - Save → copy the **Price ID** (starts with `price_live_…`).
+4. Create **"SnipeJob Pro — Annual"**:
+   - Price: **$90.00 / year**, recurring.
+   - Save → copy the **Price ID**.
+5. Paste both IDs into your Quick Reference table (Section 13 above).
+
+### Step 3 — Set live Price IDs in the Worker
+Open `my-sniper-worker/src/index.js` and update the constants near the top:
+```js
+const STRIPE_MONTHLY_PRICE_ID = 'price_live_XXXXXXXXXXXXXX';  // replace
+const STRIPE_ANNUAL_PRICE_ID  = 'price_live_XXXXXXXXXXXXXX';  // replace
+```
+Then also set them as Worker secrets:
+```bash
+cd my-sniper-worker
+npx wrangler secret put STRIPE_MONTHLY_PRICE_ID
+npx wrangler secret put STRIPE_ANNUAL_PRICE_ID
+```
+
+### Step 4 — Set your live Stripe Secret Key
+1. In the Stripe dashboard (Live mode) → **Developers → API keys**.
+2. Copy the **Secret key** (`sk_live_…`).
+3. In Supabase → **Settings → Edge Functions → Secrets**, update `STRIPE_SECRET_KEY` to the live key.
+4. Also update it in your Worker:
+```bash
+npx wrangler secret put STRIPE_SECRET_KEY
+# paste sk_live_... when prompted
+```
+
+### Step 5 — Set up the Webhook
+1. Stripe dashboard → **Developers → Webhooks → + Add endpoint**.
+2. Endpoint URL: `https://my-sniper-worker.daniellancce1.workers.dev/api/stripe-webhook`
+3. Select events:
+   - `checkout.session.completed`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
+4. Save. Copy the **Signing secret** (`whsec_…`).
+5. Add it as a Worker secret:
+```bash
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+# paste whsec_... when prompted
+```
+
+### Step 6 — Update index.html publishable key
+In `index.html`, search for `pk_test_` and replace with your **live publishable key** (`pk_live_…`):
+```js
+const stripe = Stripe('pk_live_XXXXXXXXXXXXXX');
+```
+
+### Step 7 — Update the sales funnel Stripe links
+In `funnel/snipe_jobs_sales_funnel.html`, replace the `payment_link` and CTA `href` values:
+- Search for `buy.stripe.com/test_` → replace with your live Stripe payment links.
+- Create live payment links: Stripe dashboard → **Payment Links → + New link** → select each price.
+
+### Step 8 — Deploy & smoke test
+1. Deploy the Worker: `npx wrangler deploy` (inside `my-sniper-worker/`).
+2. Open `index.html` → sign up as a new user → click **Upgrade** → use a real card.
+3. Check the Stripe dashboard → Payments to confirm the charge appears.
+4. Check Supabase → `profiles` table → confirm `current_tier = 'paid'`.
+
+---
+
+## 15. Walk Me Through Hosting on Vercel
+
+> **Goal:** deploy the SnipeJob front-end (`index.html` + `funnel/`) as a production site on Vercel with a custom domain.
+> Estimated time: 20–40 minutes.
+
+### Step 1 — Push the project to GitHub (if not already)
+```bash
+git init
+git remote add origin https://github.com/626gl1ch/JOB-FINDER-SAAS-WEB-APP.git
+git add .
+git commit -m "feat: initial SnipeJob V3 production build"
+git push -u origin main
+```
+
+### Step 2 — Import into Vercel
+1. Go to **[https://vercel.com/new](https://vercel.com/new)**.
+2. Click **Import Git Repository** → select `JOB-FINDER-SAAS-WEB-APP`.
+3. Framework Preset: **Other** (this is a static HTML project — no build step needed).
+4. Root Directory: `./` (leave as default).
+5. Build & Output settings:
+   - Build Command: *(leave blank)*
+   - Output Directory: `./`
+6. Click **Deploy**.
+
+### Step 3 — Environment variables (not needed for the frontend)
+All secrets live in the Cloudflare Worker and Supabase — Vercel only serves static files, so no env vars are required here.
+
+### Step 4 — Add a custom domain (optional)
+1. In the Vercel project dashboard → **Settings → Domains**.
+2. Type your domain (e.g. `app.snipejob.io`) → **Add**.
+3. Vercel shows DNS records. Go to your domain registrar (Namecheap / GoDaddy / Cloudflare) and add:
+   - **A record**: `@` → `76.76.21.21`
+   - **CNAME record**: `www` → `cname.vercel-dns.com`
+4. Wait ~5 minutes for DNS propagation. Vercel will auto-provision an SSL certificate.
+
+### Step 5 — Deploy the sales funnel alongside the app
+The `funnel/snipe_jobs_sales_funnel.html` file is already inside the repo root under `funnel/`. After deployment it is accessible at:
+```
+https://your-vercel-domain/funnel/snipe_jobs_sales_funnel.html
+```
+Update the **Back to App** and **"Already a user? Sign in"** links in the funnel to point at your Vercel URL.
+
+### Step 6 — Update CORS in the Worker
+Because your app now lives at a new Vercel URL (instead of GitHub Pages), update the CORS `allowedOrigins` in `my-sniper-worker/src/index.js`:
+```js
+const allowedOrigins = [
+  'https://your-vercel-domain.vercel.app',
+  'https://app.snipejob.io',             // your custom domain
+  'https://626gl1ch.github.io',          // keep GitHub Pages during transition
+];
+```
+Then redeploy: `npx wrangler deploy`.
+
+### Step 7 — Verify
+- Open `https://your-vercel-domain.vercel.app` → check sign-up, job feed, and upgrade flow.
+- Check the Vercel **Logs** tab for any 404s.
+- Done! Every future `git push` to `main` triggers an automatic Vercel redeploy.
+
+---
+
+## 16. Where Can I List SnipeJob for Sale?
+
+> You have three realistic exit / revenue paths: **selling the whole SaaS**, **listing it on a marketplace**, or **spinning up recurring revenue first to raise the valuation**.
+
+### Option A — Sell the entire SaaS (code + users + MRR)
+
+| Marketplace | Best for | Fee | Link |
+|---|---|---|---|
+| **MicroAcquire (Acquire.com)** | SaaS with any MRR | ~5% success fee | [acquire.com](https://acquire.com) |
+| **Flippa** | Early/pre-revenue digital assets | ~10% + listing fee | [flippa.com](https://flippa.com) |
+| **Empire Flippers** | SaaS with ≥$2k MRR | 15%–2% tiered | [empireflippers.com](https://empireflippers.com) |
+| **FE International** | $50k+ SaaS | 15% | [feinternational.com](https://feinternational.com) |
+
+**Listing checklist before you submit:**
+- [ ] At least 3 months of Stripe revenue history (even small amounts raise valuation).
+- [ ] Google Analytics or Plausible showing traffic.
+- [ ] Brief P&L: MRR, churn, hosting cost (~$0 on free tiers of Cloudflare + Supabase + Vercel).
+- [ ] Code repo + documentation (you have `SNIPEJOB_MASTER_DOCUMENTATION.md` ✅).
+- [ ] Recorded Loom video walkthrough of the product.
+
+### Option B — Sell the source code / template (one-time purchase)
+
+| Platform | Audience | Fee |
+|---|---|---|
+| **Gumroad** | Developers, indie hackers | 10% + $0.30/sale |
+| **CodeCanyon (Envato)** | Agencies & developers | 30–55% Envato cut |
+| **Lemonsqueezy** | Developers | 5% + $0.50/sale |
+| **ProductHunt "Ship"** | Indie hackers | Free listing |
+
+**Recommended package for code sale:**
+- ZIP of the full codebase (minus `.env` / secrets).
+- This `SNIPEJOB_MASTER_DOCUMENTATION.md` as the README.
+- A Loom setup walkthrough.
+- License: "Extended License" (buyer can use commercially, cannot resell).
+- Price range: **$97 – $497** for a complete, documented SaaS template.
+
+### Option C — List on directories to drive subscriptions (not a sale)
+
+These increase your MRR before a potential exit:
+
+| Directory | Cost | Link |
+|---|---|---|
+| **ProductHunt** | Free | producthunt.com |
+| **BetaList** | Free / $129 fast-track | betalist.com |
+| **IndieHackers** | Free | indiehackers.com |
+| **SaaSHub** | Free | saashub.com |
+| **There's An AI For That** | Free / paid placement | theresanaiforthat.com |
+| **Futurepedia** | Free | futurepedia.io |
+| **Toolify.ai** | Free | toolify.ai |
+
+**Recommended launch sequence:**
+1. Post on **IndieHackers** (build in public post) → get early feedback.
+2. Submit to **BetaList** (2–4 weeks queue, plan accordingly).
+3. Launch on **ProductHunt** on a Tuesday or Wednesday at 12:01 AM PT.
+4. After 10+ paid users → list on **Acquire.com** or **Flippa** if you want an exit.
 
 ---
 

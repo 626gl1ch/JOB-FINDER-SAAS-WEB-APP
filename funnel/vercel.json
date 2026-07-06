@@ -1,0 +1,6 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/snipe_jobs_sales_funnel.html" }
+  ]
+}

@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     education TEXT DEFAULT '',
     current_tier TEXT CHECK (current_tier IN ('free', 'paid')) DEFAULT 'free',
     subscription_expiry TIMESTAMP WITH TIME ZONE,
-    wallet_balance DECIMAL(12,2) DEFAULT 0.00,
+    wallet_balance DECIMAL(12,2) DEFAULT 0.00 CHECK (wallet_balance >= 0),
     preferred_payout_address TEXT,
     vpn_violation_count INT DEFAULT 0,
     avatar_url TEXT,
@@ -82,6 +82,14 @@ BEGIN
     -- or 'sales_funnel' (paid first, then created the account).
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='signup_source') THEN
         ALTER TABLE public.profiles ADD COLUMN signup_source TEXT DEFAULT 'app';
+    END IF;
+    -- FIX (audit pass): retrofits the wallet_balance >= 0 CHECK constraint
+    -- onto an existing table (the inline CHECK above only applies on a
+    -- fresh CREATE TABLE). Defense-in-depth alongside the atomic
+    -- process_withdrawal_v2() RPC — belt and suspenders against a negative
+    -- balance, even if some future code path bypasses the RPC.
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_wallet_balance_check') THEN
+        ALTER TABLE public.profiles ADD CONSTRAINT profiles_wallet_balance_check CHECK (wallet_balance >= 0);
     END IF;
     -- NOTE: the old "DROP NOT NULL on country" step and the three legacy
     -- "migrate old column names" UPDATE blocks (tracks_selected,

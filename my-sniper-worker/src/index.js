@@ -306,7 +306,12 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!job_id) return new Response("Missing job_id", { status: 400, headers: corsHeaders });
 
       // Check if user is Pro (scoped to logged-in user)
-      const profileRes = await supabase(`profiles?select=current_tier,payload_resume&id=eq.${userId}`);
+      // FIX (audit pass): this used to select a `payload_resume` column that
+      // does not exist anywhere in schema.sql, which made PostgREST error on
+      // every call — AI Apply was broken for every user, including paying
+      // Pro users. Now selects the same real profile fields /api/ai-resume
+      // already uses successfully.
+      const profileRes = await supabase(`profiles?select=current_tier,full_name,exp_level,primary_skill,bio,education&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
@@ -331,7 +336,14 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
                 JOB TITLE: ${job.title}
                 JOB DESCRIPTION: ${job.payload_description}
 
-                Keep the tone confident but helpful. Do not use placeholders like [Your Name], use the user's profile information if provided. Return only the proposal text.`
+                APPLICANT PROFILE:
+                Name: ${profile.full_name || "the applicant"}
+                Experience level: ${profile.exp_level || "mid"}
+                Top skill: ${profile.primary_skill || ""}
+                Bio: ${profile.bio || ""}
+                Education: ${profile.education || ""}
+
+                Keep the tone confident but helpful. Do not use placeholders like [Your Name] — use the applicant profile above. Return only the proposal text.`
             }]
           }]
         }),
@@ -392,6 +404,156 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       return new Response(JSON.stringify({ status: "submitted", resume: resumeText }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // --- NEW: AI RESUME BUILDER ENDPOINTS ---
+    if (url.pathname === "/api/resume/generate" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const { source, resume_text, manual_data } = await request.json().catch(() => ({}));
+      
+      let userInfoText = "";
+      if (source === "upload") {
+        userInfoText = `Raw Uploaded Resume Content:\n${resume_text}`;
+      } else if (source === "manual") {
+        userInfoText = `Manual Onboarding Profile Info:\nName: ${manual_data?.full_name}\nLevel: ${manual_data?.exp_level}\nSkill: ${manual_data?.primary_skill}\nBio: ${manual_data?.bio}\nEducation: ${manual_data?.education}`;
+      } else { // profile
+        const profileRes = await supabase(`profiles?select=full_name,sectors,exp_level,primary_skill,bio,education&id=eq.${userId}`);
+        const profile = (await profileRes.json())[0];
+        if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
+        userInfoText = `Existing User Profile:\nName: ${profile.full_name}\nLevel: ${profile.exp_level}\nSkill: ${profile.primary_skill}\nBio: ${profile.bio}\nEducation: ${profile.education}`;
+      }
+
+      const prompt = `You are a professional resume writer. Build a polished, complete, and modern resume using the following user details:
+      
+      ${userInfoText}
+      
+      Structure the output as a clean, ready-to-use text resume with standard sections: Contact Info, Professional Summary, Work Experience (elaborate professionally based on bio/profile if needed), Skills, and Education. Focus on strong impact verbs and clear layout. Return ONLY the formatted resume text.`;
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+
+      const geminiData = await geminiRes.json();
+      const resumeText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!geminiRes.ok || !resumeText) {
+        return new Response("AI Resume generation failed.", { status: 502, headers: corsHeaders });
+      }
+
+      return new Response(JSON.stringify({ resume: resumeText }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    if (url.pathname === "/api/resume/analyze-ats" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const { resume_text } = await request.json().catch(() => ({}));
+      if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
+
+      const prompt = `Analyze the following resume for ATS (Applicant Tracking System) compatibility, formatting quality, keyword relevance, and content effectiveness.
+      RESUME:
+      ${resume_text}
+      
+      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting (like \`\`\`json):
+      {
+        "ats_score": number (0-100),
+        "formatting_score": number (0-100),
+        "keyword_score": number (0-100),
+        "content_score": number (0-100),
+        "compatibility_feedback": ["list of strings"],
+        "formatting_feedback": ["list of strings"],
+        "keyword_feedback": ["list of strings"],
+        "content_feedback": ["list of strings"]
+      }`;
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+
+      const geminiData = await geminiRes.json();
+      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      // Strip markdown code fences if present
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      return new Response(text, { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    if (url.pathname === "/api/resume/optimize" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const { resume_text } = await request.json().catch(() => ({}));
+      if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
+
+      const prompt = `Recommend specific optimizations for the following resume. Recommends:
+      1. An improved professional summary.
+      2. Better bullet points for experience.
+      3. Better achievements metrics suggestions.
+      4. Stronger overall positioning.
+      
+      RESUME:
+      ${resume_text}
+      
+      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting:
+      {
+        "improved_summary": "string",
+        "better_bullet_points": ["string"],
+        "better_achievements": ["string"],
+        "positioning_suggestions": ["string"]
+      }`;
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+
+      const geminiData = await geminiRes.json();
+      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      return new Response(text, { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    if (url.pathname === "/api/resume/tailor" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const { resume_text, job_description } = await request.json().catch(() => ({}));
+      if (!resume_text || !job_description) return new Response("Missing parameters", { status: 400, headers: corsHeaders });
+
+      const prompt = `Compare the following resume against the job description opportunity.
+      RESUME:
+      ${resume_text}
+      
+      JOB DESCRIPTION:
+      ${job_description}
+      
+      Identify missing requirements, suggest improvements, and generate a tailored optimized version of the resume.
+      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting:
+      {
+        "comparison_match": number,
+        "missing_requirements": ["string"],
+        "suggested_improvements": ["string"],
+        "tailored_resume": "complete plain text resume string"
+      }`;
+
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      });
+
+      const geminiData = await geminiRes.json();
+      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      return new Response(text, { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
@@ -749,7 +911,8 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           const invoice = event.data.object;
           // billing_reason = 'subscription_create' fires at the same moment as
           // checkout.session.completed — skip it so we don't double-upgrade.
-          if (invoice.billing_reason === "subscription_create") { /* skip duplicate — checkout.session.completed handles this */ }
+          if (invoice.billing_reason === "subscription_create") {
+            /* skip duplicate — checkout.session.completed handles this */
           } else {
             const customerId = invoice.customer;
             if (customerId) {
@@ -1052,11 +1215,12 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
        if (!amount || amount < 2) return new Response("Minimum $2", { status: 400, headers: corsHeaders });
 
-       // Check balance (scoped to logged-in user)
-       const profileRes = await supabase(`profiles?select=wallet_balance,current_tier&id=eq.${userId}`);
+       // Read tier only, to compute the payout schedule shown back to the
+       // user — NOT used for the actual balance check below, so a stale
+       // read here can't cause a bad deduction.
+       const profileRes = await supabase(`profiles?select=current_tier&id=eq.${userId}`);
        const profile = (await profileRes.json())[0];
        if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-       if (profile.wallet_balance < amount) return new Response("Insufficient balance", { status: 400, headers: corsHeaders });
 
        const isPro = profile.current_tier === "paid";
 
@@ -1072,25 +1236,36 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
          scheduledDate = target.toISOString().slice(0, 10);
        }
 
-       // Deduct and log — both calls scoped to this user explicitly,
-       // rather than relying solely on RLS to filter an unscoped PATCH.
-       await supabase(`profiles?id=eq.${userId}`, {
-           method: "PATCH",
-           body: JSON.stringify({ wallet_balance: profile.wallet_balance - amount })
-       });
-
-       await supabase("withdrawal_requests", {
+       // FIX (audit pass): this used to be a manual read-balance-then-PATCH,
+       // which is a check-then-write race condition — two withdrawals fired
+       // close together could both read the same balance, both pass the
+       // check, and both deduct, pushing wallet_balance negative. Now calls
+       // the atomic process_withdrawal_v2() Postgres function (schema.sql),
+       // which does the balance check and the deduction in a single UPDATE
+       // ... WHERE wallet_balance >= amount statement, so a second concurrent
+       // call simply can't succeed once the balance is gone. Note this uses
+       // the *_v2 function (works for free + Pro); the original
+       // process_withdrawal() still exists but is Pro-only and unused here.
+       const rpcRes = await supabase("rpc/process_withdrawal_v2", {
            method: "POST",
            body: JSON.stringify({
-               user_id: userId,
-               total_amount: amount,
-               payment_channel: channel,
-               target_address: address,
-               status: "pending",
-               tier_at_request: isPro ? "paid" : "free",
-               scheduled_payout_date: scheduledDate,
+               p_user_id: userId,
+               p_amount: amount,
+               p_channel: channel,
+               p_address: address,
+               p_tier: isPro ? "paid" : "free",
+               p_scheduled_date: scheduledDate,
            })
        });
+
+       if (!rpcRes.ok) {
+         const errText = await rpcRes.text();
+         if (errText.includes("Insufficient balance")) {
+           return new Response("Insufficient balance", { status: 400, headers: corsHeaders });
+         }
+         console.error("process_withdrawal_v2 error:", errText.slice(0, 500));
+         return new Response("Withdrawal failed. Please try again.", { status: 500, headers: corsHeaders });
+       }
 
        return new Response(JSON.stringify({
          success: true,
@@ -1158,21 +1333,38 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
 
     // 6. POST /api/resume/score (Free: score + tips. Pro already has full
     // rewrite via /api/ai-resume — this is the lighter, free-tier hook.)
+    // Accepts optional { resume_text } body param. If not provided, falls back
+    // to the user's saved profile bio. This allows both:
+    //   a) Career Prep tab "Score my resume" with pasted text
+    //   b) Scoring based on saved profile (empty body / no paste)
     if (url.pathname === "/api/resume/score" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const reqBody = await request.json().catch(() => ({}));
+      const providedResumeText = (reqBody.resume_text || '').trim();
 
       const profileRes = await supabase(`profiles?select=bio,primary_skill,exp_level,education,current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-      if (!profile.bio || profile.bio.trim().length < 20) {
-        return new Response("Add a bio of at least 20 characters in your profile first.", { status: 400, headers: corsHeaders });
+
+      // Determine what to score: pasted text > profile bio
+      const scoreText = providedResumeText || profile.bio || '';
+      if (scoreText.trim().length < 20) {
+        return new Response("Paste a resume or add a bio of at least 20 characters in your profile first.", { status: 400, headers: corsHeaders });
       }
 
-      const prompt = `You are a resume reviewer. Score this candidate's profile out of 100 on clarity, quantified impact, and keyword strength for their field.
+      const prompt = providedResumeText
+        ? `You are a professional resume reviewer. Score this resume out of 100 on clarity, quantified impact, and keyword strength.
+
+RESUME:
+${scoreText}
+
+Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 words", "tip two", "tip three"]}`
+        : `You are a resume reviewer. Score this candidate's profile out of 100 on clarity, quantified impact, and keyword strength for their field.
 SKILL: ${profile.primary_skill}
 LEVEL: ${profile.exp_level}
 EDUCATION: ${profile.education}
-BIO: ${profile.bio}
+BIO: ${scoreText}
 
 Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 words", "tip two", "tip three"]}`;
 
