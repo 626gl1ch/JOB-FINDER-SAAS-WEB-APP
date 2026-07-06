@@ -180,8 +180,8 @@ All of these are Cloudflare Worker secrets, set via `npx wrangler secret put <NA
 | Secret | Where to get it | Required? |
 |---|---|---|
 | `SUPABASE_URL` | Supabase → Project Settings → API | ✅ |
-| `SUPABASE_ANON_KEY` | Supabase → Project Settings → API | ✅ |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API | ✅ |
+| `SUPABASE_ANON_KEY` | Supabase → Project Settings → API (labeled as **"Publishable key"** starting with `sb_publishable_`) | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API (labeled as **"Secret key"** starting with `sb_secret_`) | ✅ |
 | `GEMINI_API_KEY` | https://aistudio.google.com/app/apikey | ✅ |
 | `STRIPE_SECRET_KEY` | Stripe → Developers → API keys (`sk_test_...` / `sk_live_...`) | ✅ |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Developers → Webhooks → your endpoint → Signing secret | ✅ |
@@ -251,8 +251,8 @@ Do these in order. Each step has a verification check — don't skip it.
 3. Set every secret from the table in §4:
    ```
    npx wrangler secret put SUPABASE_URL
-   npx wrangler secret put SUPABASE_ANON_KEY
-   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+   npx wrangler secret put SUPABASE_ANON_KEY            # Paste your Supabase "Publishable key" (sb_publishable_...)
+   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY    # Paste your Supabase "Secret key" (sb_secret_...)
    npx wrangler secret put GEMINI_API_KEY
    npx wrangler secret put STRIPE_SECRET_KEY
    npx wrangler secret put STRIPE_WEBHOOK_SECRET
