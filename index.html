@@ -3624,7 +3624,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_6l7eSezczJta6rW2gomSqA_btj4X1h_';
 // Portal under Settings → Billing in your live Stripe Dashboard, copy the
 // live portal login link it gives you, and paste it here — this single
 // constant now drives both "Manage subscription" buttons.
-const STRIPE_CUSTOMER_PORTAL_URL = 'https://billing.stripe.com/p/login/test_28o14m2FV4kzdsc4gg';
+const PAYSTACK_CUSTOMER_PORTAL_URL = 'https://paystack.com/account'; // Paystack customer portal
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 // Initialize Supabase safely
@@ -4416,7 +4416,7 @@ async function initDashboard() {
     if (planLine) planLine.innerHTML = '<span style="color:var(--vlight);font-weight:700">✦ Pro Plan</span>';
     if (subLine) subLine.textContent = 'Unlimited alerts · All sectors · Zero ads';
     const upgradeBtn = settingsPlanCard.querySelector('button');
-    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open(STRIPE_CUSTOMER_PORTAL_URL, '_blank'); }
+    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open(PAYSTACK_CUSTOMER_PORTAL_URL, '_blank'); }
   }
 
   await loadJobs();
@@ -4818,7 +4818,7 @@ function populateSettingsTab() {
     const planLabel = currentProfile.plan_type === 'annual' ? 'Pro — Annual Plan' : 'Pro — Monthly Plan';
     if (planNameEl) planNameEl.innerHTML = `<span style="color:var(--vlight)">✦ ${planLabel}</span>`;
     if (planDescEl) planDescEl.textContent = 'Unlimited alerts · All 16 sectors · AI tools · Zero ads';
-    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open(STRIPE_CUSTOMER_PORTAL_URL, '_blank'); }
+    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open(PAYSTACK_CUSTOMER_PORTAL_URL, '_blank'); }
     if (expiryEl && currentProfile.subscription_expiry) {
       const exp = new Date(currentProfile.subscription_expiry);
       expiryEl.innerHTML = `<i class="ti ti-calendar" style="font-size:12px"></i> Renews / expires: ${exp.toLocaleDateString(undefined, {year:'numeric',month:'long',day:'numeric'})}`;
@@ -5116,7 +5116,7 @@ async function submitKyc() {
 }
 
 /* ─── PRO UPGRADE / PAYMENT ─── */
-let selectedPaymentMethod = 'stripe';
+let selectedPaymentMethod = 'paystack';
 let selectedUpgradePlan = 'monthly'; // 'monthly' | 'annual'
 
 function selectUpgradePlan(plan) {
@@ -5140,15 +5140,15 @@ function selectUpgradePlan(plan) {
     ? '$90<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/yr</span>'
     : '$9<span style="font-size:1.2rem;color:var(--t3);font-weight:400">/mo</span>';
   if (subEl) subEl.textContent = plan === 'annual'
-    ? 'Billed annually ($7.50/mo) · Save 17% · Secure via Stripe'
-    : 'Billed monthly · Cancel anytime · Secure via Stripe';
+    ? 'Billed annually ($7.50/mo) · Save 17% · Secure via Paystack'
+    : 'Billed monthly · Cancel anytime · Secure via Paystack';
 }
 
 function selectPayment(method) {
   selectedPaymentMethod = method;
-  const stripeForm = document.getElementById('stripe-form');
+  const paystackForm = document.getElementById('stripe-form');
   const cryptoForm = document.getElementById('crypto-form');
-  if (stripeForm) stripeForm.style.display = method === 'stripe' ? 'block' : 'none';
+  if (paystackForm) paystackForm.style.display = method === 'paystack' ? 'block' : 'none';
   if (cryptoForm) cryptoForm.style.display = method === 'crypto' ? 'block' : 'none';
 }
 
@@ -5196,7 +5196,7 @@ async function startProCheckout() {
    all — see /api/payment/create-checkout-public in the worker). */
 let _premiumSession = null; // { sessionId, email, plan } once verified
 
-async function initPremiumSignupFlow(sessionId) {
+async function initPremiumSignupFlow(reference) {
   go('premium-signup');
   const loadingEl = document.getElementById('premsign-loading');
   const errorEl = document.getElementById('premsign-error');
@@ -5208,7 +5208,7 @@ async function initPremiumSignupFlow(sessionId) {
   if (formEl) formEl.style.display = 'none';
 
   try {
-    const res = await fetch(`${API_URL}/payment/verify-session?session_id=${encodeURIComponent(sessionId)}`);
+    const res = await fetch(`${API_URL}/payment/verify-session?reference=${encodeURIComponent(reference)}`);
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.paid) {
@@ -5231,7 +5231,7 @@ async function initPremiumSignupFlow(sessionId) {
       return;
     }
 
-    _premiumSession = { sessionId, email: data.email, plan: data.plan };
+    _premiumSession = { reference, email: data.email, plan: data.plan };
     if (loadingEl) loadingEl.style.display = 'none';
     if (formEl) formEl.style.display = 'block';
     const emailInput = document.getElementById('ps-email');
@@ -5295,14 +5295,14 @@ async function handlePremiumSignup() {
       // immediately, so claim the payment right now while we have a token.
       window._safeSetToken('user_token', data.session.access_token);
       try {
-        await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ session_id: _premiumSession.sessionId }) });
+        await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ reference: _premiumSession.reference }) });
         try { currentProfile = await apiFetch('/profile'); } catch (e) {}
         toast('🎉 Welcome to Pro! Your account is fully activated.', 'ti-crown');
       } catch (claimErr) {
         // The account exists either way — keep the session id pending so the
         // next sign-in retries the claim, and let them into the dashboard.
         console.warn('[SnipeJob] claim-premium failed right after signup:', claimErr.message);
-        window.localStorage.setItem('pending_premium_session_id', _premiumSession.sessionId);
+        window.localStorage.setItem('pending_paystack_reference', _premiumSession.reference);
         toast('Account created — still confirming your Pro access, this can take a moment.', 'ti-info-circle');
       }
       updateNavForAuth(true);
@@ -5310,7 +5310,7 @@ async function handlePremiumSignup() {
     } else {
       // Email confirmation is required on this project — hold the claim
       // until they confirm and sign in.
-      window.localStorage.setItem('pending_premium_session_id', _premiumSession.sessionId);
+      window.localStorage.setItem('pending_paystack_reference', _premiumSession.reference);
       toast('Check your email to confirm your account, then sign in to activate Pro.', 'ti-mail');
       go('signin');
     }
@@ -5325,11 +5325,11 @@ async function handlePremiumSignup() {
 // Attaches a paid-but-not-yet-claimed sales-funnel session to the now-logged-in
 // account. Safe to call on every login — it's a no-op when nothing is pending.
 async function tryClaimPendingPremiumSession() {
-  const pendingId = window.localStorage.getItem('pending_premium_session_id');
-  if (!pendingId) return;
+  const pendingRef = window.localStorage.getItem('pending_paystack_reference');
+  if (!pendingRef) return;
   try {
-    const result = await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ session_id: pendingId }) });
-    window.localStorage.removeItem('pending_premium_session_id');
+    const result = await apiFetch('/payment/claim-premium', { method: 'POST', body: JSON.stringify({ reference: pendingRef }) });
+    window.localStorage.removeItem('pending_paystack_reference');
     if (result && result.success) {
       try { currentProfile = await apiFetch('/profile'); } catch (e) {}
       toast('🎉 Pro activated! Enjoy unlimited alerts and AI tools.', 'ti-crown');
@@ -5340,7 +5340,7 @@ async function tryClaimPendingPremiumSession() {
     // stop asking. Anything else (network blip, 5xx) is worth retrying on
     // the next login.
     if (e.status && e.status >= 400 && e.status < 500) {
-      window.localStorage.removeItem('pending_premium_session_id');
+      window.localStorage.removeItem('pending_paystack_reference');
     }
     console.warn('[SnipeJob] Pending premium claim not completed:', e.message);
   }
@@ -5448,16 +5448,12 @@ function handleCtaEmail() {
   }
   // ──────────────────────────────────────────────────────────────────
 
-  // ── Sales-funnel buyer landing back from Stripe ─────────────────
-  // Stripe sends paid sales-funnel buyers here with ?premium_signup=1 — this
-  // takes priority over every other bootstrap path below (master session,
-  // normal session restore, etc.) since it's a fresh landing, not a return
-  // visit to resume.
+  // Paystack sends buyers back with ?premium_signup=1&reference=... 
   const earlyParams = new URLSearchParams(window.location.search);
-  if (earlyParams.get('premium_signup') === '1' && earlyParams.get('session_id')) {
-    const premiumSessionId = earlyParams.get('session_id');
+  if (earlyParams.get('premium_signup') === '1' && (earlyParams.get('reference') || earlyParams.get('trxref'))) {
+    const premiumRef = earlyParams.get('reference') || earlyParams.get('trxref');
     window.history.replaceState({}, '', window.location.pathname);
-    initPremiumSignupFlow(premiumSessionId);
+    initPremiumSignupFlow(premiumRef);
     return;
   }
   // ──────────────────────────────────────────────────────────────────
@@ -5489,15 +5485,13 @@ function handleCtaEmail() {
   }
   // ──────────────────────────────────────────────────────────────────
 
-  // ── Handle Stripe redirect params ──────────────────────────────
+  // ── Handle Paystack redirect params ──────────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const paymentStatus = urlParams.get('payment');
-  const stripeSessionId = urlParams.get('session_id');
+  const paystackReference = urlParams.get('reference') || urlParams.get('trxref');
 
-  if (paymentStatus === 'success' && stripeSessionId) {
-    // Clean the URL without reload
+  if (paymentStatus === 'success' && paystackReference) {
     window.history.replaceState({}, '', window.location.pathname);
-    // Show a payment-processing toast while we verify
     toast('Payment received — activating Pro…', 'ti-check');
   } else if (paymentStatus === 'cancelled') {
     window.history.replaceState({}, '', window.location.pathname);
@@ -5529,12 +5523,11 @@ function handleCtaEmail() {
   // live session.
   await tryClaimPendingPremiumSession();
 
-  // Verify Stripe session and eagerly upgrade profile if confirmed
-  if (paymentStatus === 'success' && stripeSessionId) {
+  // Verify Paystack reference and eagerly upgrade profile if confirmed
+  if (paymentStatus === 'success' && paystackReference) {
     try {
-      const statusRes = await apiFetch(`/payment/status?session_id=${stripeSessionId}`);
+      const statusRes = await apiFetch(`/payment/status?reference=${encodeURIComponent(paystackReference)}`);
       if (statusRes && statusRes.active) {
-        // Refresh profile so dashboard shows Pro tier immediately
         try { currentProfile = await apiFetch('/profile'); } catch(e) {}
         toast('🎉 Welcome to Pro! Enjoy unlimited job alerts and Side Tasks.', 'ti-crown');
       }

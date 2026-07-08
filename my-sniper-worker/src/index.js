@@ -61,11 +61,10 @@ export default {
 
     // Subscription plan catalogue. "annual" is the $90/yr founding-rate plan
     // sold from the sales funnel; "monthly" is the existing $9/mo in-app plan.
-    // Both map to their own Stripe Price ID (configured as separate wrangler
-    // secrets, since test/live mode each need their own price IDs anyway).
+    // Both map to their own Paystack plan code (configured as Worker secrets).
     const PLAN_CONFIG = {
-      monthly: { priceEnv: "STRIPE_PRO_PRICE_ID", label: "monthly" },
-      annual: { priceEnv: "STRIPE_PRO_ANNUAL_PRICE_ID", label: "annual" },
+      monthly: { planEnv: "PAYSTACK_PRO_PLAN_CODE", label: "monthly", amount: 900 },   // ₦900 or $9 in base currency
+      annual:  { planEnv: "PAYSTACK_PRO_ANNUAL_PLAN_CODE", label: "annual",  amount: 9000 },  // ₦9000 or $90
     };
     const getPlanExpiry = (plan) => {
       const expiry = new Date();
@@ -160,10 +159,13 @@ export default {
             hasSupabaseAnonKey: !!env.SUPABASE_ANON_KEY,
             hasSupabaseServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
             hasGeminiApiKey: !!env.GEMINI_API_KEY,
-            hasStripeSecretKey: !!env.STRIPE_SECRET_KEY,
-            hasStripeProPriceId: !!env.STRIPE_PRO_PRICE_ID,
-            hasStripeProAnnualPriceId: !!env.STRIPE_PRO_ANNUAL_PRICE_ID,
-            hasStripeWebhookSecret: !!env.STRIPE_WEBHOOK_SECRET,
+            hasPaystackSecretKey: !!env.PAYSTACK_SECRET_KEY,
+            hasPaystackProPlanCode: !!env.PAYSTACK_PRO_PLAN_CODE,
+            hasPaystackProAnnualPlanCode: !!env.PAYSTACK_PRO_ANNUAL_PLAN_CODE,
+            hasPaystackWebhookSecret: !!env.PAYSTACK_WEBHOOK_SECRET,
+            hasPostbackSecret: !!env.POSTBACK_SECRET,
+            hasResendApiKey: !!env.RESEND_API_KEY,
+            hasWorkerInternalSecret: !!env.WORKER_INTERNAL_SECRET,
             appBaseUrl: APP_BASE_URL,
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -587,82 +589,58 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       });
     }
 
-    // 3a. POST /api/payment/create-checkout (Stripe Checkout Session — for an
-    // already-logged-in user upgrading from inside the app)
-    // FIX (2026-06-27): path was "/payment/create-checkout" (missing the
-    // "/api" prefix the frontend and Stripe docs both use) — every click
-    // 404'd before it ever reached this handler.
+    // 3a. POST /api/payment/create-checkout (Paystack — logged-in user upgrading from inside the app)
+    // Initializes a Paystack transaction with the user's email and the selected plan code.
+    // Returns { authorization_url } which the frontend redirects to.
     if (url.pathname === "/api/payment/create-checkout" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const body = await request.json().catch(() => ({}));
       const plan = PLAN_CONFIG[body.plan] ? body.plan : "monthly";
-      const priceId = env[PLAN_CONFIG[plan].priceEnv];
+      const planCode = env[PLAN_CONFIG[plan].planEnv];
 
-      // FIX (2026-06-27): was env.STRIPE_PRICE_ID (doesn't exist — the secret
-      // is actually named STRIPE_PRO_PRICE_ID, confirmed via `wrangler secret
-      // list`), with a hardcoded price ID as a silent fallback. That meant
-      // every checkout was quietly using a baked-in test price no matter what
-      // was configured. Now this requires the real secret and fails loudly
-      // (503) instead of silently substituting a price you didn't choose.
-      if (!env.STRIPE_SECRET_KEY || !priceId) {
+      if (!env.PAYSTACK_SECRET_KEY || !planCode) {
         return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Fetch user email from Supabase auth (via profiles)
-      const profileRes = await supabase(`profiles?select=full_name,country&id=eq.${userId}`);
+      // Fetch user email from profiles
+      const profileRes = await supabase(`profiles?select=email&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
+      if (!profile?.email) {
+        return new Response(JSON.stringify({ error: "Profile email not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
-      // FIX (2026-06-27): this used to build the redirect from the request's
-      // Origin header + "/index.html", e.g. "https://626gl1ch.github.io/index.html".
-      // Origin only ever contains scheme+host — it never includes the repo path
-      // segment GitHub Pages serves the app under ("/JOB-FINDER-SAAS-WEB-APP/"),
-      // so every successful payment redirected straight into a 404 instead of
-      // back into the app. APP_BASE_URL (see top of fetch()) is the actual,
-      // correct, full path to the deployed app.
-      const stripeBody = new URLSearchParams({
-        "mode": "subscription",
-        "line_items[0][price]": priceId,
-        "line_items[0][quantity]": "1",
-        "success_url": `${APP_BASE_URL}/index.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        "cancel_url": `${APP_BASE_URL}/index.html?payment=cancelled`,
-        "client_reference_id": userId,
-        "metadata[user_id]": userId,
-        "metadata[plan]": plan,
-        "allow_promotion_codes": "true",
-      });
+      const callbackUrl = `${APP_BASE_URL}/index.html?payment=success`;
 
-      const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
         },
-        body: stripeBody.toString(),
+        body: JSON.stringify({
+          email: profile.email,
+          amount: PLAN_CONFIG[plan].amount * 100, // kobo/cents (amount * 100)
+          plan: planCode,
+          callback_url: callbackUrl,
+          metadata: { user_id: userId, plan, source: "app" },
+        }),
       });
 
-      const stripeData = await stripeRes.json();
-
-      if (!stripeRes.ok || !stripeData.url) {
-        console.error("Stripe checkout error:", JSON.stringify(stripeData).slice(0, 500));
+      const paystackData = await paystackRes.json();
+      if (!paystackRes.ok || !paystackData.data?.authorization_url) {
+        console.error("Paystack checkout error:", JSON.stringify(paystackData).slice(0, 500));
         return new Response(
-          JSON.stringify({ error: stripeData.error?.message || "Could not create checkout session" }),
+          JSON.stringify({ error: paystackData.message || "Could not create checkout session" }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ url: paystackData.data.authorization_url, reference: paystackData.data.reference }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3a-pub. POST /api/payment/create-checkout-public (NEW — 2026-06-27)
-    // Anonymous checkout for the sales funnel: there is no account yet at this
-    // point, so this is intentionally unauthenticated. The funnel sends which
-    // plan was clicked ("annual" or "monthly") and the page URL to return to if
-    // the visitor cancels. Stripe collects the buyer's email itself during
-    // Checkout — we never see it until the session comes back paid.
-    // No client_reference_id is set here (there's no user_id to attach yet);
-    // the new account gets linked to this payment by /api/payment/claim-premium
-    // right after signup, on the page Stripe redirects back to.
+    // 3a-pub. POST /api/payment/create-checkout-public (Paystack — sales funnel, no auth)
+    // Requires email in the request body since there's no account yet.
     if (url.pathname === "/api/payment/create-checkout-public" && method === "POST") {
       const body = await request.json().catch(() => ({}));
       const plan = PLAN_CONFIG[body.plan] ? body.plan : null;
@@ -670,76 +648,68 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify({ error: "Invalid plan — expected 'monthly' or 'annual'." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const priceId = env[PLAN_CONFIG[plan].priceEnv];
-      if (!env.STRIPE_SECRET_KEY || !priceId) {
+      const email = (body.email || "").trim().toLowerCase();
+      if (!email || !email.includes("@")) {
+        return new Response(JSON.stringify({ error: "A valid email address is required to start checkout." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const planCode = env[PLAN_CONFIG[plan].planEnv];
+      if (!env.PAYSTACK_SECRET_KEY || !planCode) {
         return new Response(JSON.stringify({ error: "Payment not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Only accept the caller's cancel_url if it's a real http(s) URL — it's
-      // just a redirect target so the blast radius of getting this wrong is
-      // low, but we still don't want to hand Stripe something malformed.
       let cancelUrl = `${APP_BASE_URL}/index.html`;
       if (typeof body.cancel_url === "string" && /^https?:\/\//i.test(body.cancel_url)) {
         cancelUrl = body.cancel_url;
       }
 
-      const stripeBody = new URLSearchParams({
-        "mode": "subscription",
-        "line_items[0][price]": priceId,
-        "line_items[0][quantity]": "1",
-        "success_url": `${APP_BASE_URL}/index.html?premium_signup=1&session_id={CHECKOUT_SESSION_ID}`,
-        "cancel_url": cancelUrl,
-        "metadata[plan]": plan,
-        "metadata[source]": "sales_funnel",
-        "allow_promotion_codes": "true",
-      });
-
-      const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
         },
-        body: stripeBody.toString(),
+        body: JSON.stringify({
+          email,
+          amount: PLAN_CONFIG[plan].amount * 100,
+          plan: planCode,
+          callback_url: `${APP_BASE_URL}/index.html?premium_signup=1`,
+          metadata: { plan, source: "sales_funnel", cancel_url: cancelUrl },
+        }),
       });
 
-      const stripeData = await stripeRes.json();
-      if (!stripeRes.ok || !stripeData.url) {
-        console.error("Stripe public checkout error:", JSON.stringify(stripeData).slice(0, 500));
+      const paystackData = await paystackRes.json();
+      if (!paystackRes.ok || !paystackData.data?.authorization_url) {
+        console.error("Paystack public checkout error:", JSON.stringify(paystackData).slice(0, 500));
         return new Response(
-          JSON.stringify({ error: stripeData.error?.message || "Could not create checkout session" }),
+          JSON.stringify({ error: paystackData.message || "Could not create checkout session" }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      return new Response(JSON.stringify({ url: stripeData.url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ url: paystackData.data.authorization_url, reference: paystackData.data.reference }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3a-verify. GET /api/payment/verify-session (NEW — 2026-06-27)
-    // Public/unauthenticated by necessity — there's no account/token yet. Only
-    // ever returns information the visitor already has (their own email, the
-    // plan they bought, whether the payment went through) — never anything
-    // about other users. Called by the premium-signup page right after the
-    // Stripe redirect, before any account exists, purely to populate the
-    // signup form and decide whether to show "create your account" vs.
-    // "you already have an account — sign in instead".
+    // 3a-verify. GET /api/payment/verify-session (Paystack — public, used after funnel redirect)
+    // Verifies a Paystack transaction reference; returns { paid, plan, email, already_registered }
     if (url.pathname === "/api/payment/verify-session" && method === "GET") {
-      const sessionId = url.searchParams.get("session_id");
-      if (!sessionId || !env.STRIPE_SECRET_KEY) {
-        return new Response(JSON.stringify({ error: "Missing session_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const reference = url.searchParams.get("reference");
+      if (!reference || !env.PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Missing reference" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { "Authorization": `Bearer ${env.PAYSTACK_SECRET_KEY}` },
       });
-      const session = await stripeRes.json();
-      if (!stripeRes.ok) {
-        return new Response(JSON.stringify({ error: "Session not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const paystackData = await paystackRes.json();
+      if (!paystackRes.ok || !paystackData.data) {
+        return new Response(JSON.stringify({ error: "Transaction not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const paid = session.payment_status === "paid";
-      const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
-      const email = session.customer_details?.email || session.customer_email || null;
+      const txn = paystackData.data;
+      const paid = txn.status === "success";
+      const plan = txn.metadata?.plan === "annual" ? "annual" : "monthly";
+      const email = (txn.customer?.email || "").toLowerCase();
 
       let alreadyRegistered = false;
       if (email) {
@@ -753,55 +723,46 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify({ paid, plan, email, already_registered: alreadyRegistered }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3a-claim. POST /api/payment/claim-premium (NEW — 2026-06-27)
-    // Authenticated (by the brand-new account's own token, right after
-    // sb.auth.signUp/signInWithPassword on the premium-signup page). Attaches
-    // an already-paid Stripe Checkout session to that account. Re-verifies
-    // payment directly against Stripe with the secret key — never trusts a
-    // client-supplied "I paid" flag — and guards against the same session
-    // being used to upgrade two different accounts.
+    // 3a-claim. POST /api/payment/claim-premium (Paystack — authenticated, attaches a paid reference to an account)
+    // Re-verifies payment server-side against Paystack. Guards against double-claiming.
     if (url.pathname === "/api/payment/claim-premium" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const body = await request.json().catch(() => ({}));
-      const sessionId = body.session_id;
-      if (!sessionId || !env.STRIPE_SECRET_KEY) {
-        return new Response(JSON.stringify({ error: "Missing session_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Accept both 'reference' (new) and 'session_id' (legacy frontend fallback)
+      const reference = body.reference || body.session_id;
+      if (!reference || !env.PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Missing reference" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { "Authorization": `Bearer ${env.PAYSTACK_SECRET_KEY}` },
       });
-      const session = await stripeRes.json();
-      if (!stripeRes.ok || session.payment_status !== "paid") {
-        return new Response(JSON.stringify({ error: "This payment session has not been completed." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const paystackData = await paystackRes.json();
+      if (!paystackRes.ok || paystackData.data?.status !== "success") {
+        return new Response(JSON.stringify({ error: "This payment has not been completed." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const sessionEmail = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+      const txn = paystackData.data;
+      const txnEmail = (txn.customer?.email || "").toLowerCase();
 
-      // The account email must match the email Stripe collected for this
-      // payment — otherwise anyone who got hold of a session_id (e.g. from a
-      // shared screenshot) could claim someone else's paid plan on their own,
-      // different account.
+      // Verify the account email matches the payment email
       const myProfileRes = await supabase(`profiles?select=email&id=eq.${userId}`);
       const myProfile = (await myProfileRes.json())[0];
-      if (!myProfile || myProfile.email.toLowerCase() !== sessionEmail) {
+      if (!myProfile || myProfile.email.toLowerCase() !== txnEmail) {
         return new Response(JSON.stringify({ error: "This payment was made with a different email address than your account." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Atomically claim the session: insert-if-absent into
-      // claimed_stripe_sessions, then check whose user_id actually ended up
-      // attached to it. If it's not ours, someone else (or a duplicate
-      // request) already claimed this exact payment.
-      await supabase("claimed_stripe_sessions", {
+      // Atomically claim the reference — insert-if-absent, then verify ownership
+      await supabase("claimed_paystack_sessions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
           "Prefer": "resolution=ignore-duplicates",
         },
-        body: JSON.stringify({ session_id: sessionId, user_id: userId }),
+        body: JSON.stringify({ reference, user_id: userId }),
       });
-      const claimCheck = await supabase(`claimed_stripe_sessions?select=user_id&session_id=eq.${sessionId}`, {
+      const claimCheck = await supabase(`claimed_paystack_sessions?select=user_id&reference=eq.${encodeURIComponent(reference)}`, {
         headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
       });
       const claimRow = (await claimCheck.json().catch(() => []))[0];
@@ -809,7 +770,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify({ error: "This payment has already been used to activate a different account." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
+      const plan = txn.metadata?.plan === "annual" ? "annual" : "monthly";
       const expiry = getPlanExpiry(plan);
 
       await supabase(`profiles?id=eq.${userId}`, {
@@ -819,159 +780,162 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           current_tier: "paid",
           plan_type: plan,
           subscription_expiry: expiry.toISOString(),
-          stripe_customer_id: session.customer || null,
-          stripe_subscription_id: session.subscription || null,
-          signup_source: session.metadata?.source === "sales_funnel" ? "sales_funnel" : "app",
+          paystack_customer_code: txn.customer?.customer_code || null,
+          paystack_subscription_code: txn.plan_object?.subscription_code || null,
+          signup_source: txn.metadata?.source === "sales_funnel" ? "sales_funnel" : "app",
         }),
       });
 
       return new Response(JSON.stringify({ success: true, plan, current_tier: "paid" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3a2. GET /api/payment/status (NEW — 2026-06-27)
-    // index.html already calls this right after the Stripe redirect
-    // (`/payment/status?session_id=...`) to update the UI immediately, but
-    // the route never existed on the backend, so that check silently did
-    // nothing. This confirms the session directly with Stripe and upgrades
-    // the profile eagerly, without waiting for the webhook to land.
+    // 3a2. GET /api/payment/status (Paystack — authenticated, called after redirect back from Paystack)
+    // Verifies the reference and eagerly upgrades the profile without waiting for the webhook.
     if (url.pathname === "/api/payment/status" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
-      const sessionId = url.searchParams.get("session_id");
-      if (!sessionId || !env.STRIPE_SECRET_KEY) {
+      const reference = url.searchParams.get("reference");
+      if (!reference || !env.PAYSTACK_SECRET_KEY) {
         return new Response(JSON.stringify({ active: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-        headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+      const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { "Authorization": `Bearer ${env.PAYSTACK_SECRET_KEY}` },
       });
-      const session = await stripeRes.json();
+      const paystackData = await paystackRes.json();
+      const txn = paystackData.data;
 
-      // If payment_status === "paid", ensure profile is upgraded immediately
-      // (the webhook may still be in-flight — this is the eager path).
-      if (stripeRes.ok && session.payment_status === "paid" && session.client_reference_id === userId) {
-        const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
-        const expiry = getPlanExpiry(plan);
-        await supabase(`profiles?id=eq.${userId}`, {
-          method: "PATCH",
-          headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-          body: JSON.stringify({
-            current_tier: "paid",
-            plan_type: plan,
-            subscription_expiry: expiry.toISOString(),
-            stripe_customer_id: session.customer || null,
-            stripe_subscription_id: session.subscription || null,
-          }),
-        });
-        return new Response(JSON.stringify({ active: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (paystackRes.ok && txn?.status === "success") {
+        const txnEmail = (txn.customer?.email || "").toLowerCase();
+        // Confirm this reference belongs to the calling user
+        const myProfileRes = await supabase(`profiles?select=email&id=eq.${userId}`);
+        const myProfile = (await myProfileRes.json())[0];
+        if (myProfile && myProfile.email.toLowerCase() === txnEmail) {
+          const plan = txn.metadata?.plan === "annual" ? "annual" : "monthly";
+          const expiry = getPlanExpiry(plan);
+          await supabase(`profiles?id=eq.${userId}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({
+              current_tier: "paid",
+              plan_type: plan,
+              subscription_expiry: expiry.toISOString(),
+              paystack_customer_code: txn.customer?.customer_code || null,
+            }),
+          });
+          return new Response(JSON.stringify({ active: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
 
       return new Response(JSON.stringify({ active: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3b. POST /api/payment/webhook (Stripe Signature-Verified Webhook)
+    // 3b. POST /api/payment/webhook (Paystack Webhook — SHA-512 HMAC verified)
+    // Paystack sends X-Paystack-Signature header with HMAC-SHA512 of raw body.
+    // Events handled: charge.success, subscription.create, subscription.disable
     if (url.pathname === "/api/payment/webhook" && method === "POST") {
       const rawBody = await request.text();
-      const stripeSignature = request.headers.get("stripe-signature");
+      const paystackSignature = request.headers.get("x-paystack-signature");
 
-      // If we have a signing secret, verify the webhook signature.
-      // Falls back to legacy JSON body for NOWPayments / manual testing.
-      if (env.STRIPE_WEBHOOK_SECRET && stripeSignature) {
+      if (env.PAYSTACK_WEBHOOK_SECRET && paystackSignature) {
         try {
-          // Stripe webhook signature verification (HMAC-SHA256)
-          const parts = stripeSignature.split(",").reduce((acc, part) => {
-            const [k, v] = part.split("=");
-            acc[k] = v;
-            return acc;
-          }, {});
-          const timestamp = parts.t;
-          const receivedSig = parts.v1;
-          const signedPayload = `${timestamp}.${rawBody}`;
-
           const key = await crypto.subtle.importKey(
             "raw",
-            new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),
-            { name: "HMAC", hash: "SHA-256" },
+            new TextEncoder().encode(env.PAYSTACK_WEBHOOK_SECRET),
+            { name: "HMAC", hash: "SHA-512" },
             false,
             ["sign"]
           );
-          const sigBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedPayload));
-          const computedSig = Array.from(new Uint8Array(sigBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+          const sigBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+          const computedHash = Array.from(new Uint8Array(sigBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
 
-          if (computedSig !== receivedSig) {
+          if (computedHash !== paystackSignature) {
             return new Response("Webhook signature mismatch", { status: 400, headers: corsHeaders });
           }
         } catch (sigErr) {
-          console.error("Stripe signature check failed:", sigErr.message);
+          console.error("Paystack signature check failed:", sigErr.message);
           return new Response("Webhook signature error", { status: 400, headers: corsHeaders });
         }
+      }
 
-        // Parse the verified Stripe event
-        const event = JSON.parse(rawBody);
+      let event;
+      try { event = JSON.parse(rawBody); } catch (_) {
+        return new Response("Invalid JSON body", { status: 400, headers: corsHeaders });
+      }
 
-        // checkout.session.completed fires when a NEW subscription starts in-app
-        // (client_reference_id holds the user UUID). Sales-funnel sessions have
-        // no client_reference_id — they are linked later by /api/payment/claim-premium.
-        if (event.type === "checkout.session.completed") {
-          const session = event.data.object;
-          const target_user_id = session.client_reference_id || session.metadata?.user_id;
-          if (target_user_id) {
-            const plan = session.metadata?.plan === "annual" ? "annual" : "monthly";
-            const expiry = getPlanExpiry(plan);
-            await supabase(`profiles?id=eq.${target_user_id}`, {
+      const eventType = event.event;
+      const data = event.data;
+
+      // charge.success — fires when a one-time charge or subscription first payment succeeds
+      if (eventType === "charge.success") {
+        const txnEmail = (data.customer?.email || "").toLowerCase();
+        const meta = data.metadata || {};
+        const targetUserId = meta.user_id || null;
+        const plan = meta.plan === "annual" ? "annual" : "monthly";
+        const expiry = getPlanExpiry(plan);
+
+        if (targetUserId) {
+          // In-app checkout: user_id is in metadata
+          await supabase(`profiles?id=eq.${targetUserId}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({
+              current_tier: "paid",
+              plan_type: plan,
+              subscription_expiry: expiry.toISOString(),
+              paystack_customer_code: data.customer?.customer_code || null,
+              signup_source: meta.source === "sales_funnel" ? "sales_funnel" : "app",
+            }),
+          });
+        } else if (txnEmail) {
+          // Sales-funnel checkout: look up by email
+          const profileSearch = await supabase(`profiles?select=id&email=ilike.${encodeURIComponent(txnEmail)}`, {
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+          });
+          const found = (await profileSearch.json().catch(() => []))[0];
+          if (found) {
+            await supabase(`profiles?id=eq.${found.id}`, {
               method: "PATCH",
               headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
               body: JSON.stringify({
                 current_tier: "paid",
                 plan_type: plan,
                 subscription_expiry: expiry.toISOString(),
-                stripe_customer_id: session.customer || null,
-                stripe_subscription_id: session.subscription || null,
-                signup_source: "app",
+                paystack_customer_code: data.customer?.customer_code || null,
+                signup_source: "sales_funnel",
               }),
             });
           }
         }
+      }
 
-        // invoice.payment_succeeded fires on every subscription renewal.
-        // The invoice object has customer + subscription but NOT metadata/client_reference_id,
-        // so we look up the user by stripe_customer_id instead.
-        if (event.type === "invoice.payment_succeeded") {
-          const invoice = event.data.object;
-          // billing_reason = 'subscription_create' fires at the same moment as
-          // checkout.session.completed — skip it so we don't double-upgrade.
-          if (invoice.billing_reason === "subscription_create") {
-            /* skip duplicate — checkout.session.completed handles this */
-          } else {
-            const customerId = invoice.customer;
-            if (customerId) {
-              const profileSearch = await supabase(`profiles?select=id,plan_type&stripe_customer_id=eq.${customerId}`, {
-                headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-              });
-              const found = (await profileSearch.json().catch(() => []))[0];
-              if (found) {
-                const plan = found.plan_type || "monthly";
-                const expiry = getPlanExpiry(plan);
-                await supabase(`profiles?id=eq.${found.id}`, {
-                  method: "PATCH",
-                  headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-                  body: JSON.stringify({
-                    current_tier: "paid",
-                    subscription_expiry: expiry.toISOString(),
-                  }),
-                });
-              }
-            }
-          } // end else
+      // subscription.create — Paystack subscription successfully activated
+      if (eventType === "subscription.create") {
+        const customerCode = data.customer?.customer_code;
+        const subscriptionCode = data.subscription_code;
+        if (customerCode) {
+          const profileSearch = await supabase(`profiles?select=id,plan_type&paystack_customer_code=eq.${encodeURIComponent(customerCode)}`, {
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+          });
+          const found = (await profileSearch.json().catch(() => []))[0];
+          if (found) {
+            await supabase(`profiles?id=eq.${found.id}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+              body: JSON.stringify({ paystack_subscription_code: subscriptionCode }),
+            });
+          }
         }
+      }
 
-        if (event.type === "customer.subscription.deleted") {
-          // Subscription cancelled — downgrade back to free
-          const sub = event.data.object;
-          const customerId = sub.customer;
-          // Look up user by stripe_customer_id
-          const profileSearch = await supabase(`profiles?select=id&stripe_customer_id=eq.${customerId}`);
-          const found = (await profileSearch.json())[0];
+      // subscription.disable — subscription cancelled, downgrade to free
+      if (eventType === "subscription.disable") {
+        const customerCode = data.customer?.customer_code;
+        if (customerCode) {
+          const profileSearch = await supabase(`profiles?select=id&paystack_customer_code=eq.${encodeURIComponent(customerCode)}`, {
+            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+          });
+          const found = (await profileSearch.json().catch(() => []))[0];
           if (found) {
             await supabase(`profiles?id=eq.${found.id}`, {
               method: "PATCH",
@@ -980,24 +944,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
             });
           }
         }
-
-        return new Response("Webhook processed", { status: 200, headers: corsHeaders });
       }
-
-      // Legacy fallback: manual / NOWPayments JSON body
-      try {
-        const body = JSON.parse(rawBody);
-        const { user_id, status } = body;
-        if (status === "confirmed" && user_id) {
-          const expiry = new Date();
-          expiry.setMonth(expiry.getMonth() + 1);
-          await supabase(`profiles?id=eq.${user_id}`, {
-            method: "PATCH",
-            headers: { "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-            body: JSON.stringify({ current_tier: "paid", subscription_expiry: expiry.toISOString() }),
-          });
-        }
-      } catch(_) {}
 
       return new Response("Webhook processed", { status: 200, headers: corsHeaders });
     }

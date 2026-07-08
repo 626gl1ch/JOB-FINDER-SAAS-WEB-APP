@@ -35,11 +35,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     vpn_violation_count INT DEFAULT 0,
     avatar_url TEXT,
     oauth_provider TEXT DEFAULT 'email',
-    stripe_customer_id TEXT,
+    stripe_customer_id TEXT,      -- kept for data continuity; new signups use paystack_customer_code
+    stripe_subscription_id TEXT,   -- kept for data continuity; new signups use paystack_subscription_code
+    paystack_customer_code TEXT,
+    paystack_subscription_code TEXT,
     plan_type TEXT CHECK (plan_type IN ('monthly', 'annual')),
-    signup_source TEXT DEFAULT 'app',
-    stripe_subscription_id TEXT,
-    expiry_warning_sent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -90,6 +90,12 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='expiry_warning_sent') THEN
         ALTER TABLE public.profiles ADD COLUMN expiry_warning_sent BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='paystack_customer_code') THEN
+        ALTER TABLE public.profiles ADD COLUMN paystack_customer_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='paystack_subscription_code') THEN
+        ALTER TABLE public.profiles ADD COLUMN paystack_subscription_code TEXT;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_wallet_balance_check') THEN
         ALTER TABLE public.profiles ADD CONSTRAINT profiles_wallet_balance_check CHECK (wallet_balance >= 0);
@@ -155,12 +161,16 @@ BEGIN
     END IF;
 END $$;
 
--- 1.6 Claimed Stripe Sessions Table
-CREATE TABLE IF NOT EXISTS public.claimed_stripe_sessions (
-    session_id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    claimed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+-- 1.6 Claimed Paystack Sessions Table (replaces claimed_stripe_sessions)
+-- claimed_stripe_sessions is kept in production for historical data but no longer written to.
+CREATE TABLE IF NOT EXISTS public.claimed_paystack_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reference TEXT UNIQUE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.claimed_paystack_sessions ENABLE ROW LEVEL SECURITY;
 
 -- 1.7 Interview Sessions Table (New)
 CREATE TABLE IF NOT EXISTS public.interview_sessions (
