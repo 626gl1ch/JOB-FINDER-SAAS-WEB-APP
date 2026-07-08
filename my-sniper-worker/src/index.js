@@ -3,23 +3,52 @@
  * Zero-cost backend for job sniping and monetization.
  */
 
+const COUNTRY_CODES = {
+  "Nigeria": "NG", "Ghana": "GH", "Kenya": "KE", "South Africa": "ZA",
+  "Ethiopia": "ET", "Tanzania": "TZ", "Uganda": "UG", "Rwanda": "RW",
+  "Cameroon": "CM", "Ivory Coast": "CI", "Senegal": "SN", "Zambia": "ZM",
+  "Zimbabwe": "ZW", "Mozambique": "MZ", "Angola": "AO", "Mali": "ML",
+  "India": "IN", "Pakistan": "PK", "Bangladesh": "BD", "Philippines": "PH",
+  "Indonesia": "ID", "Vietnam": "VN", "Thailand": "TH", "Malaysia": "MY",
+  "Sri Lanka": "LK", "Nepal": "NP", "Myanmar": "MM",
+  "United Kingdom": "GB", "United States": "US", "Canada": "CA",
+  "Australia": "AU", "Germany": "DE", "France": "FR", "Italy": "IT",
+  "Spain": "ES", "Netherlands": "NL", "Sweden": "SE", "Norway": "NO",
+  "Denmark": "DK", "Poland": "PL", "Portugal": "PT", "Belgium": "BE",
+  "Switzerland": "CH", "Austria": "AT", "Ireland": "IE",
+  "Brazil": "BR", "Mexico": "MX", "Argentina": "AR", "Colombia": "CO",
+  "Chile": "CL", "Peru": "PE", "Venezuela": "VE",
+  "Saudi Arabia": "SA", "UAE": "AE", "Egypt": "EG", "Morocco": "MA",
+  "Turkey": "TR", "Israel": "IL", "Jordan": "JO",
+  "China": "CN", "Japan": "JP", "South Korea": "KR", "Singapore": "SG",
+  "Hong Kong": "HK", "Taiwan": "TW", "New Zealand": "NZ",
+};
+
 export default {
   async fetch(request, env) {
     // CORS headers are defined first so the top-level catch can always send them,
     // even when an unhandled exception occurs before they would otherwise be set.
+    const origin = request.headers.get("Origin") || "*";
     const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     };
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY || !env.GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: "Worker misconfigured: missing environment variables" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     try {
     const url = new URL(request.url);
     const method = request.method;
-
-    if (method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
-    }
 
     // Canonical base URL of the deployed app (the SPA in index.html). Used to
     // build Stripe success/cancel redirect targets that work no matter what
@@ -1059,34 +1088,6 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response(JSON.stringify({ items: [], configured: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // FIX (2026-06-27): the signup form stores country as a full name
-      // (e.g. "Nigeria"), but CPALead's feed API expects an ISO 3166-1
-      // alpha-2 code (e.g. "NG"). Sending the full name was silently
-      // ignored by CPALead, so the feed returned offers from every country
-      // mixed together instead of just the user's. This maps the stored
-      // name to the code it actually understands, covering every country
-      // in the signup dropdown plus common others for future expansion.
-      const COUNTRY_CODES = {
-        "Nigeria": "NG", "Ghana": "GH", "Kenya": "KE", "South Africa": "ZA",
-        "Ethiopia": "ET", "Tanzania": "TZ", "Uganda": "UG", "Rwanda": "RW",
-        "Cameroon": "CM", "Ivory Coast": "CI", "Senegal": "SN", "Zambia": "ZM",
-        "Zimbabwe": "ZW", "Mozambique": "MZ", "Angola": "AO", "Mali": "ML",
-        "India": "IN", "Pakistan": "PK", "Bangladesh": "BD", "Philippines": "PH",
-        "Indonesia": "ID", "Vietnam": "VN", "Thailand": "TH", "Malaysia": "MY",
-        "Sri Lanka": "LK", "Nepal": "NP", "Myanmar": "MM",
-        "United Kingdom": "GB", "United States": "US", "Canada": "CA",
-        "Australia": "AU", "Germany": "DE", "France": "FR", "Italy": "IT",
-        "Spain": "ES", "Netherlands": "NL", "Sweden": "SE", "Norway": "NO",
-        "Denmark": "DK", "Poland": "PL", "Portugal": "PT", "Belgium": "BE",
-        "Switzerland": "CH", "Austria": "AT", "Ireland": "IE",
-        "Brazil": "BR", "Mexico": "MX", "Argentina": "AR", "Colombia": "CO",
-        "Chile": "CL", "Peru": "PE", "Venezuela": "VE",
-        "Saudi Arabia": "SA", "UAE": "AE", "Egypt": "EG", "Morocco": "MA",
-        "Turkey": "TR", "Israel": "IL", "Jordan": "JO",
-        "China": "CN", "Japan": "JP", "South Korea": "KR", "Singapore": "SG",
-        "Hong Kong": "HK", "Taiwan": "TW", "New Zealand": "NZ",
-      };
-
       // Country resolution: prefer the user's profile country (mapped to its
       // ISO code), then fall back to Cloudflare's edge-detected CF-IPCountry
       // header, which already arrives as a 2-letter code.
@@ -1157,8 +1158,13 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       return new Response(JSON.stringify({ items: rows }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. POST /api/postback (Durable Affiliate Track & Fraud Firewall)
-    if (url.pathname === "/api/postback" && method === "POST") {
+    // 3. GET / POST /api/postback (Durable Affiliate Track & Fraud Firewall)
+    if (url.pathname === "/api/postback" && (method === "GET" || method === "POST")) {
+      const secret = url.searchParams.get("secret");
+      if (!env.POSTBACK_SECRET || secret !== env.POSTBACK_SECRET) {
+        return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      }
+
       const subid = url.searchParams.get("subid"); // User UUID
       const payout = parseFloat(url.searchParams.get("payout"));
       const clickIp = url.searchParams.get("click_ip");
@@ -1173,7 +1179,11 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           return new Response("Pro subscription required for tasks", { status: 403, headers: corsHeaders });
       }
 
-      if (profile.country !== country) {
+      // Map profile country and incoming country to ISO 2-letter codes
+      const profileCountryCode = profile.country ? (COUNTRY_CODES[profile.country] || (profile.country.length === 2 ? profile.country.toUpperCase() : null)) : null;
+      const incomingCountryCode = country ? (COUNTRY_CODES[country] || (country.length === 2 ? country.toUpperCase() : null)) : null;
+
+      if (!profileCountryCode || !incomingCountryCode || (profileCountryCode !== incomingCountryCode && (profile.country || "").toLowerCase() !== (country || "").toLowerCase())) {
         // VPN Violation
         if (profile) {
             await supabase(`profiles?id=eq.${subid}`, {
