@@ -3972,7 +3972,7 @@ let currentProfile = null;
 
 async function refreshSession() {
   // ── Master session shortcut ──────────────────────────────────────
-  if (window._masterSession) return { access_token: 'master_session_token', user: { id: 'master', email: _MASTER_EMAIL } };
+
   // ─────────────────────────────────────────────────────────────────
   if (!sb) return null;
   try {
@@ -4107,11 +4107,7 @@ async function handleSignUp() {
 // own browser. Still bad practice to ship real credentials in cleartext
 // client JS, so this now only activates when the page is served from
 // localhost/127.0.0.1 — i.e. it works exactly as before on your own dev
-// machine, and is completely inert on the live snipejob.app / github.io
-// site, since IS_LOCAL_DEV will be false there.
-const IS_LOCAL_DEV = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const _MASTER_EMAIL    = 'daniellancce1@gmail.com';
-const _MASTER_PASSWORD = 'B3pC*HzmTXg26uPs';
+
 
 async function handleSignIn() {
   const email    = document.getElementById('si-email')?.value.trim();
@@ -4121,43 +4117,7 @@ async function handleSignIn() {
   const btn = event?.target?.closest('button');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Signing in...'; }
 
-  // ── Master login: bypass Supabase, grant full Pro access instantly ──
-  // (local dev only — see IS_LOCAL_DEV note above)
-  if (IS_LOCAL_DEV && email === _MASTER_EMAIL && password === _MASTER_PASSWORD) {
-    try {
-      // Store a sentinel so refreshSession / bootstrapAuth knows this is
-      // a master session (not a real Supabase JWT).
-      window._masterSession = true;
-      window._safeSetToken('user_token', 'master_session_token');
 
-      currentProfile = {
-        id: 'master',
-        full_name: 'Admin',
-        email: _MASTER_EMAIL,
-        country: 'US',
-        current_tier: 'paid',
-        wallet_balance: 0,
-        sectors: ['tech','design','writing','marketing','dev','ai','devops','mobile','cyber','photo'],
-        primary_skill: 'Full-Stack Development',
-        exp_level: 'senior',
-        bio: 'Master account with full Pro access.',
-        education: 'N/A',
-      };
-
-      toast('Welcome back, Admin! Full Pro access granted.', 'ti-crown');
-      updateNavForAuth(true);
-      setTimeout(function() {
-        _lastNav = 'dashboard';
-        _navLockUntil = Date.now() + 5000;
-        // Render the dashboard using the master profile (bypasses API calls)
-        renderMasterDashboard();
-      }, 50);
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
-    }
-    return;
-  }
-  // ──────────────────────────────────────────────────────────────────
 
   if (!sb) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>&nbsp; Sign in'; }
@@ -5540,7 +5500,7 @@ function handleCtaEmail() {
     currentProfile = {
       id: 'master',
       full_name: 'Admin',
-      email: _MASTER_EMAIL,
+
       country: 'US',
       current_tier: 'paid',
       wallet_balance: 0,

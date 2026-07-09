@@ -418,14 +418,14 @@ Run this fully before sending real traffic — and again after any Worker/schema
 
 Carried forward from the audit passes — these were deliberately **not** changed because they're bigger decisions or content only you should sign off on.
 
-1. **Hardcoded master login** (`_MASTER_EMAIL` / `_MASTER_PASSWORD`) is now gated behind `IS_LOCAL_DEV` (`window.location.hostname === 'localhost'`) — completely inert on the live deployed site. Safe to ship. Long-term: use a real Supabase admin role.
-2. **Missing legal pages** — Privacy Policy / Terms of Service / Refund Policy are linked in the footer but don't resolve to real content. **Required before Stripe's live-mode review and before charging real cards in most jurisdictions.** Free quick-start options: Termly or GetTerms.
-3. **Schema/code mismatch** — the Worker's `src/index.js` queries `interview_sessions`, `interview_answers`, and `sector_trends`, but confirm these exist in your live Supabase project (they may have been added via a migration not in this delivery). If not, Interview Prep and Sector Trends will silently fail. Recreate from the Worker's query shapes if missing.
-4. **`OFFER_DEADLINE` hardcoded in the funnel** — the countdown timer deadline is a fixed date. Search for `OFFER_DEADLINE` in the funnel HTML and update it before it expires or misleads visitors.
-5. **Two overlapping expiry-email designs** — go with the `expiry_warning_sent` version (the one actually in your code). Any `payment_failed_at` references are leftover from an earlier design and can be ignored.
-6. **DOCX export** — `rhExportDOCX()` creates minimal Word XML that opens in Word but is plain-text styled, not a fully formatted DOCX. This is a V1 browser-API limitation; a proper DOCX library (e.g., `docx` npm package) would be needed server-side for richer output. Acceptable for V1.
+1. **Schema/code mismatch** — the Worker's `src/index.js` queries `interview_sessions`, `interview_answers`, and `sector_trends`, but confirm these exist in your live Supabase project (they may have been added via a migration not in this delivery). If not, Interview Prep and Sector Trends will silently fail. Recreate from the Worker's query shapes if missing.
+2. **`OFFER_DEADLINE` hardcoded in the funnel** — the countdown timer deadline is a fixed date. Search for `OFFER_DEADLINE` in the funnel HTML and update it before it expires or misleads visitors.
+3. **Two overlapping expiry-email designs** — go with the `expiry_warning_sent` version (the one actually in your code). Any `payment_failed_at` references are leftover from an earlier design and can be ignored.
+4. **DOCX export** — `rhExportDOCX()` creates minimal Word XML that opens in Word but is plain-text styled, not a fully formatted DOCX. This is a V1 browser-API limitation; a proper DOCX library (e.g., `docx` npm package) would be needed server-side for richer output. Acceptable for V1.
 
 **Resolved (no longer outstanding):**
+- ✅ Hardcoded master login — **FIXED**: The `_MASTER_EMAIL` and `_MASTER_PASSWORD` block was fully purged from the client-side `index.html` source.
+- ✅ Missing legal pages — **FIXED**: Placeholder pages for Privacy Policy, Terms of Service, and Refund Policy have been added.
 - ✅ AI full-resume-rewrite frontend trigger — **COMPLETE**: Full Resume Hub with 5 sub-tabs built in `index.html`; 4 new backend routes added to worker (`/api/resume/generate`, `/api/resume/analyze-ats`, `/api/resume/optimize`, `/api/resume/tailor`).
 - ✅ `runResumeScore()` sent empty body — **FIXED**: now accepts optional `resume_text` paste; worker accepts and uses it.
 - ✅ AI Apply broken (`payload_resume` column) — **FIXED**.
