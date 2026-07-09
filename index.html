@@ -285,6 +285,7 @@ body.rail-hidden #rail-toggle-btn{
 .modal-bg,.toast-container,#back-to-top,#scroll-progress{padding-left:0} /* these are fixed/overlay UI, not page content */
 @media(max-width:768px){
   .site-side-rail{display:none}
+  #rail-toggle-btn{display:none !important}
   .page{padding-left:0}
 }
 
@@ -298,6 +299,15 @@ body.rail-hidden #rail-toggle-btn{
 /* ─────────────────────────────────────
    HERO
 ───────────────────────────────────── */
+/* Hero two-column grid — desktop */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+}
 .hero{
   position:relative;overflow:hidden;
   padding:76px 5vw 70px;
@@ -1715,16 +1725,6 @@ footer {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   display: inline-block;
-}
-
-/* Hero two-column grid — desktop */
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-  align-items: center;
-  max-width: 1100px;
-  margin: 0 auto;
 }
 
 </style>
