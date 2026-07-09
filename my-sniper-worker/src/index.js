@@ -1079,8 +1079,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
               id: o.offer_id || o.id,
               title: o.title || o.name,
               description: o.description || o.short_description || "",
-              payout: rawPayout,
-              user_cut: +(rawPayout * 0.3).toFixed(2),
+              user_cut: +(rawPayout * 0.5).toFixed(2),
               // userId embedded here is what comes back as {subid} on the postback
               link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
               country: userCountryCode,
@@ -1141,7 +1140,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         return new Response("Fraud detected", { status: 403, headers: corsHeaders });
       }
 
-      const userCut = payout * 0.3;
+      const userCut = payout * 0.5;
       const provider = url.searchParams.get("provider") || "unknown";
 
       // Atomic transaction via Supabase function
