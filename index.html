@@ -4430,6 +4430,62 @@ async function initDashboard() {
     const isPro = currentProfile && currentProfile.current_tier === 'paid';
     stOverlay.style.display = isPro ? 'none' : 'flex';
   }
+
+  // Start Google Ads timer for free plan users
+  startAdTimer();
+}
+
+let adInterval = null;
+function startAdTimer() {
+  if (adInterval) clearInterval(adInterval);
+  // Only show ads if user is on free plan
+  if (currentProfile && currentProfile.current_tier === 'paid') return;
+  
+  // Show an ad every 7 minutes (420,000 ms)
+  adInterval = setInterval(() => {
+    if (currentProfile && currentProfile.current_tier === 'paid') {
+      clearInterval(adInterval);
+      return;
+    }
+    showGoogleAdPopup();
+  }, 420000);
+}
+
+function showGoogleAdPopup() {
+  const adHtml = `
+    <div id="ad-modal" class="modal-bg" style="display:flex;align-items:center;justify-content:center;z-index:9999;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px)">
+      <div class="auth-card" style="width:100%;max-width:340px;position:relative;padding:24px;text-align:center">
+        <button onclick="document.getElementById('ad-modal').remove()" style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--t3)"><i class="ti ti-x" style="font-size:20px"></i></button>
+        <div style="font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;font-weight:700">Advertisement</div>
+        
+        <!-- Google AdSense Container -->
+        <div id="google-ad-container" style="min-height:250px;background:var(--bg);border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;overflow:hidden;">
+          <!-- Replace data-ad-client and data-ad-slot with your actual AdSense publisher IDs -->
+          <ins class="adsbygoogle"
+               style="display:block; width:100%; height:250px;"
+               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+               data-ad-slot="XXXXXXXXXX"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+        
+        <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5">
+          Ads help keep the free version running. Want an ad-free experience?
+        </div>
+        <button class="btn-primary" onclick="document.getElementById('ad-modal').remove(); openModal('planModal')" style="width:100%">
+          <i class="ti ti-bolt"></i> Go Pro
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', adHtml);
+  
+  // Trigger AdSense push
+  try {
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  } catch (e) {
+    console.error("AdSense error:", e);
+  }
 }
 
 /* ─── JOB LOADING & RENDERING ─── */
@@ -4460,11 +4516,24 @@ async function loadJobs() {
     renderJobs();
   } catch (e) {
     console.error('Failed to load jobs:', e);
-    if (listEl) listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
-      <i class="ti ti-wifi-off" style="font-size:22px"></i>
-      <div style="margin-top:8px">Couldn't load jobs right now.</div>
-      <button class="tbtn" style="margin-top:10px" onclick="loadJobs()">Retry</button>
-    </div>`;
+    
+    // Check if it's a Pro upgrade requirement (e.g. from 403 response message)
+    if (e.message && e.message.includes('Upgrade to Pro')) {
+      if (listEl) listEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:var(--t3);max-width:400px;margin:0 auto;">
+        <i class="ti ti-lock" style="font-size:42px;color:rgba(124,92,252,0.8);margin-bottom:16px;"></i>
+        <div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px">Pro Plan Required</div>
+        <div style="font-size:14px;line-height:1.6;margin-bottom:24px;">
+          Access to specific sectors like Data & AI, Design, and Marketing is reserved for SnipeJob Pro members.
+        </div>
+        <button class="btn-primary" onclick="openModal('planModal')" style="width:100%"><i class="ti ti-bolt"></i> Upgrade to Pro</button>
+      </div>`;
+    } else {
+      if (listEl) listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
+        <i class="ti ti-wifi-off" style="font-size:22px"></i>
+        <div style="margin-top:8px">Couldn't load jobs right now.</div>
+        <button class="tbtn" style="margin-top:10px" onclick="loadJobs()">Retry</button>
+      </div>`;
+    }
     if (dateLine) dateLine.textContent = 'Could not refresh feed';
   }
 }
@@ -4654,7 +4723,13 @@ async function loadRankedJobs() {
       toast('Showing keyword match. Upgrade to Pro for full AI ranking.', 'ti-sparkles');
     }
   } catch (e) {
-    toast(e.message || 'Could not rank jobs right now.', 'ti-alert-triangle');
+    if (e.message && e.message.includes('Upgrade to Pro')) {
+      toast('Pro plan required for advanced matching.', 'ti-lock');
+      // Show upgrade modal instead of standard toast error
+      openModal('planModal');
+    } else {
+      toast(e.message || 'Could not rank jobs right now.', 'ti-alert-triangle');
+    }
     loadJobs();
   }
 }
