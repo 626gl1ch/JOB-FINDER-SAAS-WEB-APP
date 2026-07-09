@@ -4153,6 +4153,12 @@ function renderMasterDashboard() {
 /* ─── OAUTH ─── */
 async function handleOAuth(provider) {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
+  
+  if (provider === 'instagram') {
+    showInstagramOAuthNotice();
+    return;
+  }
+
   // Build the redirect URL explicitly so extensions can't mutate window.location
   // between the call and Supabase reading it.
   const redirectTo = window.location.origin + window.location.pathname;
@@ -4161,6 +4167,38 @@ async function handleOAuth(provider) {
     options: { redirectTo }
   });
   if (error) toast(error.message || `Could not start ${provider} sign-in.`, 'ti-alert-triangle');
+}
+
+function showInstagramOAuthNotice() {
+  const modalId = 'instagram-oauth-modal';
+  let modal = document.getElementById(modalId);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal-bg';
+    modal.style.cssText = 'display:flex;align-items:center;justify-content:center;z-index:9999;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px)';
+    modal.innerHTML = `
+      <div class="auth-card" style="width:100%;max-width:380px;position:relative;padding:28px;text-align:center">
+        <button onclick="document.getElementById('${modalId}').remove()" style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--t3)"><i class="ti ti-x" style="font-size:20px"></i></button>
+        <div style="width:56px;height:56px;background:rgba(225,48,108,0.15);color:#E1306C;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px">
+          <i class="ti ti-brand-instagram"></i>
+        </div>
+        <div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px">Instagram Auth via Meta</div>
+        <div style="font-size:14px;line-height:1.6;color:var(--t2);margin-bottom:24px;">
+          Standalone Instagram login is not supported directly by Supabase. <br><br>
+          Since Instagram is part of Meta, you can sign in seamlessly by using the <strong>Facebook</strong> option, or use <strong>Google</strong>, <strong>LinkedIn</strong>, or your email.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn-primary" onclick="document.getElementById('${modalId}').remove(); handleOAuth('facebook')" style="width:100%;background:#1877F2;border-color:#1877F2">
+            <i class="ti ti-brand-facebook"></i> Continue with Facebook (Meta)
+          </button>
+          <button class="tbtn" onclick="document.getElementById('${modalId}').remove()" style="width:100%">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  }
 }
 
 /* ─── SIGN OUT ─── */
@@ -4173,6 +4211,10 @@ async function handleSignOut() {
   currentProfile = null;
   _lastNav = null;
   _navLockUntil = 0;
+  if (window._jobRefreshInterval) {
+    clearInterval(window._jobRefreshInterval);
+    window._jobRefreshInterval = null;
+  }
   updateNavForAuth(false);
   toast('Signed out.', 'ti-logout');
   go('home');
@@ -4382,6 +4424,7 @@ async function initDashboard() {
   }
 
   await loadJobs();
+  startJobRefreshTimer();
 
   // Pre-fill settings tab with real profile data
   populateSettingsTab();
@@ -4449,10 +4492,10 @@ function showGoogleAdPopup() {
 }
 
 /* ─── JOB LOADING & RENDERING ─── */
-async function loadJobs() {
+async function loadJobs(silent = false) {
   const listEl = document.getElementById('jobs-list');
   const dateLine = document.getElementById('dash-date-line');
-  if (listEl) listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Scanning live sources...</div></div>';
+  if (listEl && !silent) listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Scanning live sources...</div></div>';
 
   try {
     const sectorParam = activeSector === 'all' ? '' : `?sector=${activeSector}`;
@@ -4496,6 +4539,23 @@ async function loadJobs() {
     }
     if (dateLine) dateLine.textContent = 'Could not refresh feed';
   }
+}
+
+function startJobRefreshTimer() {
+  if (window._jobRefreshInterval) clearInterval(window._jobRefreshInterval);
+  
+  const isPro = currentProfile && currentProfile.current_tier === 'paid';
+  // Pro: refresh every 2 minutes (120,000ms). Free: refresh every 15 minutes (900,000ms).
+  const refreshMs = isPro ? 120000 : 900000;
+  
+  console.log(`[Job Monitor] Auto-refresh set for ${isPro ? 'Pro' : 'Free'} tier (Interval: ${refreshMs}ms)`);
+  
+  window._jobRefreshInterval = setInterval(async () => {
+    if (document.getElementById('pg-dashboard')?.classList.contains('active')) {
+      console.log('[Job Monitor] Auto-refreshing job feed silently...');
+      await loadJobs(true);
+    }
+  }, refreshMs);
 }
 
 function renderJobs(showMatchScore = false) {
@@ -5549,6 +5609,7 @@ function handleCtaEmail() {
 
   try {
     currentProfile = await apiFetch('/profile');
+    startJobRefreshTimer();
   } catch (e) {
     currentProfile = null;
   }

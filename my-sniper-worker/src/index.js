@@ -129,6 +129,10 @@ export default {
     // told not to).
     const parseGeminiJson = (text) => {
       try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        const arrayMatch = text.match(/\[[\s\S]*\]/);
+        if (arrayMatch) return JSON.parse(arrayMatch[0]);
         return JSON.parse(text.replace(/```json|```/g, "").trim());
       } catch (e) {
         return null;
@@ -508,10 +512,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiData = await geminiRes.json();
       let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      // Strip markdown code fences if present
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      const result = parseGeminiJson(text);
+      if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
-      return new Response(text, { 
+      return new Response(JSON.stringify(result), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
@@ -546,9 +550,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiData = await geminiRes.json();
       let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      const result = parseGeminiJson(text);
+      if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
-      return new Response(text, { 
+      return new Response(JSON.stringify(result), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
@@ -582,9 +587,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       const geminiData = await geminiRes.json();
       let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      const result = parseGeminiJson(text);
+      if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
-      return new Response(text, { 
+      return new Response(JSON.stringify(result), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
