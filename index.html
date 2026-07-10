@@ -4495,7 +4495,11 @@ function showGoogleAdPopup() {
 async function loadJobs(silent = false) {
   const listEl = document.getElementById('jobs-list');
   const dateLine = document.getElementById('dash-date-line');
-  if (listEl && !silent) listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Scanning live sources...</div></div>';
+  if (listEl && !silent) {
+    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px"></i><div style="margin-top:8px">Scanning live sources...</div></div>';
+  } else if (dateLine && silent) {
+    dateLine.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1.5s linear infinite;font-size:12px;margin-right:4px;display:inline-block"></i>Syncing feed...';
+  }
 
   try {
     const sectorParam = activeSector === 'all' ? '' : `?sector=${activeSector}`;
