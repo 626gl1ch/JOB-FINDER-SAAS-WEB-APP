@@ -24,6 +24,36 @@ const COUNTRY_CODES = {
   "Hong Kong": "HK", "Taiwan": "TW", "New Zealand": "NZ",
 };
 
+const AI_SAFETY_POLICY = `Generative AI Prohibited Use Policy
+Last Modified: December 17, 2024
+
+Generative AI models can help you explore, learn, and create. We expect you to engage with them in a responsible, legal, and safe manner. The following restrictions apply to your interactions with generative AI in the Google products and services that refer to this policy.
+
+Do not engage in dangerous or illegal activities, or otherwise violate applicable law or regulations. This includes generating or distributing content that:
+- Relates to child sexual abuse or exploitation.
+- Facilitates violent extremism or terrorism.
+- Facilitates non-consensual intimate imagery.
+- Facilitates self-harm.
+- Facilitates illegal activities or violations of law -- for example, providing instructions for synthesizing or accessing illegal or regulated substances, goods, or services.
+- Violates the rights of others, including privacy and intellectual property rights -- for example, using personal data or biometrics without legally-required consent.
+- Tracks or monitors people without their consent.
+- Makes automated decisions that have a material detrimental impact on individual rights without human supervision in high-risk domains -- for example, in employment, healthcare, finance, legal, housing, insurance, or social welfare.
+Do not compromise the security of others' or Google's services. This includes generating or distributing content that facilitates:
+- Spam, phishing, or malware.
+- Abuse of, harm to, interference with, or disruption to Google's or others' infrastructure or services.
+- Circumvention of abuse protections or safety filters -- for example, manipulating the model to contravene our policies.
+Do not engage in sexually explicit, violent, hateful, or harmful activities. This includes generating or distributing content that facilitates:
+- Hatred or hate speech.
+- Harassment, bullying, intimidation, abuse, or the insulting of others.
+- Violence or the incitement of violence.
+- Sexually explicit content -- for example, content created for the purpose of pornography or sexual gratification.
+Do not engage in misinformation, misrepresentation, or misleading activities. This includes:
+- Frauds, scams, or other deceptive actions.
+- Impersonating an individual (living or dead) without explicit disclosure, in order to deceive.
+- Facilitating misleading claims of expertise or capability in sensitive areas -- for example in health, finance, government services, or the law, in order to deceive.
+- Facilitating misleading claims related to governmental or democratic processes or harmful health practices, in order to deceive.
+- Misrepresenting the provenance of generated content by claiming it was created solely by a human, in order to deceive.`;
+
 export default {
   async fetch(request, env) {
     // CORS headers are defined first so the top-level catch can always send them,
@@ -117,7 +147,7 @@ export default {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts }] }),
       });
       const data = await res.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -365,6 +395,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
+          system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] },
           contents: [{
             parts: [{
                 text: `You are an expert freelance proposal writer. Write a customized, professional, and persuasive job proposal for the following job:
@@ -428,7 +459,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const geminiData = await geminiRes.json();
@@ -469,7 +500,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const geminiData = await geminiRes.json();
@@ -507,7 +538,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const geminiData = await geminiRes.json();
@@ -545,7 +576,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const geminiData = await geminiRes.json();
@@ -582,7 +613,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const geminiData = await geminiRes.json();
@@ -972,6 +1003,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
+          system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] },
           contents: [{
             parts: [
               { text: "You are an automated KYC scanning engine. Analyze this identification document. Extract the Name, Document Type, and Country. Determine if the image appears to be a legitimate government ID or a fake/VPN mock-up. Return a strict JSON response with fields: 'is_valid' (boolean), 'extracted_country' (2-letter ISO code), 'confidence' (0-100), and 'reason' (string)." },
