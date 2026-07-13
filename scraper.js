@@ -2,14 +2,31 @@
 //  PROJECT: SNIPEJOB SAAS -- job-scraping cron script
 //  Save this file as: scraper.js (repo root)
 //  Run by: .github/workflows/sniper-cron.yml every 15 minutes
+//
+//  SOURCES (6 confirmed live as of 2026-07-12):
+//   1. We Work Remotely   — RSS feed, ~99 jobs
+//   2. Remotive           — RSS feed, ~40 jobs
+//   3. Himalayas          — RSS feed, ~100 jobs
+//   4. Freelancer.com     — RSS feed, ~20 jobs
+//   5. Authentic Jobs     — RSS feed, ~10 jobs
+//   6. No Desk            — RSS feed, ~10 jobs
+//
+//  REMOVED:
+//   - Upwork (RSS endpoint gone — HTTP 410 as of 2026-07-12)
+//   - Reddit (HTTP 403 on bot JSON API — use PRAW if needed in future)
 // ================================================================
 const axios = require('axios');
-const cheerio = require('cheerio');
 const Parser = require('rss-parser');
 const parser = new Parser();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Browser-like headers — required by some feeds (Himalayas, Authentic Jobs)
+const FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+};
 
 const SECTORS = {
   web: ['frontend', 'backend', 'fullstack', 'react', 'wordpress', 'website', 'node', 'php', 'javascript', 'nextjs', 'vue'],
@@ -29,87 +46,45 @@ const SECTORS = {
   legal: ['legal', 'lawyer', 'paralegal', 'compliance', 'contract', 'attorney']
 };
 
-async function scrapeReddit() {
-  // FIX (2026-06-28): 'videoteditingjobs' was a typo -- the real subreddit
-  // is r/videoeditingjobs (this is also the exact name your own sales
-  // funnel FAQ advertises as one of the 5 scanned sources). The typo'd name
-  // 404s on Reddit, so this source has been silently contributing zero
-  // jobs the whole time -- caught by the try/catch below and logged as an
-  // error, never surfaced anywhere a person would see it.
-  const subreddits = ['forhire', 'freelance_jobs', 'remotejs', 'designjobs', 'videoeditingjobs'];
-  const jobs = [];
-
-  for (const sub of subreddits) {
-    try {
-      const res = await axios.get(`https://www.reddit.com/r/${sub}/new.json`, {
-        headers: { 'User-Agent': 'SnipeJobBot/1.0' }
-      });
-      const posts = res.data.data.children;
-
-      for (const { data: post } of posts) {
-        if (post.is_self) {
-          const content = (post.title + ' ' + post.selftext).toLowerCase();
-          let sector = 'other';
-
-          for (const [key, keywords] of Object.entries(SECTORS)) {
-            if (keywords.some(k => content.includes(k))) {
-              sector = key;
-              break;
-            }
-          }
-
-          jobs.push({
-            title: post.title,
-            company: 'Reddit /r/' + sub,
-            sector: sector,
-            listing_source: 'Reddit',
-            job_url: 'https://reddit.com' + post.permalink,
-            payload_description: post.selftext.substring(0, 800),
-            internal_labels: ['new']
-          });
-        }
-      }
-    } catch (e) {
-      console.error(`Error scraping Reddit ${sub}:`, e.message);
-    }
+function classifySector(text) {
+  const lower = text.toLowerCase();
+  for (const [key, keywords] of Object.entries(SECTORS)) {
+    if (keywords.some(k => lower.includes(k))) return key;
   }
-  return jobs;
+  return 'other';
 }
 
+/**
+ * Fetch an RSS feed via axios (handles feeds that block rss-parser's default
+ * User-Agent) and parse the XML string. Falls back gracefully on any error.
+ */
 async function scrapeRSS(url, sourceName) {
   const jobs = [];
   try {
-    const feed = await parser.parseURL(url);
+    const res = await axios.get(url, { headers: FETCH_HEADERS, timeout: 15000 });
+    const feed = await parser.parseString(res.data);
     for (const item of feed.items) {
-      const content = (item.title + ' ' + (item.contentSnippet || '')).toLowerCase();
-      let sector = 'other';
-
-      for (const [key, keywords] of Object.entries(SECTORS)) {
-        if (keywords.some(k => content.includes(k))) {
-          sector = key;
-          break;
-        }
-      }
-
+      const content = (item.title || '') + ' ' + (item.contentSnippet || item.content || '');
       jobs.push({
-        title: item.title,
+        title: item.title || 'Untitled',
         company: sourceName,
-        sector: sector,
+        sector: classifySector(content),
         listing_source: sourceName,
-        job_url: item.link,
-        payload_description: (item.contentSnippet || '').substring(0, 800),
+        job_url: item.link || item.guid || '',
+        payload_description: content.substring(0, 800),
         internal_labels: ['new']
       });
     }
+    console.log(`✅ ${sourceName}: ${jobs.length} jobs scraped`);
   } catch (e) {
-    console.error(`Error scraping RSS ${sourceName}:`, e.message);
+    console.error(`❌ ${sourceName}: ${e.message}`);
   }
   return jobs;
 }
 
 async function syncToSupabase(jobs) {
-  console.log(`Syncing ${jobs.length} jobs...`);
-  
+  console.log(`\nSyncing ${jobs.length} total jobs to Supabase...`);
+
   for (const job of jobs) {
     try {
       await axios.post(`${SUPABASE_URL}/rest/v1/scraped_jobs`, job, {
@@ -121,11 +96,11 @@ async function syncToSupabase(jobs) {
         }
       });
     } catch (e) {
-      // Ignore duplicates or errors
+      // Silently ignore duplicates or constraint errors
     }
   }
 
-  // Cleanup old jobs (> 48h)
+  // Cleanup old jobs (> 48h) to keep the table lean
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   try {
     await axios.delete(`${SUPABASE_URL}/rest/v1/scraped_jobs?indexed_at=lt.${cutoff}`, {
@@ -134,36 +109,55 @@ async function syncToSupabase(jobs) {
         'Authorization': `Bearer ${SUPABASE_KEY}`
       }
     });
+    console.log(`🧹 Cleaned up jobs older than 48h`);
   } catch (e) {
-    console.error("Cleanup error:", e.message);
+    console.error('Cleanup error:', e.message);
   }
 }
 
 async function run() {
+  console.log('🚀 Starting SnipeJob scraping cycle...\n');
   let allJobs = [];
-  
-  console.log("Starting scraping cycle...");
-  
-  const redditJobs = await scrapeReddit();
-  allJobs = allJobs.concat(redditJobs);
 
-  const wwrJobs = await scrapeRSS('https://weworkremotely.com/remote-jobs.rss', 'We Work Remotely');
-  allJobs = allJobs.concat(wwrJobs);
+  // ── Source 1: We Work Remotely ───────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://weworkremotely.com/remote-jobs.rss',
+    'We Work Remotely'
+  ));
 
-  const remotiveJobs = await scrapeRSS('https://remotive.com/remote-jobs/feed', 'Remotive');
-  allJobs = allJobs.concat(remotiveJobs);
+  // ── Source 2: Remotive ───────────────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://remotive.com/remote-jobs/feed',
+    'Remotive'
+  ));
 
-  const himalayasJobs = await scrapeRSS('https://himalayas.app/jobs/rss', 'Himalayas');
-  allJobs = allJobs.concat(himalayasJobs);
+  // ── Source 3: Himalayas ──────────────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://himalayas.app/jobs/rss',
+    'Himalayas'
+  ));
 
-  const upworkJobs = await scrapeRSS('https://www.upwork.com/ab/feed/jobs/rss?q=remote', 'Upwork');
-  allJobs = allJobs.concat(upworkJobs);
+  // ── Source 4: Freelancer.com ─────────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://www.freelancer.com/rss.xml',
+    'Freelancer.com'
+  ));
 
-  const freelancerJobs = await scrapeRSS('https://www.freelancer.com/rss.xml', 'Freelancer.com');
-  allJobs = allJobs.concat(freelancerJobs);
+  // ── Source 5: Authentic Jobs ─────────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://authenticjobs.com/feed/',
+    'Authentic Jobs'
+  ));
 
-  console.log(`Scraping complete. Found ${allJobs.length} total jobs.`);
+  // ── Source 6: No Desk ────────────────────────────────────────────────
+  allJobs = allJobs.concat(await scrapeRSS(
+    'https://nodesk.co/remote-jobs/index.xml',
+    'No Desk'
+  ));
+
+  console.log(`\n📦 Scraping complete. Total jobs found: ${allJobs.length}`);
   await syncToSupabase(allJobs);
+  console.log('✅ Sync complete.');
 }
 
 run();
