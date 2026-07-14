@@ -4446,7 +4446,7 @@ function startAdTimer() {
   // Only show ads if user is on free plan
   if (currentProfile && currentProfile.current_tier === 'paid') return;
   
-  // Show an ad every 7 minutes (420,000 ms)
+  // Time-based Google Ad trigger: every 7 minutes (420,000 ms)
   adInterval = setInterval(() => {
     if (currentProfile && currentProfile.current_tier === 'paid') {
       clearInterval(adInterval);
@@ -4456,15 +4456,45 @@ function startAdTimer() {
   }, 420000);
 }
 
-function showGoogleAdPopup() {
+function triggerActionAd(onComplete) {
+  if (currentProfile && currentProfile.current_tier === 'paid') {
+    if (typeof onComplete === 'function') onComplete();
+    return;
+  }
+  showGoogleAdPopup(onComplete);
+}
+
+function showGoogleAdPopup(onComplete = null) {
+  if (currentProfile && currentProfile.current_tier === 'paid') {
+    if (typeof onComplete === 'function') onComplete();
+    return;
+  }
+
+  const existing = document.getElementById('ad-modal');
+  if (existing) existing.remove();
+
+  let hasExecuted = false;
+  const finishAd = (executeCallback = true) => {
+    const modal = document.getElementById('ad-modal');
+    if (modal) modal.remove();
+    if (executeCallback && !hasExecuted && typeof onComplete === 'function') {
+      hasExecuted = true;
+      onComplete();
+    }
+  };
+
+  window._closeAdModal = (shouldRun) => finishAd(shouldRun);
+
   const adHtml = `
-    <div id="ad-modal" class="modal-bg" style="display:flex;align-items:center;justify-content:center;z-index:9999;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px)">
-      <div class="auth-card" style="width:100%;max-width:340px;position:relative;padding:24px;text-align:center">
-        <button onclick="document.getElementById('ad-modal').remove()" style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--t3)"><i class="ti ti-x" style="font-size:20px"></i></button>
-        <div style="font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;font-weight:700">Advertisement</div>
+    <div id="ad-modal" class="modal-bg" style="display:flex;align-items:center;justify-content:center;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px)">
+      <div class="auth-card" style="width:100%;max-width:350px;position:relative;padding:24px;text-align:center">
+        <button onclick="window._closeAdModal(true)" style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--t3)" title="Close & Continue"><i class="ti ti-x" style="font-size:20px"></i></button>
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--vlight);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;font-weight:700">
+          <i class="ti ti-sparkles"></i> Sponsored Content
+        </div>
         
         <!-- Google AdSense Container -->
-        <div id="google-ad-container" style="min-height:250px;background:var(--bg);border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;overflow:hidden;">
+        <div id="google-ad-container" style="min-height:250px;background:var(--bg);border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;overflow:hidden;">
           <ins class="adsbygoogle"
                style="display:block; width:100%; height:250px;"
                data-ad-client="ca-pub-3571587794575779"
@@ -4472,18 +4502,25 @@ function showGoogleAdPopup() {
                data-full-width-responsive="true"></ins>
         </div>
         
-        <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5">
-          Ads help keep the free version running. Want an ad-free experience?
+        <div style="font-size:12.5px;color:var(--t2);margin-bottom:14px;line-height:1.4">
+          Ads keep free features running. ${onComplete ? 'Your feature will load immediately after closing.' : 'Want zero ads?'}
         </div>
-        <button class="btn-primary" onclick="document.getElementById('ad-modal').remove(); openModal('planModal')" style="width:100%">
-          <i class="ti ti-bolt"></i> Go Pro
-        </button>
+        
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${onComplete ? `
+            <button class="btn-primary" onclick="window._closeAdModal(true)" style="width:100%;padding:10px;font-size:13px">
+              <i class="ti ti-arrow-right"></i> Continue to Feature
+            </button>
+          ` : ''}
+          <button class="tbtn" onclick="window._closeAdModal(false); openModal('planModal')" style="width:100%;padding:8px;font-size:12px;color:var(--vlight);border-color:rgba(124,92,252,0.4)">
+            <i class="ti ti-bolt"></i> Remove All Ads with Pro
+          </button>
+        </div>
       </div>
     </div>
   `;
   document.body.insertAdjacentHTML('beforeend', adHtml);
   
-  // Trigger AdSense push
   try {
     (window.adsbygoogle = window.adsbygoogle || []).push({});
   } catch (e) {
@@ -4728,7 +4765,7 @@ function setSort(mode) {
   if (event?.target) event.target.closest('button')?.classList.add('act');
 
   if (mode === 'match') {
-    loadRankedJobs();
+    triggerActionAd(() => loadRankedJobs());
   } else {
     renderJobs();
   }
@@ -5009,29 +5046,30 @@ function closeMob() {
 
 /* ─── CAREER PREP: RESUME SCORE ─── */
 async function runResumeScore() {
-  const btn = document.getElementById('resume-score-btn');
-  const resumeInput = document.getElementById('resume-score-input')?.value?.trim() || '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Scoring...';
-  }
-  try {
-    // Pass resume_text if user pasted something; fallback to profile bio if blank
-    const body = resumeInput ? JSON.stringify({ resume_text: resumeInput }) : JSON.stringify({});
-    const result = await apiFetch('/resume/score', { method: 'POST', body });
-    document.getElementById('resume-score-empty').style.display = 'none';
-    document.getElementById('resume-score-result').style.display = 'block';
-    document.getElementById('resume-score-num').textContent = result.score ?? '—';
-    document.getElementById('resume-score-tips').innerHTML = (result.tips || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
-    if (!result.full_rewrite_available) {
-      document.getElementById('resume-rewrite-upsell').style.display = 'block';
+  triggerActionAd(async () => {
+    const btn = document.getElementById('resume-score-btn');
+    const resumeInput = document.getElementById('resume-score-input')?.value?.trim() || '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Scoring...';
     }
-    toast('Resume scored!', 'ti-check');
-  } catch (e) {
-    toast(e.message || 'Could not score your resume. Add a bio in Settings first.', 'ti-alert-triangle');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Score my resume'; }
-  }
+    try {
+      const body = resumeInput ? JSON.stringify({ resume_text: resumeInput }) : JSON.stringify({});
+      const result = await apiFetch('/resume/score', { method: 'POST', body });
+      document.getElementById('resume-score-empty').style.display = 'none';
+      document.getElementById('resume-score-result').style.display = 'block';
+      document.getElementById('resume-score-num').textContent = result.score ?? '—';
+      document.getElementById('resume-score-tips').innerHTML = (result.tips || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+      if (!result.full_rewrite_available) {
+        document.getElementById('resume-rewrite-upsell').style.display = 'block';
+      }
+      toast('Resume scored!', 'ti-check');
+    } catch (e) {
+      toast(e.message || 'Could not score your resume. Add a bio in Settings first.', 'ti-alert-triangle');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Score my resume'; }
+    }
+  });
 }
 
 /* ─── CAREER PREP: SECTOR TRENDS ─── */
@@ -5066,31 +5104,33 @@ let activeInterviewSession = null;
 let activeInterviewQuestions = [];
 
 async function startInterviewPrep(jobId = null) {
-  const btn = document.getElementById('interview-start-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating questions...'; }
+  triggerActionAd(async () => {
+    const btn = document.getElementById('interview-start-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating questions...'; }
 
-  try {
-    const result = await apiFetch('/interview/start', { method: 'POST', body: JSON.stringify({ job_id: jobId }) });
-    activeInterviewSession = result.session_id;
-    activeInterviewQuestions = result.questions;
+    try {
+      const result = await apiFetch('/interview/start', { method: 'POST', body: JSON.stringify({ job_id: jobId }) });
+      activeInterviewSession = result.session_id;
+      activeInterviewQuestions = result.questions;
 
-    document.getElementById('interview-setup').style.display = 'none';
-    const sessionEl = document.getElementById('interview-session');
-    sessionEl.style.display = 'block';
-    sessionEl.innerHTML = activeInterviewQuestions.map((q, i) => `
-      <div class="qa-block" style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:10px">${i + 1}. ${escapeHtml(q)}</div>
-        <textarea class="form-input" id="iv-answer-${i}" style="height:70px;resize:none" placeholder="Type your answer..."></textarea>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-          <button class="tbtn" style="padding:6px 14px;font-size:12.5px" onclick="submitInterviewAnswer(${i}, this)">${result.tier === 'pro' ? 'Get AI feedback' : 'Save answer'}</button>
-          <span id="iv-result-${i}" style="font-size:12.5px;color:var(--t2)"></span>
-        </div>
-      </div>`).join('') + `<button class="tbtn" onclick="resetInterviewPrep()">Start a new session</button>`;
-  } catch (e) {
-    toast(e.message || 'Could not start interview prep.', 'ti-alert-triangle');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Start practice session'; }
-  }
+      document.getElementById('interview-setup').style.display = 'none';
+      const sessionEl = document.getElementById('interview-session');
+      sessionEl.style.display = 'block';
+      sessionEl.innerHTML = activeInterviewQuestions.map((q, i) => `
+        <div class="qa-block" style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+          <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:10px">${i + 1}. ${escapeHtml(q)}</div>
+          <textarea class="form-input" id="iv-answer-${i}" style="height:70px;resize:none" placeholder="Type your answer..."></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button class="tbtn" style="padding:6px 14px;font-size:12.5px" onclick="submitInterviewAnswer(${i}, this)">${result.tier === 'pro' ? 'Get AI feedback' : 'Save answer'}</button>
+            <span id="iv-result-${i}" style="font-size:12.5px;color:var(--t2)"></span>
+          </div>
+        </div>`).join('') + `<button class="tbtn" onclick="resetInterviewPrep()">Start a new session</button>`;
+    } catch (e) {
+      toast(e.message || 'Could not start interview prep.', 'ti-alert-triangle');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Start practice session'; }
+    }
+  });
 }
 
 async function submitInterviewAnswer(index, btn) {
@@ -5817,151 +5857,152 @@ function rhHandleFile(input) {
 
 /* ─── BUILDER: Generate ─── */
 async function rhGenerate() {
-  const btn = document.getElementById('rh-generate-btn');
-  const errEl = document.getElementById('rh-generate-error');
-  errEl.style.display = 'none';
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating...';
-  try {
-    let body = { source: _rhSource };
-    if (_rhSource === 'upload') {
-      const txt = (document.getElementById('rh-upload-text')?.value||'').trim();
-      if (!txt && !_rhFileBase64) throw new Error('Paste your resume text or upload a PDF first.');
-      body.resume_text = txt || '[PDF uploaded — extract and rewrite]';
-    } else if (_rhSource === 'manual') {
-      body.manual_data = {
-        full_name: document.getElementById('rh-m-name')?.value||'',
-        primary_skill: document.getElementById('rh-m-skill')?.value||'',
-        exp_level: document.getElementById('rh-m-level')?.value||'',
-        bio: document.getElementById('rh-m-bio')?.value||'',
-        education: document.getElementById('rh-m-edu')?.value||''
-      };
+  triggerActionAd(async () => {
+    const btn = document.getElementById('rh-generate-btn');
+    const errEl = document.getElementById('rh-generate-error');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating...';
+    try {
+      let body = { source: _rhSource };
+      if (_rhSource === 'upload') {
+        const txt = (document.getElementById('rh-upload-text')?.value||'').trim();
+        if (!txt && !_rhFileBase64) throw new Error('Paste your resume text or upload a PDF first.');
+        body.resume_text = txt || '[PDF uploaded — extract and rewrite]';
+      } else if (_rhSource === 'manual') {
+        body.manual_data = {
+          full_name: document.getElementById('rh-m-name')?.value||'',
+          primary_skill: document.getElementById('rh-m-skill')?.value||'',
+          exp_level: document.getElementById('rh-m-level')?.value||'',
+          bio: document.getElementById('rh-m-bio')?.value||'',
+          education: document.getElementById('rh-m-edu')?.value||''
+        };
+      }
+      const result = await apiFetch('/resume/generate', { method:'POST', body: JSON.stringify(body) });
+      _rhCurrentResume = result.resume || '';
+      const ta = document.getElementById('rh-builder-text');
+      if (ta) ta.value = _rhCurrentResume;
+      document.getElementById('rh-builder-output').style.display = '';
+      toast('Resume generated!', 'ti-check');
+    } catch(e) {
+      errEl.textContent = e.message || 'Generation failed.';
+      errEl.style.display = '';
+      toast(e.message || 'Resume generation failed.', 'ti-alert-triangle');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Resume with AI';
     }
-    const result = await apiFetch('/resume/generate', { method:'POST', body: JSON.stringify(body) });
-    _rhCurrentResume = result.resume || '';
-    const ta = document.getElementById('rh-builder-text');
-    if (ta) ta.value = _rhCurrentResume;
-    document.getElementById('rh-builder-output').style.display = '';
-    toast('Resume generated!', 'ti-check');
-  } catch(e) {
-    errEl.textContent = e.message || 'Generation failed.';
-    errEl.style.display = '';
-    toast(e.message || 'Resume generation failed.', 'ti-alert-triangle');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Resume with AI';
-  }
+  });
 }
 
-/* ─── ATS: Run analysis ─── */
 async function rhRunATS() {
-  const input = document.getElementById('rh-ats-input')?.value?.trim();
-  if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
-  const btn = document.getElementById('rh-ats-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Analysing...';
-  try {
-    const raw = await apiFetch('/resume/analyze-ats', { method:'POST', body: JSON.stringify({resume_text:input}) });
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    // Animate score rings
-    const circumference = 201;
-    function setRing(id, score, labelId) {
-      const ring = document.getElementById(id);
-      const lbl = document.getElementById(labelId);
-      if (!ring || !lbl) return;
-      const offset = circumference - (score / 100) * circumference;
-      ring.style.strokeDashoffset = offset;
-      lbl.textContent = score + '/100';
+  triggerActionAd(async () => {
+    const input = document.getElementById('rh-ats-input')?.value?.trim();
+    if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
+    const btn = document.getElementById('rh-ats-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Analysing...';
+    try {
+      const raw = await apiFetch('/resume/analyze-ats', { method:'POST', body: JSON.stringify({resume_text:input}) });
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const circumference = 201;
+      function setRing(id, score, labelId) {
+        const ring = document.getElementById(id);
+        const lbl = document.getElementById(labelId);
+        if (!ring || !lbl) return;
+        const offset = circumference - (score / 100) * circumference;
+        ring.style.strokeDashoffset = offset;
+        lbl.textContent = score + '/100';
+      }
+      setTimeout(() => {
+        setRing('rh-ring-ats', data.ats_score||0, 'rh-score-ats');
+        setRing('rh-ring-fmt', data.formatting_score||0, 'rh-score-fmt');
+        setRing('rh-ring-kw',  data.keyword_score||0,    'rh-score-kw');
+        setRing('rh-ring-cnt', data.content_score||0,    'rh-score-cnt');
+      }, 80);
+      function setList(id, items) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = (items||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('')||'<li style="color:var(--t3)">No issues found.</li>';
+      }
+      setList('rh-fb-ats', data.compatibility_feedback);
+      setList('rh-fb-fmt', data.formatting_feedback);
+      setList('rh-fb-kw',  data.keyword_feedback);
+      setList('rh-fb-cnt', data.content_feedback);
+      document.getElementById('rh-ats-results').style.display = '';
+      toast('ATS analysis complete!', 'ti-check');
+    } catch(e) {
+      toast(e.message||'Analysis failed. Please try again.', 'ti-alert-triangle');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-chart-bar"></i> Run ATS Analysis';
     }
-    setTimeout(() => {
-      setRing('rh-ring-ats', data.ats_score||0, 'rh-score-ats');
-      setRing('rh-ring-fmt', data.formatting_score||0, 'rh-score-fmt');
-      setRing('rh-ring-kw',  data.keyword_score||0,    'rh-score-kw');
-      setRing('rh-ring-cnt', data.content_score||0,    'rh-score-cnt');
-    }, 80);
-    // Populate feedback lists
-    function setList(id, items) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.innerHTML = (items||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('')||'<li style="color:var(--t3)">No issues found.</li>';
-    }
-    setList('rh-fb-ats', data.compatibility_feedback);
-    setList('rh-fb-fmt', data.formatting_feedback);
-    setList('rh-fb-kw',  data.keyword_feedback);
-    setList('rh-fb-cnt', data.content_feedback);
-    document.getElementById('rh-ats-results').style.display = '';
-    toast('ATS analysis complete!', 'ti-check');
-  } catch(e) {
-    toast(e.message||'Analysis failed. Please try again.', 'ti-alert-triangle');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-chart-bar"></i> Run ATS Analysis';
-  }
+  });
 }
 
-/* ─── OPTIMIZE: Run ─── */
 async function rhRunOptimize() {
-  const input = document.getElementById('rh-opt-input')?.value?.trim();
-  if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
-  const btn = document.getElementById('rh-opt-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Optimising...';
-  try {
-    const raw = await apiFetch('/resume/optimize', { method:'POST', body: JSON.stringify({resume_text:input}) });
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    document.getElementById('rh-opt-summary').textContent = data.improved_summary || '';
-    const toList = (id, arr) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
-    };
-    toList('rh-opt-bullets',  data.better_bullet_points);
-    toList('rh-opt-achieve',  data.better_achievements);
-    toList('rh-opt-position', data.positioning_suggestions);
-    document.getElementById('rh-opt-results').style.display = '';
-    toast('Optimisation complete!', 'ti-check');
-  } catch(e) {
-    toast(e.message||'Optimisation failed.', 'ti-alert-triangle');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-wand"></i> Optimize with AI';
-  }
+  triggerActionAd(async () => {
+    const input = document.getElementById('rh-opt-input')?.value?.trim();
+    if (!input) return toast('Paste your resume text first.', 'ti-alert-triangle');
+    const btn = document.getElementById('rh-opt-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Optimising...';
+    try {
+      const raw = await apiFetch('/resume/optimize', { method:'POST', body: JSON.stringify({resume_text:input}) });
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      document.getElementById('rh-opt-summary').textContent = data.improved_summary || '';
+      const toList = (id, arr) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
+      };
+      toList('rh-opt-bullets',  data.better_bullet_points);
+      toList('rh-opt-achieve',  data.better_achievements);
+      toList('rh-opt-position', data.positioning_suggestions);
+      document.getElementById('rh-opt-results').style.display = '';
+      toast('Optimisation complete!', 'ti-check');
+    } catch(e) {
+      toast(e.message||'Optimisation failed.', 'ti-alert-triangle');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-wand"></i> Optimize with AI';
+    }
+  });
 }
 
-/* ─── TAILOR: Run ─── */
 async function rhRunTailor() {
-  const resume = document.getElementById('rh-tailor-resume')?.value?.trim();
-  const jd     = document.getElementById('rh-tailor-jd')?.value?.trim();
-  if (!resume || !jd) return toast('Paste both your resume and the job description first.', 'ti-alert-triangle');
-  const btn = document.getElementById('rh-tailor-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Tailoring...';
-  try {
-    const raw = await apiFetch('/resume/tailor', { method:'POST', body: JSON.stringify({resume_text:resume, job_description:jd}) });
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    // Match bar
-    const pct = Math.min(100, Math.max(0, data.comparison_match||0));
-    setTimeout(() => {
-      const bar = document.getElementById('rh-tailor-bar');
-      if (bar) bar.style.width = pct+'%';
-    }, 80);
-    document.getElementById('rh-tailor-pct').textContent = pct+'%';
-    // Lists
-    const toList = (id, arr) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
-    };
-    toList('rh-tailor-missing',  data.missing_requirements);
-    toList('rh-tailor-suggest',  data.suggested_improvements);
-    const out = document.getElementById('rh-tailor-output');
-    if (out) out.value = data.tailored_resume || '';
-    document.getElementById('rh-tailor-results').style.display = '';
-    toast('Resume tailored!', 'ti-check');
-  } catch(e) {
-    toast(e.message||'Tailoring failed.', 'ti-alert-triangle');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-arrows-diff"></i> Tailor Resume to this Job';
-  }
+  triggerActionAd(async () => {
+    const resume = document.getElementById('rh-tailor-resume')?.value?.trim();
+    const jd     = document.getElementById('rh-tailor-jd')?.value?.trim();
+    if (!resume || !jd) return toast('Paste both your resume and the job description first.', 'ti-alert-triangle');
+    const btn = document.getElementById('rh-tailor-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Tailoring...';
+    try {
+      const raw = await apiFetch('/resume/tailor', { method:'POST', body: JSON.stringify({resume_text:resume, job_description:jd}) });
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const pct = Math.min(100, Math.max(0, data.comparison_match||0));
+      setTimeout(() => {
+        const bar = document.getElementById('rh-tailor-bar');
+        if (bar) bar.style.width = pct+'%';
+      }, 80);
+      document.getElementById('rh-tailor-pct').textContent = pct+'%';
+      const toList = (id, arr) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = (arr||[]).map(t=>`<li>${escapeHtml(t)}</li>`).join('');
+      };
+      toList('rh-tailor-missing',  data.missing_requirements);
+      toList('rh-tailor-suggest',  data.suggested_improvements);
+      const out = document.getElementById('rh-tailor-output');
+      if (out) out.value = data.tailored_resume || '';
+      document.getElementById('rh-tailor-results').style.display = '';
+      toast('Resume tailored!', 'ti-check');
+    } catch(e) {
+      toast(e.message||'Tailoring failed.', 'ti-alert-triangle');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-arrows-diff"></i> Tailor Resume to this Job';
+    }
+  });
 }
 
 /* ─── PREVIEW helpers ─── */
