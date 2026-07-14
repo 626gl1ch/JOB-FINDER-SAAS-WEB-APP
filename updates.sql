@@ -161,3 +161,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+
+-- AI rate limiting columns
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_count') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_count INT DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_reset_at') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_reset_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+END $$;

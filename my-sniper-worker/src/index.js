@@ -169,6 +169,45 @@ export default {
       }
     };
 
+    // AI Rate Limiter for Free Users (2 uses per 1 hour)
+    const checkAiRateLimit = async (uid) => {
+      const profileRes = await supabase(`profiles?select=current_tier,ai_usage_count,ai_usage_reset_at&id=eq.${uid}`);
+      const profile = (await profileRes.json())[0];
+      if (!profile) return { error: new Response("Profile not found", { status: 404, headers: corsHeaders }) };
+      
+      // Paid users bypass limits
+      if (profile.current_tier === "paid") return { allowed: true };
+      
+      const now = new Date();
+      let resetAt = profile.ai_usage_reset_at ? new Date(profile.ai_usage_reset_at) : new Date(0);
+      let count = profile.ai_usage_count || 0;
+      
+      // Reset window if past the reset time
+      if (now > resetAt) {
+        count = 0;
+        resetAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+      }
+      
+      if (count >= 2) {
+        const minutesLeft = Math.max(1, Math.ceil((resetAt - now) / 60000));
+        return { 
+          error: new Response(JSON.stringify({ error: `AI rate limit reached (2/hour). Try again in ${minutesLeft} minutes or upgrade to Pro.` }), { 
+            status: 429, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }) 
+        };
+      }
+      
+      // Increment usage and update
+      count++;
+      await supabase(`profiles?id=eq.${uid}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ai_usage_count: count, ai_usage_reset_at: resetAt.toISOString() })
+      });
+      
+      return { allowed: true };
+    };
+
     // --- ROUTES ---
 
     // 0. GET /debug/env (Hosting Verification)
@@ -380,9 +419,8 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
-      if (profile.current_tier !== "paid") {
-        return new Response("Pro feature only", { status: 403, headers: corsHeaders });
-      }
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
 
       // Get job details
       const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
@@ -435,7 +473,9 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const profileRes = await supabase(`profiles?select=full_name,sectors,exp_level,primary_skill,bio,education,current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-      if (profile.current_tier !== "paid") return new Response("Pro feature only", { status: 403, headers: corsHeaders });
+      
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
 
       // 2. Get job details
       const jobRes = await supabase(`scraped_jobs?select=title,payload_description&id=eq.${job_id}`);
@@ -477,6 +517,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
     // --- NEW: AI RESUME BUILDER ENDPOINTS ---
     if (url.pathname === "/api/resume/generate" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
       const { source, resume_text, manual_data } = await request.json().catch(() => ({}));
       
       let userInfoText = "";
@@ -516,6 +560,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     if (url.pathname === "/api/resume/analyze-ats" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
       const { resume_text } = await request.json().catch(() => ({}));
       if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
 
@@ -553,6 +601,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     if (url.pathname === "/api/resume/optimize" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
       const { resume_text } = await request.json().catch(() => ({}));
       if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
 
@@ -591,6 +643,10 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
     if (url.pathname === "/api/resume/tailor" && method === "POST") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
       const { resume_text, job_description } = await request.json().catch(() => ({}));
       if (!resume_text || !job_description) return new Response("Missing parameters", { status: 400, headers: corsHeaders });
 
@@ -865,6 +921,88 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       return new Response(JSON.stringify({ active: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // --- CRYPTO PAYMENT ENDPOINTS (NowPayments) ---
+    // POST /api/payment/crypto/create-checkout (Public / Funnel)
+    if (url.pathname === "/api/payment/crypto/create-checkout" && method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const plan = PLAN_CONFIG[body.plan] ? body.plan : null;
+      if (!plan) return new Response(JSON.stringify({ error: "Invalid plan" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const email = (body.email || "").trim().toLowerCase();
+      if (!email || !email.includes("@")) return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      if (!env.CRYPTO_API_KEY) {
+        return new Response(JSON.stringify({ error: "Crypto payments not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const npRes = await fetch("https://api.nowpayments.io/v1/invoice", {
+        method: "POST",
+        headers: {
+          "x-api-key": env.CRYPTO_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          price_amount: PLAN_CONFIG[plan].amount,
+          price_currency: "usd",
+          order_id: `SNIPEJOB_${plan.toUpperCase()}_${Date.now()}`,
+          order_description: `SnipeJob ${plan} Plan for ${email}`,
+          ipn_callback_url: url.origin + "/api/payment/crypto/webhook",
+          success_url: `${APP_BASE_URL}/index.html?premium_signup=1&crypto=success`,
+          cancel_url: `${APP_BASE_URL}/index.html`,
+        })
+      });
+
+      const npData = await npRes.json();
+      if (!npRes.ok || !npData.invoice_url) {
+        console.error("Crypto checkout error:", npData);
+        return new Response(JSON.stringify({ error: "Could not create crypto checkout" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ url: npData.invoice_url, invoice_id: npData.invoice_id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // POST /api/payment/crypto/webhook (NowPayments IPN)
+    if (url.pathname === "/api/payment/crypto/webhook" && method === "POST") {
+      const npSig = request.headers.get("x-nowpayments-sig");
+      if (!npSig) return new Response("Missing signature", { status: 400 });
+
+      const text = await request.text();
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch (e) {
+        return new Response("Invalid JSON", { status: 400 });
+      }
+
+      if (body.payment_status === "finished") {
+        const emailMatch = body.order_description?.match(/Plan for (.+)$/);
+        const planMatch = body.order_description?.match(/SnipeJob (monthly|annual) Plan/);
+        
+        if (emailMatch && planMatch) {
+           const email = emailMatch[1];
+           const plan = planMatch[1];
+           
+           const userRes = await supabase(`profiles?select=id&email=eq.${encodeURIComponent(email)}`);
+           const user = (await userRes.json())[0];
+           if (user) {
+              const months = plan === "annual" ? 12 : 1;
+              const newExpiry = new Date();
+              newExpiry.setMonth(newExpiry.getMonth() + months);
+              
+              await supabase(`profiles?id=eq.${user.id}`, {
+                 method: "PATCH",
+                 body: JSON.stringify({
+                   current_tier: "paid",
+                   plan_type: plan,
+                   subscription_expiry: newExpiry.toISOString()
+                 })
+              });
+           }
+        }
+      }
+      return new Response("OK", { status: 200 });
     }
 
     // 3b. POST /api/payment/webhook (Paystack Webhook — SHA-512 HMAC verified)
@@ -1382,6 +1520,9 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
         return new Response("Paste a resume or add a bio of at least 20 characters in your profile first.", { status: 400, headers: corsHeaders });
       }
 
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
       const prompt = providedResumeText
         ? `You are a professional resume reviewer. Score this resume out of 100 on clarity, quantified impact, and keyword strength.
 
@@ -1482,9 +1623,10 @@ Return ONLY a strict JSON array of 5 question strings, no markdown: ["question 1
 
       const profileRes = await supabase(`profiles?select=current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
-      if (!profile || profile.current_tier !== "paid") {
-        return new Response("Pro feature only — upgrade to get AI scoring on your interview answers.", { status: 403, headers: corsHeaders });
-      }
+      if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
+
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
 
       const { session_id, question, answer } = await request.json();
       if (!session_id || !question || !answer) return new Response("Missing session_id, question, or answer", { status: 400, headers: corsHeaders });

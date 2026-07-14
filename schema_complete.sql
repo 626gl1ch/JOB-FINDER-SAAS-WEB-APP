@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     paystack_customer_code TEXT,
     paystack_subscription_code TEXT,
     plan_type TEXT CHECK (plan_type IN ('monthly', 'annual')),
+    ai_usage_count INT DEFAULT 0,
+    ai_usage_reset_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -96,6 +98,12 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='paystack_subscription_code') THEN
         ALTER TABLE public.profiles ADD COLUMN paystack_subscription_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_count') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_count INT DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_reset_at') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_reset_at TIMESTAMP WITH TIME ZONE;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_wallet_balance_check') THEN
         ALTER TABLE public.profiles ADD CONSTRAINT profiles_wallet_balance_check CHECK (wallet_balance >= 0);

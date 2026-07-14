@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     vpn_violation_count INT DEFAULT 0,
     avatar_url TEXT,
     oauth_provider TEXT DEFAULT 'email',
+    ai_usage_count INT DEFAULT 0,
+    ai_usage_reset_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -82,6 +84,13 @@ BEGIN
     -- or 'sales_funnel' (paid first, then created the account).
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='signup_source') THEN
         ALTER TABLE public.profiles ADD COLUMN signup_source TEXT DEFAULT 'app';
+    END IF;
+    -- AI rate limiting columns
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_count') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_count INT DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_reset_at') THEN
+        ALTER TABLE public.profiles ADD COLUMN ai_usage_reset_at TIMESTAMP WITH TIME ZONE;
     END IF;
     -- FIX (audit pass): retrofits the wallet_balance >= 0 CHECK constraint
     -- onto an existing table (the inline CHECK above only applies on a
