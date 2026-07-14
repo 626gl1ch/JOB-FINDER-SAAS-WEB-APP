@@ -1005,9 +1005,12 @@ select.form-input option{background:#2C2C2E;color:var(--ink)}
   .rh-template-preview{min-height:320px}
 }
 @media(max-width:768px){
-  nav{padding:0 4vw}
+  nav{padding:0 16px;height:62px;display:flex;align-items:center}
+  .nav-r{gap:8px;display:flex;align-items:center}
+  .nav-ghost{padding:6px 12px;font-size:12px;font-weight:600;display:inline-flex;align-items:center}
+  .nav-cta{padding:7px 14px;font-size:12px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center}
   .nav-links{display:none}
-  .hamburger{display:flex}
+  .hamburger{display:flex;margin-left:2px}
   .hero{padding:48px 4vw 56px}
   .section{padding:60px 4vw}
   .hiw-steps{grid-template-columns:1fr}
@@ -1039,6 +1042,10 @@ select.form-input option{background:#2C2C2E;color:var(--ink)}
   .rh-sub-tabs::-webkit-scrollbar{display:none}
 }
 @media(max-width:480px){
+  nav{padding:0 12px;height:60px}
+  .nav-r{gap:6px}
+  .nav-ghost{padding:5px 9px;font-size:11.5px}
+  .nav-cta{padding:6px 11px;font-size:11.5px}
   .hero h1{font-size:1.5rem}
   .d-stats{grid-template-columns:1fr}
   .sector-grid{grid-template-columns:1fr 1fr}
@@ -4159,12 +4166,21 @@ async function handleOAuth(provider) {
     return;
   }
 
-  // Build the redirect URL explicitly so extensions can't mutate window.location
-  // between the call and Supabase reading it.
   const redirectTo = window.location.origin + window.location.pathname;
+  const providerKey = (provider === 'linkedin' || provider === 'linkedin_oidc') ? 'linkedin_oidc' : provider;
+
+  const options = { redirectTo };
+  if (provider === 'google') {
+    options.scopes = 'openid email profile';
+  } else if (provider === 'facebook') {
+    options.scopes = 'email,public_profile';
+  } else if (provider === 'linkedin' || provider === 'linkedin_oidc') {
+    options.scopes = 'openid profile email';
+  }
+
   const { error } = await sb.auth.signInWithOAuth({
-    provider,
-    options: { redirectTo }
+    provider: providerKey,
+    options
   });
   if (error) toast(error.message || `Could not start ${provider} sign-in.`, 'ti-alert-triangle');
 }
@@ -4369,18 +4385,39 @@ async function initDashboard() {
   if (!window._masterSession) {
     try {
       currentProfile = await apiFetch('/profile');
+      // Enrich profile automatically from OAuth metadata (Google, Facebook, LinkedIn)
+      if (session && session.user && session.user.user_metadata) {
+        const meta = session.user.user_metadata;
+        const updates = {};
+        if (!currentProfile.full_name && (meta.full_name || meta.name)) {
+          updates.full_name = meta.full_name || meta.name;
+        }
+        if (!currentProfile.primary_skill && (meta.headline || meta.job_title || meta.position)) {
+          updates.primary_skill = meta.headline || meta.job_title || meta.position;
+        }
+        if (!currentProfile.bio && (meta.bio || meta.summary || meta.description || meta.about)) {
+          updates.bio = meta.bio || meta.summary || meta.description || meta.about;
+        }
+        if (!currentProfile.education && (meta.education || meta.school || meta.degree)) {
+          updates.education = meta.education || meta.school || meta.degree;
+        }
+        if (!currentProfile.avatar_url && (meta.avatar_url || meta.picture || meta.avatar)) {
+          updates.avatar_url = meta.avatar_url || meta.picture || meta.avatar;
+        }
+        if (Object.keys(updates).length > 0) {
+          apiFetch('/profile', { method: 'PATCH', body: JSON.stringify(updates) })
+            .then(res => Object.assign(currentProfile, res))
+            .catch(() => {});
+        }
+      }
     } catch (e) {
       console.error('Failed to load profile:', e);
-    // Only redirect to sign-in on auth errors (401/403) and not during lock window.
-    // A 500 or network error means the worker is temporarily down —
-    // stay on the dashboard and show a retry banner instead.
     if ((e.status === 401 || e.status === 403) && Date.now() > _navLockUntil) {
       toast('Session expired. Please sign in again.', 'ti-alert-triangle');
       go('signin');
       return;
     }
     toast('Could not reach the server. Check your connection and try refreshing.', 'ti-wifi-off');
-    // Provide a minimal skeleton profile so the dashboard still renders
     currentProfile = currentProfile || { full_name: '', wallet_balance: 0, current_tier: 'free' };
   }
   } // end if (!window._masterSession)
