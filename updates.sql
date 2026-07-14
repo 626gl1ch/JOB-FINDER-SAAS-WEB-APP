@@ -94,3 +94,70 @@ BEGIN
         (p_user_id, p_amount, p_channel, p_address, 'pending', p_tier, p_scheduled_date);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- SIDE TASK: Completed task tracking, deduplication, & ledger state machine
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.user_completed_tasks (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    offer_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    status TEXT CHECK (status IN ('pending', 'confirmed', 'reversed')) DEFAULT 'confirmed',
+    raw_payout DECIMAL(10,4) NOT NULL DEFAULT 0.0000,
+    user_cut DECIMAL(10,4) NOT NULL DEFAULT 0.0000,
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    UNIQUE(user_id, offer_id, provider)
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='affiliate_logs' AND column_name='status') THEN
+        ALTER TABLE public.affiliate_logs ADD COLUMN status TEXT CHECK (status IN ('pending', 'confirmed', 'reversed')) DEFAULT 'confirmed';
+    END IF;
+END $$;
+
+ALTER TABLE public.user_completed_tasks ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own completed tasks') THEN
+        CREATE POLICY "Users can view their own completed tasks" ON public.user_completed_tasks FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_completed_tasks_user ON public.user_completed_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_completed_tasks_offer ON public.user_completed_tasks(user_id, offer_id);
+
+-- Upgraded process_affiliate_credit_v2: supports offer_id tracking & deduplication
+CREATE OR REPLACE FUNCTION process_affiliate_credit_v2(
+    target_user_id UUID, 
+    sub_id TEXT, 
+    offer_id_val TEXT,
+    provider TEXT, 
+    raw_payout DECIMAL, 
+    user_cut DECIMAL, 
+    ip_addr TEXT,
+    p_status TEXT DEFAULT 'confirmed'
+) RETURNS VOID AS $$
+BEGIN
+    -- 1. Log transaction
+    INSERT INTO public.affiliate_logs (user_id, tracking_subid, incoming_network_provider, full_raw_payout, user_credited_amount, validation_ip, status)
+    VALUES (target_user_id, sub_id, provider, raw_payout, user_cut, ip_addr, p_status)
+    ON CONFLICT (tracking_subid) DO NOTHING;
+
+    -- 2. Record completed task for deduplication
+    INSERT INTO public.user_completed_tasks (user_id, offer_id, provider, status, raw_payout, user_cut)
+    VALUES (target_user_id, COALESCE(offer_id_val, sub_id), provider, p_status, raw_payout, user_cut)
+    ON CONFLICT (user_id, offer_id, provider) DO UPDATE 
+    SET status = EXCLUDED.status, user_cut = EXCLUDED.user_cut;
+
+    -- 3. Credit wallet balance if confirmed
+    IF p_status = 'confirmed' THEN
+        UPDATE public.profiles 
+        SET wallet_balance = wallet_balance + user_cut 
+        WHERE id = target_user_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+

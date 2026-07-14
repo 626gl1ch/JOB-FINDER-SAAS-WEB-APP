@@ -1062,26 +1062,18 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const profile = (await profileRes.json())[0];
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
-      // Side Tasks are Pro-only — gate here so free users see the upgrade wall
       if (profile.current_tier !== "paid") {
         return new Response(JSON.stringify({ items: [], configured: false, pro_required: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (!env.OFFER_FEED_URL || !env.OFFER_FEED_API_KEY) {
-        // No network connected yet — return an empty list rather than erroring,
-        // so the dashboard shows "no tasks available" instead of breaking.
         return new Response(JSON.stringify({ items: [], configured: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Country resolution: prefer the user's profile country (mapped to its
-      // ISO code), then fall back to Cloudflare's edge-detected CF-IPCountry
-      // header, which already arrives as a 2-letter code.
       const rawCountry = profile.country || request.headers.get("CF-IPCountry") || "";
       const userCountryCode = COUNTRY_CODES[rawCountry] || (rawCountry.length === 2 ? rawCountry.toUpperCase() : null);
 
       if (!userCountryCode) {
-        // Country not set or unrecognised — return empty rather than showing
-        // offers from the wrong country. User should update their profile.
         return new Response(JSON.stringify({
           items: [],
           configured: true,
@@ -1090,11 +1082,19 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // Fetch completed offer IDs for this user to filter out completed tasks
+      let completedOfferIds = new Set();
       try {
-        // Pass the ISO code to CPALead so the network pre-filters on their
-        // end, then double-filter below to catch any stragglers some
-        // networks include (multi-country offers listing every country
-        // they accept) — only exact-country or worldwide offers get through.
+        const completedRes = await supabase(`user_completed_tasks?select=offer_id&user_id=eq.${userId}`);
+        const completedRows = await completedRes.json().catch(() => []);
+        if (Array.isArray(completedRows)) {
+          completedRows.forEach(row => { if (row.offer_id) completedOfferIds.add(String(row.offer_id)); });
+        }
+      } catch (e) {
+        console.warn("Completed tasks set query error:", e.message);
+      }
+
+      try {
         const feedRes = await fetch(`${env.OFFER_FEED_URL}?api_key=${env.OFFER_FEED_API_KEY}&country=${userCountryCode}&format=json`);
         if (!feedRes.ok) throw new Error(`Feed returned ${feedRes.status}`);
 
@@ -1103,6 +1103,8 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
         const offers = rawOffers
           .filter(o => {
+            const offerIdStr = String(o.offer_id || o.id || "");
+            if (completedOfferIds.has(offerIdStr)) return false; // Filter out tasks already completed!
             const offerCountry = (o.country || o.countries || o.geo || "").toUpperCase();
             return !offerCountry ||
                    offerCountry === userCountryCode ||
@@ -1113,36 +1115,53 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
           .slice(0, 15)
           .map(o => {
             const rawPayout = parseFloat(o.payout || o.amount || o.revenue || 0);
+            const offerIdStr = String(o.offer_id || o.id || "");
             return {
-              id: o.offer_id || o.id,
+              id: offerIdStr,
               title: o.title || o.name,
               description: o.description || o.short_description || "",
               user_cut: +(rawPayout * 0.5).toFixed(2),
-              // userId embedded here is what comes back as {subid} on the postback
-              link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}`,
+              raw_payout: rawPayout,
+              link: `${o.link || o.url}${(o.link || o.url || '').includes('?') ? '&' : '?'}subid=${userId}&offer_id=${offerIdStr}`,
               country: userCountryCode,
               category: o.category || o.vertical || "general",
             };
           });
 
-        return new Response(JSON.stringify({ items: offers, configured: true, user_country: userCountryCode }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ items: offers, completed_count: completedOfferIds.size, configured: true, user_country: userCountryCode }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (e) {
         console.error("Offer feed fetch error:", e.message);
         return new Response("Could not load tasks right now. Please try again shortly.", { status: 502, headers: corsHeaders });
       }
     }
 
-    // 4c. GET /api/earnings (Recent affiliate credit history, for the
-    // "Recent earnings" panel — reads from affiliate_logs which
-    // process_affiliate_credit already writes to on every postback.)
+    // 4c. GET /api/earnings (Itemized affiliate task completion history)
     if (url.pathname === "/api/earnings" && method === "GET") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-      const res = await supabase(`affiliate_logs?select=user_credited_amount,incoming_network_provider,processing_timestamp&user_id=eq.${userId}&order=processing_timestamp.desc&limit=10`);
-      const rows = await res.json();
-      return new Response(JSON.stringify({ items: rows }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      
+      let tasks = [];
+      try {
+        const tasksRes = await supabase(`user_completed_tasks?select=offer_id,provider,status,raw_payout,user_cut,completed_at&user_id=eq.${userId}&order=completed_at.desc&limit=20`);
+        tasks = await tasksRes.json().catch(() => []);
+      } catch (e) {}
+
+      if (!Array.isArray(tasks) || tasks.length === 0) {
+        const logsRes = await supabase(`affiliate_logs?select=tracking_subid,incoming_network_provider,user_credited_amount,full_raw_payout,processing_timestamp,status&user_id=eq.${userId}&order=processing_timestamp.desc&limit=20`);
+        const logs = await logsRes.json().catch(() => []);
+        tasks = (logs || []).map(l => ({
+          offer_id: l.tracking_subid,
+          provider: l.incoming_network_provider,
+          user_cut: l.user_credited_amount,
+          raw_payout: l.full_raw_payout,
+          status: l.status || "confirmed",
+          completed_at: l.processing_timestamp
+        }));
+      }
+
+      return new Response(JSON.stringify({ items: tasks }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. GET / POST /api/postback (Durable Affiliate Track & Fraud Firewall)
+    // 3. GET / POST /api/postback (Durable Multi-Network Affiliate Track & Fraud Firewall)
     if (url.pathname === "/api/postback" && (method === "GET" || method === "POST")) {
       const secret = url.searchParams.get("secret");
       if (!env.POSTBACK_SECRET || secret !== env.POSTBACK_SECRET) {
@@ -1150,49 +1169,65 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       }
 
       const subid = url.searchParams.get("subid"); // User UUID
-      const payout = parseFloat(url.searchParams.get("payout"));
-      const clickIp = url.searchParams.get("click_ip");
+      const payout = parseFloat(url.searchParams.get("payout") || "0");
+      const offerId = url.searchParams.get("offer_id") || url.searchParams.get("tracking_id") || `task_${Date.now()}`;
+      const clickIp = url.searchParams.get("click_ip") || url.searchParams.get("ip") || "";
       const country = url.searchParams.get("country");
+      const provider = url.searchParams.get("provider") || "cpalead";
+      const statusParam = (url.searchParams.get("status") || "confirmed").toLowerCase();
+      const status = ["pending", "confirmed", "reversed"].includes(statusParam) ? statusParam : "confirmed";
 
       // Verify user and country
       const profileRes = await supabase(`profiles?select=country,vpn_violation_count,current_tier&id=eq.${subid}`);
-      const profiles = await profileRes.json();
+      const profiles = await profileRes.json().catch(() => []);
       const profile = profiles[0];
 
       if (!profile || profile.current_tier !== 'paid') {
           return new Response("Pro subscription required for tasks", { status: 403, headers: corsHeaders });
       }
 
-      // Map profile country and incoming country to ISO 2-letter codes
       const profileCountryCode = profile.country ? (COUNTRY_CODES[profile.country] || (profile.country.length === 2 ? profile.country.toUpperCase() : null)) : null;
       const incomingCountryCode = country ? (COUNTRY_CODES[country] || (country.length === 2 ? country.toUpperCase() : null)) : null;
 
-      if (!profileCountryCode || !incomingCountryCode || (profileCountryCode !== incomingCountryCode && (profile.country || "").toLowerCase() !== (country || "").toLowerCase())) {
-        // VPN Violation
-        if (profile) {
-            await supabase(`profiles?id=eq.${subid}`, {
-                method: "PATCH",
-                body: JSON.stringify({ vpn_violation_count: profile.vpn_violation_count + 1 })
-            });
-        }
+      if (profileCountryCode && incomingCountryCode && profileCountryCode !== incomingCountryCode && (profile.country || "").toLowerCase() !== (country || "").toLowerCase()) {
+        // Log VPN / Fraud violation
+        await supabase(`profiles?id=eq.${subid}`, {
+            method: "PATCH",
+            body: JSON.stringify({ vpn_violation_count: (profile.vpn_violation_count || 0) + 1 })
+        });
         return new Response("Fraud detected", { status: 403, headers: corsHeaders });
       }
 
       const userCut = payout * 0.5;
-      const provider = url.searchParams.get("provider") || "unknown";
 
-      // Atomic transaction via Supabase function
-      await supabase("rpc/process_affiliate_credit", {
+      // Exec process_affiliate_credit_v2 with fallback
+      const rpcRes = await supabase("rpc/process_affiliate_credit_v2", {
         method: "POST",
         body: JSON.stringify({
           target_user_id: subid,
-          sub_id: url.searchParams.get("tracking_id") || `task_${Date.now()}`,
+          sub_id: offerId,
+          offer_id_val: offerId,
           provider: provider,
           raw_payout: payout,
           user_cut: userCut,
-          ip_addr: clickIp
+          ip_addr: clickIp,
+          p_status: status
         })
       });
+
+      if (!rpcRes.ok) {
+        await supabase("rpc/process_affiliate_credit", {
+          method: "POST",
+          body: JSON.stringify({
+            target_user_id: subid,
+            sub_id: offerId,
+            provider: provider,
+            raw_payout: payout,
+            user_cut: userCut,
+            ip_addr: clickIp
+          })
+        });
+      }
 
       return new Response("OK", { headers: corsHeaders });
     }

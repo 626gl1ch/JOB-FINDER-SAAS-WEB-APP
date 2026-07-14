@@ -4845,10 +4845,8 @@ async function loadSideTasks() {
 
   if (balEl && currentProfile) balEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
 
-  // Keep sidebar balance widget in sync
   const sideBalEl = document.getElementById('sb-bal-val-side');
   if (sideBalEl && currentProfile) sideBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
-  // Also update the stat card
   const statBalEl = document.getElementById('stat-balance');
   if (statBalEl && currentProfile) statBalEl.textContent = '$' + Number(currentProfile.wallet_balance || 0).toFixed(2);
 
@@ -4861,21 +4859,24 @@ async function loadSideTasks() {
   }
 
   if (listEl) {
-    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading tasks...</div>';
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading available tasks...</div>';
     try {
       const result = await apiFetch('/offers');
       if (!result.configured) {
         listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No affiliate network connected yet. Check back soon.</div>`;
       } else if (result.items.length === 0) {
-        listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No tasks available in your country right now. Check back later.</div>`;
+        listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No new tasks available right now. You have completed ${result.completed_count || 0} tasks!</div>`;
       } else {
         listEl.innerHTML = result.items.map(o => `
-          <div class="st-task-row">
+          <div class="st-task-row" id="st-offer-row-${escapeHtml(o.id)}">
             <div class="st-task-l">
               <div class="st-task-ico" style="background:rgba(184,255,60,.12)"><i class="ti ti-clipboard-check" style="color:var(--lime)"></i></div>
-              <div><div class="st-task-name">${escapeHtml(o.title)}</div><div class="st-task-sub">${escapeHtml(o.country || '')} · Available now</div></div>
+              <div>
+                <div class="st-task-name">${escapeHtml(o.title)}</div>
+                <div class="st-task-sub">${escapeHtml(o.country || '')} · ${escapeHtml(o.category || 'task')}</div>
+              </div>
             </div>
-            <a class="st-rew" style="text-decoration:none" href="${o.link}" target="_blank" rel="noopener">+$${o.user_cut.toFixed(2)}</a>
+            <a class="st-rew" style="text-decoration:none" href="${o.link}" target="_blank" rel="noopener" onclick="handleTaskClick('${escapeHtml(o.id)}')">+$${o.user_cut.toFixed(2)}</a>
           </div>`).join('');
       }
     } catch (e) {
@@ -4887,18 +4888,41 @@ async function loadSideTasks() {
     try {
       const result = await apiFetch('/earnings');
       if (result.items.length === 0) {
-        earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">No earnings yet — complete a task to see it here.</div>`;
+        earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">No earnings logged yet — complete a task above to see it here.</div>`;
       } else {
-        earnEl.innerHTML = result.items.map(e => `
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-            <span style="color:var(--t2)">${escapeHtml(e.incoming_network_provider)}</span>
-            <span style="color:var(--lime);font-weight:700">+$${Number(e.user_credited_amount).toFixed(2)}</span>
-          </div>`).join('');
+        earnEl.innerHTML = result.items.map(e => {
+          const providerName = escapeHtml(e.provider || e.incoming_network_provider || 'Affiliate Network');
+          const amount = Number(e.user_cut || e.user_credited_amount || 0).toFixed(2);
+          const st = (e.status || 'confirmed').toLowerCase();
+          const badgeStyle = st === 'confirmed' ? 'color:var(--lime);background:rgba(170,255,58,0.12)' : (st === 'pending' ? 'color:var(--yellow);background:rgba(255,214,10,0.12)' : 'color:var(--red);background:rgba(255,69,58,0.12)');
+          const dateStr = e.completed_at ? new Date(e.completed_at).toLocaleDateString(undefined, {month:'short',day:'numeric'}) : 'Recently';
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+              <div>
+                <div style="color:var(--ink);font-weight:600">${providerName}</div>
+                <div style="font-size:11px;color:var(--t3)">${dateStr} · Task ID: ${escapeHtml(String(e.offer_id || ''))}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:var(--lime);font-weight:700">+$${amount}</div>
+                <span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;display:inline-block;margin-top:2px;${badgeStyle}">${st.toUpperCase()}</span>
+              </div>
+            </div>`;
+        }).join('');
       }
     } catch (e) {
-      earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">Couldn't load earnings.</div>`;
+      earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">Couldn't load earnings history.</div>`;
     }
   }
+}
+
+function handleTaskClick(offerId) {
+  const row = document.getElementById('st-offer-row-' + offerId);
+  if (row) {
+    row.style.opacity = '0.4';
+    row.style.pointerEvents = 'none';
+  }
+  toast('Task opened in new tab. Completed tasks auto-refresh.', 'ti-info-circle');
+  setTimeout(() => { loadSideTasks(); }, 4000);
 }
 
 /* ─── DASHBOARD TABS ─── */
