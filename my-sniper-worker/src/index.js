@@ -288,7 +288,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
 
       const sector = url.searchParams.get("sector") || "all";
-      let query = `scraped_jobs?select=*&order=indexed_at.desc`;
+      let query = `scraped_jobs?select=id,title,company,sector,listing_source,job_url,internal_labels,indexed_at&order=indexed_at.desc`;
       const userSectors = profile.sectors || []; // guard against a null sectors column on new profiles
 
       if (sector !== "all") {
