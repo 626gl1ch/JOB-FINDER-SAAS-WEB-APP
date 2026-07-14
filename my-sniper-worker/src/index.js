@@ -969,6 +969,28 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!npSig) return new Response("Missing signature", { status: 400 });
 
       const text = await request.text();
+
+      if (env.CRYPTO_IPN_SECRET) {
+        try {
+          const key = await crypto.subtle.importKey(
+            "raw",
+            new TextEncoder().encode(env.CRYPTO_IPN_SECRET),
+            { name: "HMAC", hash: "SHA-512" },
+            false,
+            ["sign"]
+          );
+          const sigBuffer = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text));
+          const computedHash = Array.from(new Uint8Array(sigBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+          if (computedHash !== npSig) {
+            return new Response("Webhook signature mismatch", { status: 403, headers: corsHeaders });
+          }
+        } catch (sigErr) {
+          console.error("NowPayments signature check failed:", sigErr.message);
+          return new Response("Webhook signature error", { status: 400, headers: corsHeaders });
+        }
+      }
+
       let body;
       try {
         body = JSON.parse(text);
