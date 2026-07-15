@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Deletion Instructions — SnipeJob</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    :root {
+      --bg: #1C1C1E;
+      --bg2: #242426;
+      --border: rgba(255, 255, 255, 0.08);
+      --ink: #F2F2F7;
+      --t2: #AEAEB2;
+      --t3: #6B6B70;
+      --violet: #7B61FF;
+      --vlight: #A48CFF;
+      --grad-brand: linear-gradient(135deg, #7B61FF, #00D4FF);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      position: sticky;
+      top: 0;
+      background: rgba(28, 28, 30, 0.8);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .header-wrap {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .logo svg { width: 24px; height: 24px; }
+    .back-btn {
+      font-size: 14px;
+      color: var(--t2);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    .back-btn:hover { color: var(--vlight); }
+    .content-wrap {
+      max-width: 800px;
+      margin: 60px auto;
+      padding: 0 24px;
+    }
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 40px;
+      font-weight: 800;
+      margin: 0 0 10px;
+      background: var(--grad-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .last-updated { color: var(--t3); font-size: 14px; margin-bottom: 40px; }
+    h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      margin: 40px 0 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    p, li { color: var(--t2); font-size: 16px; margin-bottom: 20px; }
+    ol, ul { padding-left: 20px; margin-bottom: 20px; }
+    li { margin-bottom: 10px; }
+    .step-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .step-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-top: 0;
+      color: var(--vlight);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--t3);
+      font-size: 13px;
+      margin-top: 100px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-wrap">
+      <a href="index.html" class="logo">
+        <svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="14" cy="14" rx="9.2" ry="4.6" fill="none" stroke="#7B61FF" stroke-width="1.3" transform="rotate(-28 14 14)"/>
+          <circle cx="14" cy="14" r="1.7" fill="#00D4FF"/>
+        </svg>
+        SnipeJob
+      </a>
+      <a href="index.html" class="back-btn"><i class="ti ti-arrow-left"></i> Back to Home</a>
+    </div>
+  </header>
+
+  <main class="content-wrap">
+    <h1>User Data Deletion Instructions</h1>
+    <div class="last-updated">Last Updated: July 15, 2026</div>
+
+    <p>SnipeJob ("we", "us") values your data autonomy. According to Facebook/Meta Developer Platform policies, Google Cloud OAuth Platform guidelines, General Data Protection Regulation (GDPR), and applicable privacy laws, users have the right to request full erasure of personal information collected by SnipeJob.</p>
+
+    <div class="step-card">
+      <h3><i class="ti ti-brand-facebook"></i> Option 1: Meta / Facebook App Deauthorization & Automatic Deletion</h3>
+      <p>If you created your SnipeJob account using Facebook or Instagram login and wish to remove SnipeJob's access and delete stored data, follow these steps:</p>
+      <ol>
+        <li>Log in to your <strong>Facebook Account</strong>.</li>
+        <li>Go to <strong>Settings & Privacy</strong> &gt; <strong>Settings</strong>.</li>
+        <li>In the left sidebar, select <strong>Apps and Websites</strong>.</li>
+        <li>Search for <strong>SnipeJob</strong> in the list of active apps.</li>
+        <li>Click <strong>Remove</strong> next to SnipeJob.</li>
+        <li>Select the option to remove all stored data, posts, and permissions. Facebook will trigger our automated deletion webhook, completely unlinking your OAuth identifier and marking your account profile data for purge.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <h3><i class="ti ti-brand-google"></i> Option 2: Google & LinkedIn Account Revocation</h3>
+      <p>If you registered using Google or LinkedIn OAuth:</p>
+      <ol>
+        <li>Go to your <a href="https://myaccount.google.com/permissions" target="_blank" style="color: var(--vlight);">Google Security Settings (Third-party apps)</a> or <a href="https://www.linkedin.com/psettings/permitted-services" target="_blank" style="color: var(--vlight);">LinkedIn Permitted Services</a>.</li>
+        <li>Locate <strong>SnipeJob</strong> and click <strong>Remove Access</strong> / <strong>Revoke</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <h3><i class="ti ti-trash"></i> Option 3: Manual Direct Data Purge Request</h3>
+      <p>You can request complete account and data removal directly from our engineering team at any time:</p>
+      <ol>
+        <li>Send an email to <strong>support@snipejob.app</strong> from the email address associated with your SnipeJob account.</li>
+        <li>Use the Subject line: <code>Account & Data Deletion Request</code>.</li>
+        <li>In the body of the email, state: <em>"I hereby request the permanent deletion of my account and all personal data associated with SnipeJob."</em></li>
+      </ol>
+      <p>Our team will process your request within <strong>48 hours</strong> and send you a confirmation code confirming complete permanent removal from our primary database servers.</p>
+    </div>
+
+    <h2>What Information is Deleted?</h2>
+    <p>Upon processing your deletion request, the following data is permanently purged from our active systems:</p>
+    <ul>
+      <li>Your user profile, email address, full name, and avatar URL.</li>
+      <li>All uploaded resume documents, parsed skill profiles, and tailored proposal drafts.</li>
+      <li>All pinned jobs, custom alerts, and sector filtering preferences.</li>
+      <li>All third-party social authentication tokens (Facebook, Google, LinkedIn, Instagram).</li>
+    </ul>
+    <p><em>Note: Anonymized transaction invoices (required by law for tax reporting) will be retained for statutory record-keeping periods without linking back to your deleted personal identity.</em></p>
+  </main>
+
+  <footer>
+    <p>© 2026 SnipeJob (Glitch EnterPrice). All rights reserved. | <a href="privacy.html" style="color: var(--t2);">Privacy Policy</a> | <a href="terms.html" style="color: var(--t2);">Terms of Service</a></p>
+  </footer>
+
+</body>
+</html>

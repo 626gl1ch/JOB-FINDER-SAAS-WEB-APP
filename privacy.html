@@ -53,10 +53,7 @@
       text-decoration: none;
       color: var(--ink);
     }
-    .logo svg {
-      width: 24px;
-      height: 24px;
-    }
+    .logo svg { width: 24px; height: 24px; }
     .back-btn {
       font-size: 14px;
       color: var(--t2);
@@ -66,9 +63,7 @@
       gap: 6px;
       transition: color 0.2s;
     }
-    .back-btn:hover {
-      color: var(--vlight);
-    }
+    .back-btn:hover { color: var(--vlight); }
     .content-wrap {
       max-width: 800px;
       margin: 60px auto;
@@ -83,11 +78,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .last-updated {
-      color: var(--t3);
-      font-size: 14px;
-      margin-bottom: 40px;
-    }
+    .last-updated { color: var(--t3); font-size: 14px; margin-bottom: 40px; }
     h2 {
       font-family: 'Syne', sans-serif;
       font-size: 22px;
@@ -96,17 +87,15 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 8px;
     }
-    p, li {
-      color: var(--t2);
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-    ul {
-      padding-left: 20px;
-      margin-bottom: 20px;
-    }
-    li {
-      margin-bottom: 10px;
+    p, li { color: var(--t2); font-size: 16px; margin-bottom: 20px; }
+    ul { padding-left: 20px; margin-bottom: 20px; }
+    li { margin-bottom: 10px; }
+    .highlight-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 30px 0;
     }
     footer {
       border-top: 1px solid var(--border);
@@ -135,60 +124,63 @@
 
   <main class="content-wrap">
     <h1>Privacy Policy</h1>
-    <div class="last-updated">Last Updated: July 8, 2026</div>
+    <div class="last-updated">Last Updated: July 15, 2026</div>
 
-    <p>At SnipeJob, accessible from SnipeJob website, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by SnipeJob and how we use it.</p>
-    <p>If you have additional questions or require more information about our Privacy Policy, do not hesitate to contact us at support@snipejob.app.</p>
+    <p>At SnipeJob ("we", "us", "our"), accessible at <strong>https://626gl1ch.github.io/JOB-FINDER-SAAS-WEB-APP/</strong>, protecting the privacy, confidentiality, and data safety of our users ("you", "your") is our highest priority. This Privacy Policy outlines how personal data is collected, processed, stored, shared, and deleted when you interact with our platform, API, and associated services.</p>
+    
+    <p>If you have questions or require further information regarding this Privacy Policy, please contact our Data Protection Officer at <strong>support@snipejob.app</strong>.</p>
 
     <h2>1. Information We Collect</h2>
-    <p>We collect several different types of information for various purposes to provide and improve our Service to you:</p>
+    <p>We process personal data required to deliver real-time job alerts, AI resume proposal tailoring, subscription billing, and fraud prevention:</p>
     <ul>
-      <li><strong>Account Details:</strong> When you register for an account, we collect your full name, email address, country, and exp_level. If you use OAuth providers (Google, Facebook, LinkedIn, Instagram), we receive authentication identifiers and basic profile details from those networks.</li>
-      <li><strong>Professional Profile & Resumes:</strong> To power the AI tailoring and interview prep tools, we collect the text, skills, education, bio, and file content of any resume you upload or paste.</li>
-      <li><strong>KYC Documents:</strong> If you verify your identity, we process your phone number, edge IP-based country code, and images of government-issued IDs. These images are scanned for fraud detection and deleted immediately after processing.</li>
-      <li><strong>Network and Usage Logs:</strong> We collect your IP address, browser type, device details, and geographic location to identify potential fraud (such as VPN usage during Side Tasks).</li>
+      <li><strong>Account & Authentication Identifiers:</strong> When you register directly or sign up via social single sign-on (OAuth providers including Google, Meta/Facebook, LinkedIn, or Instagram), we collect your email address, full name, profile picture URL, and third-party authentication tokens.</li>
+      <li><strong>Professional Profile & Resumes:</strong> To power AI-driven proposal writing and ATS scoring, we collect your primary skills, experience level, targeted sectors, bio, pasted resume content, and uploaded resume document files.</li>
+      <li><strong>Financial & Payment Records:</strong> Payment transactions are handled securely through accredited gateways (Paystack for card/bank transfers and NOWPayments for cryptocurrency transactions). We process payment session tokens, subscription tier statuses, and billing references. We do not store full credit card numbers or raw wallet private keys on our servers.</li>
+      <li><strong>Network, Device & Anti-Fraud Logs:</strong> We log IP addresses, user-agent strings, cloud network routing details, and edge geographic data to enforce regional compliance, prevent abusive multi-accounting, and detect proxy/VPN location spoofing during task completions.</li>
     </ul>
 
-    <h2>2. How We Use Your Information</h2>
-    <p>We use the collected data for various operational purposes:</p>
+    <h2>2. Purpose and Legal Basis for Processing</h2>
+    <p>We process your personal information under the following lawful bases:</p>
     <ul>
-      <li>To provide, maintain, and personalize our job alerts and resume optimization tools;</li>
-      <li>To manage your Pro subscription and process Stripe payments;</li>
-      <li>To verify completions of monetization offers (Side Tasks) and prevent fraud;</li>
-      <li>To send you transactional emails, renewal notices, and subscription expiry alerts;</li>
-      <li>To detect, prevent, and address technical or security issues.</li>
+      <li><strong>Performance of Contract:</strong> To deliver instant freelance job alerts, generate tailored proposal templates, unlock sector feeds, and manage subscription billing.</li>
+      <li><strong>Consent:</strong> When you grant single-sign-on (OAuth) permissions via Google, Meta/Facebook, LinkedIn, or Instagram, or voluntarily upload your resume for parsing.</li>
+      <li><strong>Legitimate Interests:</strong> To detect security breaches, enforce anti-fraud policies on side-task offer walls, protect against bot automation, and resolve user technical issues.</li>
     </ul>
 
-    <h2>3. Third-Party Integrations & Service Providers</h2>
-    <p>We share data with trusted third-party partners to facilitate key platform features. These partners are bound by strict confidentiality agreements:</p>
+    <h2>3. Third-Party Service Providers & Data Processing</h2>
+    <p>We share data only with infrastructure partners who comply with strict data security standards (GDPR, CCPA, ISO27001):</p>
     <ul>
-      <li><strong>Supabase:</strong> Serves as our primary database hosting and user authentication system.</li>
-      <li><strong>Stripe:</strong> Processes subscription checkout sessions and portal updates. We do not store or directly handle your credit card details.</li>
-      <li><strong>Google Gemini API:</strong> Powers our AI resume parsing, proposal writing, ATS scoring, and interview question scoring.</li>
-      <li><strong>Resend:</strong> Operates our email delivery engine (e.g. sending warning alerts and notifications).</li>
-      <li><strong>CPALead / OfferToro:</strong> Delivers monetized CPA offers. We share an encrypted or randomized user ID (subid) with these networks to match completions back to your balance.</li>
+      <li><strong>Supabase Inc.:</strong> Cloud database storage, Row-Level Security (RLS) enforcement, and user authentication infrastructure.</li>
+      <li><strong>Cloudflare Inc.:</strong> Serverless Worker processing at edge locations, DDoS mitigation, and firewall security.</li>
+      <li><strong>Google Gemini AI (Google LLC):</strong> Natural language processing model used strictly for parsing resume text and formatting proposal suggestions. Data transmitted to Gemini is ephemeral and not retained for public model training.</li>
+      <li><strong>Paystack & NOWPayments:</strong> Secure payment processing gateways handling subscription billing and cryptocurrency invoices.</li>
+      <li><strong>Resend Technologies:</strong> Transactional email service for delivering subscription status and security alerts.</li>
+      <li><strong>CPALead / OfferToro:</strong> Monetization offer providers. We transmit randomized sub-IDs (non-personally identifiable strings) to verify task completions.</li>
     </ul>
 
-    <h2 id="cookies">4. Cookies and Tracking Technologies</h2>
-    <p>We use standard session cookies and local storage tokens to keep you logged in and preserve your workspace settings. These technologies do not track your browsing habits across other websites.</p>
-    <p>Most web browsers allow you to disable cookies in settings, but doing so will prevent you from logging in and utilizing our core dashboard features.</p>
+    <h2>4. Cookies and Web Storage</h2>
+    <p>We store encrypted local storage tokens and essential session state directly in your browser to maintain your active login and user preferences. We do not place cross-site tracking advertising cookies or sell user data to third-party ad networks.</p>
 
-    <h2>5. Data Retention</h2>
-    <p>We retain your profile data, pinned jobs, and resume text for as long as your account remains active. If you delete your account, we will purge all associated data from our active database systems within 30 days, except where retention is legally required to resolve disputes, comply with tax laws, or prevent recurring fraud.</p>
+    <h2 id="data-deletion">5. Data Deletion Instructions & User Rights</h2>
+    <p>In accordance with data protection regulations (GDPR, CCPA) and Meta/Google/LinkedIn Developer Guidelines, you hold full control over your personal data:</p>
+    <ul>
+      <li><strong>In-App Deletion:</strong> You can purge your profile data, pinned jobs, and stored resumes at any time through your Account Settings inside the application.</li>
+      <li><strong>Social Login Revocation:</strong> You may revoke SnipeJob's permissions at any time via your Facebook Settings (Apps & Websites), Google Account Security, or LinkedIn Authorized Apps.</li>
+      <li><strong>Direct Deletion Requests:</strong> You can submit a formal data deletion request by visiting our dedicated <a href="deletion.html" style="color: var(--vlight);">Data Deletion Instructions Page</a> or emailing <strong>support@snipejob.app</strong> with the subject line "Data Deletion Request". Upon request, all profile records, resumes, and saved data will be permanently deleted from our active databases within 30 days.</li>
+    </ul>
 
-    <h2>6. Security of Data</h2>
-    <p>The security of your data is important to us, but remember that no method of transmission over the Internet, or method of electronic storage, is 100% secure. We utilize encrypted HTTPS connections, Row-Level Security (RLS) on database levels, and strict environment isolation to protect your information, but cannot guarantee its absolute security.</p>
+    <h2>6. Data Security Measures</h2>
+    <p>We employ enterprise-grade security controls including end-to-end HTTPS/TLS encryption, automated database Row-Level Security (RLS) policies, and strict access controls to prevent unauthorized access, disclosure, or alteration of your personal data.</p>
 
-    <h2>7. Your Data Rights</h2>
-    <p>Depending on your location, you may possess specific rights regarding your personal information, including the right to access, correct, update, or request deletion of your data. You can perform most of these updates directly inside your Settings dashboard, or request full account deletion by contacting support@snipejob.app.</p>
+    <h2>7. Compliance & Legal Disclosures</h2>
+    <p>We may disclose your information if required by court order, law enforcement request, or applicable law to protect SnipeJob's legal rights, prevent physical harm, or investigate financial fraud.</p>
 
-    <h2>8. Changes to This Privacy Policy</h2>
-    <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date at the top of this policy. You are advised to review this Privacy Policy periodically for any changes.</p>
-
+    <h2>8. Updates to This Privacy Policy</h2>
+    <p>We reserve the right to update this policy periodically. Revisions will be published on this page with an updated "Last Updated" date. Continued use of our Service constitutes acceptance of the modified Privacy Policy.</p>
   </main>
 
   <footer>
-    <p>© 2026 SnipeJob. All rights reserved.</p>
+    <p>© 2026 SnipeJob (Glitch EnterPrice). All rights reserved. | <a href="terms.html" style="color: var(--t2);">Terms of Service</a> | <a href="refunds.html" style="color: var(--t2);">Refund Policy</a> | <a href="deletion.html" style="color: var(--t2);">Data Deletion</a></p>
   </footer>
 
 </body>
