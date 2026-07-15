@@ -5692,12 +5692,21 @@ function handleCtaEmail() {
 (async function bootstrapAuth() {
   if (!sb) return;
 
+  // ── Handle OAuth Errors from Supabase ─────────
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  if (hashParams.has('error')) {
+    const errorDesc = hashParams.get('error_description') || 'An authentication error occurred.';
+    // Remove the error hash so it doesn't persist on refresh
+    window.history.replaceState({}, '', window.location.pathname);
+    // Let the DOM load before showing the toast
+    setTimeout(() => toast(decodeURIComponent(errorDesc).replace(/\+/g, ' '), 'ti-alert-triangle'), 500);
+  }
+
   // ── Handle password-recovery hash from Supabase email link ─────
   // Supabase embeds #access_token=...&type=recovery in the URL when
   // the user clicks the "Reset password" link in their email.
   // The onAuthStateChange listener will fire PASSWORD_RECOVERY and
   // route to pg-reset, but we need to let Supabase parse the hash first.
-  const hashParams = new URLSearchParams(window.location.hash.slice(1));
   if (hashParams.get('type') === 'recovery') {
     // Let Supabase consume the hash; onAuthStateChange will do the rest.
     window.history.replaceState({}, '', window.location.pathname);
