@@ -5833,23 +5833,22 @@ function handleCtaEmail() {
 (function startQuotaTimer() {
   const label = document.getElementById('quota-timer-label');
   if (!label) return;
-  // Reset at the top of every 2-hour window
-  const now = new Date();
-  const msInWindow = (now.getMinutes() % 120) * 60000 + now.getSeconds() * 1000 + now.getMilliseconds();
-  let msLeft = 120 * 60000 - msInWindow;
+  
+  // Start from 24 hours every time the website is opened
+  let msLeft = 24 * 60 * 60 * 1000;
 
   function formatTime(ms) {
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+    return `${h}h ${m}m ${s}s`;
   }
 
   label.textContent = formatTime(msLeft);
   const interval = setInterval(() => {
     msLeft -= 1000;
-    if (msLeft <= 0) msLeft = 120 * 60000;
+    if (msLeft <= 0) msLeft = 24 * 60 * 60 * 1000;
     if (label.isConnected) {
       label.textContent = formatTime(msLeft);
     } else {
