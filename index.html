@@ -5824,6 +5824,8 @@ function handleCtaEmail() {
 
   if (document.getElementById('pg-dashboard')?.classList.contains('active')) {
     initDashboard();
+  } else if (!needsOnboarding && session) {
+    go('dashboard');
   }
 })();
 
