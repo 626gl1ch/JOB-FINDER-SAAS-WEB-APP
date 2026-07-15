@@ -3551,6 +3551,8 @@ footer {
 <!-- Supabase Client Library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const IS_LOCAL_DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 /* ─── MOBILE NAV VISIBILITY ─── */
 function syncMobileNavVisibility() {
   const bnav = document.getElementById('mob-bottom-nav');
