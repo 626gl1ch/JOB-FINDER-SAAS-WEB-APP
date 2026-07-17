@@ -5450,7 +5450,7 @@ async function startProCheckout() {
     const result = await apiFetch(endpoint, {
       method: 'POST',
       body: JSON.stringify(bodyObj)
-    });
+    }, 120000); // 120 seconds for slow test-mode APIs
     if (result && result.url) {
       window.location.href = result.url;
     } else {
@@ -5493,7 +5493,7 @@ async function startCryptoCheckout() {
         plan: selectedUpgradePlan || 'monthly',
         email: userEmail 
       })
-    });
+    }, 120000); // 120 seconds for slow test-mode APIs
     if (result && result.url) {
       window.location.href = result.url;
     } else {
