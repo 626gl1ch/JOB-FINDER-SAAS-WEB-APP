@@ -93,8 +93,8 @@ export default {
     // sold from the sales funnel; "monthly" is the existing $9/mo in-app plan.
     // Both map to their own Paystack plan code (configured as Worker secrets).
     const PLAN_CONFIG = {
-      monthly: { planEnv: "PAYSTACK_PRO_PLAN_CODE", label: "monthly", amount: 900 },   // ₦900 or $9 in base currency
-      annual:  { planEnv: "PAYSTACK_PRO_ANNUAL_PLAN_CODE", label: "annual",  amount: 9000 },  // ₦9000 or $90
+      monthly: { planEnv: "PAYSTACK_PRO_PLAN_CODE", label: "monthly", amount: 9 },
+      annual:  { planEnv: "PAYSTACK_PRO_ANNUAL_PLAN_CODE", label: "annual",  amount: 90 },
     };
     const getPlanExpiry = (plan) => {
       const expiry = new Date();
