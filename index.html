@@ -3773,7 +3773,16 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
 let _lastNav = null;
 let _navLockUntil = 0;
 
-function go(pageName) {
+window.addEventListener('popstate', () => {
+  const hashView = window.location.hash.replace('#view=', '');
+  if (hashView && hashView !== _lastNav) {
+    go(hashView, true);
+  } else if (!hashView) {
+    go('home', true);
+  }
+});
+
+function go(pageName, fromPopState = false) {
   const now = Date.now();
   // Suppress any extension-driven redirect to 'signin' for 3 s after we land on 'dashboard'
   if (pageName === 'signin' && _lastNav === 'dashboard' && now < _navLockUntil) {
@@ -3811,6 +3820,10 @@ function go(pageName) {
   if (railToggleBtn) railToggleBtn.style.display = onDash ? 'none' : '';
 
   if (pageName === 'dashboard') initDashboard();
+
+  if (!fromPopState) {
+    history.pushState(null, '', '#view=' + pageName);
+  }
 }
 
 /* ─── CURSOR-REACTIVE GRADIENTS ─── */
@@ -5387,7 +5400,11 @@ async function processUpgrade() {
 async function startProCheckout() {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
   const session = await refreshSession();
-  if (!session) { go('signin'); return; }
+  if (!session) { 
+    toast('Please create a free account first to upgrade.', 'ti-user');
+    go('signup'); 
+    return; 
+  }
 
   const btn = document.getElementById('checkout-btn') || event?.target?.closest('button');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Redirecting to secure checkout...'; }
@@ -5417,7 +5434,11 @@ async function startProCheckout() {
 async function startCryptoCheckout() {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
   const session = await refreshSession();
-  if (!session) { go('signin'); return; }
+  if (!session) { 
+    toast('Please create a free account first to upgrade.', 'ti-user');
+    go('signup'); 
+    return; 
+  }
 
   const btn = document.getElementById('crypto-checkout-btn') || event?.target?.closest('button');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>&nbsp; Generating crypto invoice...'; }
