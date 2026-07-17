@@ -5461,11 +5461,18 @@ async function startProCheckout() {
 
 async function startCryptoCheckout() {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
-  const session = await refreshSession();
-  if (!session) { 
-    toast('Please create a free account first to upgrade.', 'ti-user');
-    go('signup'); 
-    return; 
+  const { data: { session } } = await sb.auth.getSession();
+  let userEmail = session?.user?.email;
+
+  if (!userEmail) {
+    const emailEl = document.getElementById('public-upgrade-email');
+    if (!emailEl.value || !emailEl.value.includes('@')) {
+      emailEl.focus();
+      emailEl.style.borderColor = 'var(--text-warn)';
+      setTimeout(() => emailEl.style.borderColor = 'rgba(255,255,255,0.1)', 2000);
+      return toast('Please enter a valid email to start checkout.', 'ti-alert-triangle');
+    }
+    userEmail = emailEl.value.trim();
   }
 
   const btn = document.getElementById('crypto-checkout-btn') || event?.target?.closest('button');
@@ -5475,19 +5482,17 @@ async function startCryptoCheckout() {
   if (errEl) errEl.style.display = 'none';
 
   try {
-    const { data: { user } } = await sb.auth.getUser();
-    
     const result = await apiFetch('/payment/crypto/create-checkout', {
       method: 'POST',
       body: JSON.stringify({ 
         plan: selectedUpgradePlan || 'monthly',
-        email: user?.email 
+        email: userEmail 
       })
     });
     if (result && result.url) {
       window.location.href = result.url;
     } else {
-      throw new Error('No checkout URL returned.');
+      throw new Error(result?.error || 'No checkout URL returned.');
     }
   } catch (e) {
     const msg = e.message || 'Network error starting crypto checkout. Please try again.';
