@@ -3721,7 +3721,7 @@ function toggleSiteRail() {
 
 /* ─── SHARED API HELPER ───
    Centralizes: auth header, a request timeout, and correct error handling. */
-async function apiFetch(path, options = {}, timeoutMs = 15000) {
+async function apiFetch(path, options = {}, timeoutMs = 30000) {
   // ── Master session: return stubs so dashboard renders without a live API ──
   if (window._masterSession) {
     const method = (options.method || 'GET').toUpperCase();
@@ -3749,7 +3749,7 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
   }
   // ─────────────────────────────────────────────────────────────────────
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort('Connection timed out.'), timeoutMs);
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...options,
@@ -3768,6 +3768,11 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
     // Some endpoints (e.g. DELETE /api/pin) return an empty 200/204 body
     const text = await res.text();
     return text ? JSON.parse(text) : null;
+  } catch (e) {
+    if (e.name === 'AbortError' || e.message === 'Connection timed out.') {
+      throw new Error('Connection to the server timed out. Please check your internet connection or try again.');
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
