@@ -3644,7 +3644,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_6l7eSezczJta6rW2gomSqA_btj4X1h_';
 // Portal under Settings → Billing in your live Stripe Dashboard, copy the
 // live portal login link it gives you, and paste it here — this single
 // constant now drives both "Manage subscription" buttons.
-const PAYSTACK_CUSTOMER_PORTAL_URL = 'https://paystack.com/account'; // Paystack customer portal
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 // Initialize Supabase safely
@@ -4468,7 +4467,7 @@ async function initDashboard() {
     if (planLine) planLine.innerHTML = '<span style="color:var(--vlight);font-weight:700">✦ Pro Plan</span>';
     if (subLine) subLine.textContent = 'Unlimited alerts · All sectors · Zero ads';
     const upgradeBtn = settingsPlanCard.querySelector('button');
-    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => window.open(PAYSTACK_CUSTOMER_PORTAL_URL, '_blank'); }
+    if (upgradeBtn) { upgradeBtn.textContent = 'Manage subscription →'; upgradeBtn.onclick = () => toast('Please check the subscription email receipt from Paystack to manage or cancel your plan.', 'ti-mail'); }
   }
 
   await loadJobs();
@@ -5026,7 +5025,7 @@ function populateSettingsTab() {
     const planLabel = currentProfile.plan_type === 'annual' ? 'Pro — Annual Plan' : 'Pro — Monthly Plan';
     if (planNameEl) planNameEl.innerHTML = `<span style="color:var(--vlight)">✦ ${planLabel}</span>`;
     if (planDescEl) planDescEl.textContent = 'Unlimited alerts · All 16 sectors · AI tools · Zero ads';
-    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => window.open(PAYSTACK_CUSTOMER_PORTAL_URL, '_blank'); }
+    if (planBtnEl)  { planBtnEl.textContent = 'Manage subscription →'; planBtnEl.onclick = () => toast('Please check the subscription email receipt from Paystack to manage or cancel your plan.', 'ti-mail'); }
     if (expiryEl && currentProfile.subscription_expiry) {
       const exp = new Date(currentProfile.subscription_expiry);
       expiryEl.innerHTML = `<i class="ti ti-calendar" style="font-size:12px"></i> Renews / expires: ${exp.toLocaleDateString(undefined, {year:'numeric',month:'long',day:'numeric'})}`;
