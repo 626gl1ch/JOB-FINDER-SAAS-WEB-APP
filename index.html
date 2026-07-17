@@ -3353,6 +3353,12 @@ footer {
       </button>
     </div>
 
+    <!-- Email input (only shown if user is logged out) -->
+    <div id="public-checkout-email" style="display:none;margin-bottom:16px;">
+      <label style="display:block; text-align:left; margin-bottom:8px; font-size:14px; color:var(--text-dim); font-weight:500;">Enter your email to continue</label>
+      <input type="email" id="public-upgrade-email" class="auth-input" placeholder="you@example.com" style="width:100%;margin-bottom:0;">
+    </div>
+
     <!-- Stripe checkout form (always shown, crypto removed — payment via Stripe only) -->
     <div id="stripe-form">
       <button class="auth-btn" id="checkout-btn" onclick="startProCheckout()"><i class="ti ti-lock"></i>&nbsp; Continue to Secure Checkout →</button>
@@ -3820,6 +3826,15 @@ function go(pageName, fromPopState = false) {
   if (railToggleBtn) railToggleBtn.style.display = onDash ? 'none' : '';
 
   if (pageName === 'dashboard') initDashboard();
+
+  if (pageName === 'upgrade') {
+    const pubEmailDiv = document.getElementById('public-checkout-email');
+    if (pubEmailDiv && sb) {
+      sb.auth.getSession().then(({ data }) => {
+        pubEmailDiv.style.display = data?.session ? 'none' : 'block';
+      });
+    }
+  }
 
   if (!fromPopState) {
     history.pushState(null, '', '#view=' + pageName);
@@ -5399,11 +5414,18 @@ async function processUpgrade() {
 
 async function startProCheckout() {
   if (!sb) return toast('Auth is not configured.', 'ti-alert-triangle');
-  const session = await refreshSession();
-  if (!session) { 
-    toast('Please create a free account first to upgrade.', 'ti-user');
-    go('signup'); 
-    return; 
+  const { data: { session } } = await sb.auth.getSession();
+  let userEmail = session?.user?.email;
+
+  if (!userEmail) {
+    const emailEl = document.getElementById('public-upgrade-email');
+    if (!emailEl.value || !emailEl.value.includes('@')) {
+      emailEl.focus();
+      emailEl.style.borderColor = 'var(--text-warn)';
+      setTimeout(() => emailEl.style.borderColor = 'rgba(255,255,255,0.1)', 2000);
+      return toast('Please enter a valid email to start checkout.', 'ti-alert-triangle');
+    }
+    userEmail = emailEl.value.trim();
   }
 
   const btn = document.getElementById('checkout-btn') || event?.target?.closest('button');
@@ -5413,10 +5435,16 @@ async function startProCheckout() {
   if (errEl) errEl.style.display = 'none';
 
   try {
-    // Pass selected plan (monthly or annual) to the worker so it picks the correct Stripe price
-    const result = await apiFetch('/payment/create-checkout', {
+    const endpoint = session ? '/payment/create-checkout' : '/payment/create-checkout-public';
+    const bodyObj = { plan: selectedUpgradePlan || 'monthly' };
+    if (!session) {
+      bodyObj.email = userEmail;
+      bodyObj.cancel_url = window.location.href;
+    }
+
+    const result = await apiFetch(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ plan: selectedUpgradePlan || 'monthly' })
+      body: JSON.stringify(bodyObj)
     });
     if (result && result.url) {
       window.location.href = result.url;
