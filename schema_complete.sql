@@ -40,10 +40,31 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     paystack_customer_code TEXT,
     paystack_subscription_code TEXT,
     plan_type TEXT CHECK (plan_type IN ('monthly', 'annual')),
+    signup_source TEXT DEFAULT 'direct',
+    preferences JSONB DEFAULT '{"email": true, "push": true, "side_task": true}'::jsonb,
     ai_usage_count INT DEFAULT 0,
     ai_usage_reset_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- 1.2 Freelance Projects Table (For Income Tracking)
+CREATE TABLE IF NOT EXISTS public.freelance_projects (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    client TEXT,
+    amount DECIMAL(10,2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.freelance_projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own freelance projects"
+    ON public.freelance_projects
+    FOR ALL USING (auth.uid() = user_id);
 
 -- Retrofit database checks and columns if profiles already existed
 DO $$ 

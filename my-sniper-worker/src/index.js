@@ -298,7 +298,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
     if (url.pathname === "/api/profile" && method === "PATCH") {
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
       const body = await request.json().catch(() => ({}));
-      const allowedFields = ["full_name", "country", "exp_level", "primary_skill", "bio", "education", "sectors"];
+      const allowedFields = ["full_name", "country", "exp_level", "primary_skill", "bio", "education", "sectors", "avatar_url", "preferences"];
       const updates = {};
       for (const field of allowedFields) {
         if (body[field] !== undefined) updates[field] = body[field];
@@ -313,6 +313,63 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       });
       const updated = await res.json();
       return new Response(JSON.stringify(updated[0] || {}), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 0e. DELETE /api/profile (Account Deletion)
+    if (url.pathname === "/api/profile" && method === "DELETE") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      const serviceHeaders = {
+        "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json"
+      };
+      const res = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: serviceHeaders });
+      if (!res.ok) return new Response(JSON.stringify({ error: "Failed to delete account" }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 0f. GET & POST /api/auto-apply/settings
+    if (url.pathname === "/api/auto-apply/settings") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      
+      if (method === "GET") {
+        const res = await supabase(`auto_apply_settings?user_id=eq.${userId}`);
+        const data = await res.json();
+        return new Response(JSON.stringify(data[0] || {}), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        
+        // Upsert logic
+        const upsertRes = await fetch(`${env.SUPABASE_URL}/rest/v1/auto_apply_settings`, {
+          method: "POST",
+          headers: {
+            "apikey": env.SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${userToken}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=representation"
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            target_titles: body.target_titles || [],
+            target_locations: body.target_locations || [],
+            blacklist_companies: body.blacklist_companies || [],
+            daily_limit: body.daily_limit || 10,
+            is_active: body.is_active || false,
+            updated_at: new Date().toISOString()
+          })
+        });
+        
+        if (!upsertRes.ok) {
+          const err = await upsertRes.text();
+          console.error("AutoApply save error:", err);
+          return new Response("Failed to save settings", { status: 500, headers: corsHeaders });
+        }
+        
+        const result = await upsertRes.json();
+        return new Response(JSON.stringify(result[0] || {}), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // 1. GET /api/jobs (Tier-Enforced Job Delivery)
@@ -679,6 +736,63 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       return new Response(JSON.stringify(result), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // ── POST /api/ai/cover-letter
+    // Generates a personalized, ATS-optimized cover letter.
+    // Free users get a standard letter; Pro users get a fully tailored version
+    // that references specific role details, company name, and keyword alignment.
+    if (url.pathname === "/api/ai/cover-letter" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const body = await request.json().catch(() => ({}));
+      const { jobDescription, resumeText } = body;
+      if (!jobDescription) {
+        return new Response(JSON.stringify({ error: "jobDescription is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Fetch user profile to get name and skills for personalisation
+      const profileRes = await supabase(`profiles?user_id=eq.${userId}&select=full_name,skills,bio,experience_level,current_tier`, { method: "GET" });
+      const profiles = await profileRes.json();
+      const profile = Array.isArray(profiles) ? profiles[0] : null;
+      const isPro = profile?.current_tier === "paid";
+      const userName = profile?.full_name || "the applicant";
+      const userBio  = profile?.bio || "";
+      const userSkills = Array.isArray(profile?.skills) ? profile.skills.join(", ") : (profile?.skills || "");
+
+      const resumeSection = resumeText ? `\n\nApplicant's Resume:\n${resumeText.slice(0, 3000)}` : (userBio ? `\n\nApplicant Background: ${userBio}` : "");
+      const tailorNote    = isPro
+        ? "This is a Pro user — create a highly personalized, detailed cover letter that references specific keywords from the job description to maximize ATS pass rates. Mirror the company's tone and use strong action verbs."
+        : "Generate a professional and compelling cover letter. Keep it concise (3-4 paragraphs).";
+
+      const prompt = `You are an expert career coach and professional writer. ${tailorNote}
+
+Write a cover letter for ${userName} for the following job:
+
+Job Description:
+${jobDescription.slice(0, 4000)}
+${resumeSection}
+
+Requirements:
+- Address it to "Hiring Manager" unless a name is in the job description
+- Opening paragraph: show genuine interest and briefly state why this role is a fit
+- Middle paragraph(s): highlight 2-3 specific achievements or skills that match the job requirements, using quantified results where possible
+- Closing paragraph: confident call to action, express enthusiasm for an interview
+- Tone: professional, confident, human — not robotic or generic
+- Length: 300-400 words
+- Format: Plain text, no markdown headers, ready to send
+
+Return ONLY the cover letter text, nothing else.`;
+
+      const result = await callGemini(prompt);
+      if (!result.ok) {
+        return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ coverLetter: result.text }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
@@ -1531,6 +1645,7 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
 
       const reqBody = await request.json().catch(() => ({}));
       const providedResumeText = (reqBody.resume_text || '').trim();
+      const providedJobDesc = (reqBody.job_description || '').trim();
 
       const profileRes = await supabase(`profiles?select=bio,primary_skill,exp_level,education,current_tier&id=eq.${userId}`);
       const profile = (await profileRes.json())[0];
@@ -1545,20 +1660,33 @@ Return ONLY a strict JSON array, no markdown, no explanation: [{"index": 0, "sco
       const limitCheck = await checkAiRateLimit(userId);
       if (limitCheck.error) return limitCheck.error;
 
-      const prompt = providedResumeText
-        ? `You are a professional resume reviewer. Score this resume out of 100 on clarity, quantified impact, and keyword strength.
+      let prompt = '';
+      if (providedJobDesc) {
+        prompt = `You are an Applicant Tracking System (ATS) expert analyzer. Analyze this resume against the provided Job Description. Score the match out of 100 based on keyword overlap, required skills, and relevant experience.
+
+JOB DESCRIPTION:
+${providedJobDesc.slice(0, 3000)}
+
+RESUME / CANDIDATE PROFILE:
+${scoreText.slice(0, 3000)}
+
+Return ONLY strict JSON, no markdown: {"score": 85, "tips": ["Missing keyword: Docker", "Experience aligns well with senior requirement", "Add more metrics to your recent role"]}`;
+      } else if (providedResumeText) {
+        prompt = `You are a professional resume reviewer. Score this resume out of 100 on clarity, quantified impact, and keyword strength.
 
 RESUME:
-${scoreText}
+${scoreText.slice(0, 3000)}
 
-Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 words", "tip two", "tip three"]}`
-        : `You are a resume reviewer. Score this candidate's profile out of 100 on clarity, quantified impact, and keyword strength for their field.
+Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 words", "tip two", "tip three"]}`;
+      } else {
+        prompt = `You are a resume reviewer. Score this candidate's profile out of 100 on clarity, quantified impact, and keyword strength for their field.
 SKILL: ${profile.primary_skill}
 LEVEL: ${profile.exp_level}
 EDUCATION: ${profile.education}
-BIO: ${scoreText}
+BIO: ${scoreText.slice(0, 3000)}
 
 Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 words", "tip two", "tip three"]}`;
+      }
 
       const gemini = await callGemini(prompt);
       if (!gemini.ok) {
@@ -1573,6 +1701,57 @@ Return ONLY strict JSON, no markdown: {"score": 72, "tips": ["tip one under 15 w
         tips: result.tips,
         full_rewrite_available: profile.current_tier === "paid",
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 6b. POST /api/resume/rewrite (Pro: generate tailored draft)
+    if (url.pathname === "/api/resume/rewrite" && method === "POST") {
+      if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+
+      const profileRes = await supabase(`profiles?select=current_tier,bio,primary_skill,exp_level,education&id=eq.${userId}`);
+      const profile = (await profileRes.json())[0];
+      if (!profile || profile.current_tier !== "paid") {
+        return new Response("Upgrade to Pro to generate a tailored resume draft.", { status: 403, headers: corsHeaders });
+      }
+
+      const reqBody = await request.json().catch(() => ({}));
+      const providedResumeText = (reqBody.resume_text || '').trim();
+      const providedJobDesc = (reqBody.job_description || '').trim();
+
+      const scoreText = providedResumeText || profile.bio || '';
+      if (scoreText.trim().length < 20) {
+        return new Response("Paste a resume or add a bio in your profile first.", { status: 400, headers: corsHeaders });
+      }
+
+      const limitCheck = await checkAiRateLimit(userId);
+      if (limitCheck.error) return limitCheck.error;
+
+      let prompt = `You are an expert resume writer and ATS specialist. 
+Rewrite the provided candidate information into a polished, professional resume draft. 
+Format it clearly with markdown (using #, ##, bullet points) so it is ready to be exported to PDF.`;
+
+      if (providedJobDesc) {
+        prompt += `\nCritically: Tailor the draft to match the following Job Description, ensuring key phrases and requirements are highlighted naturally in the candidate's experience.
+
+JOB DESCRIPTION:
+${providedJobDesc.slice(0, 3000)}`;
+      }
+
+      prompt += `\n\nCANDIDATE PROFILE / RESUME:
+SKILL: ${profile.primary_skill}
+LEVEL: ${profile.exp_level}
+EDUCATION: ${profile.education}
+EXPERIENCE/BIO:
+${scoreText.slice(0, 4000)}
+
+Return the markdown draft directly. Do not include any introductory conversation.`;
+
+      const gemini = await callGemini(prompt);
+      if (!gemini.ok) {
+        console.error("Gemini resume-rewrite error:", gemini.raw);
+        return new Response("AI resume generation is temporarily unavailable.", { status: 502, headers: corsHeaders });
+      }
+
+      return new Response(JSON.stringify({ draft: gemini.text }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 7. POST /api/interview/start (Free: 3 generic sector questions, no AI
