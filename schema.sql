@@ -1,17 +1,20 @@
--- SnipeJob Supabase Database Schema (Final Fixed Version)
+-- SnipeJob Supabase Database Schema (Consolidated Complete Version)
 
--- EXTENSIONS
+-- ============================================================
+-- 0. EXTENSIONS & INITIAL SETUP
+-- ============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- pg_cron installs its objects into the "cron" schema, owned by a
--- separate role on Supabase. Grant usage so the postgres role running
--- this script (and your dashboard SQL editor sessions) can call
--- cron.schedule(...) further down without a permission/lookup error.
+-- Grant usage on cron schema so postgres role can manage cron tasks
 GRANT USAGE ON SCHEMA cron TO postgres;
 
--- 1. USER PROFILES TABLE
+-- ============================================================
+-- 1. DATABASE TABLES
+-- ============================================================
+
+-- 1.1 User Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
@@ -32,12 +35,38 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     vpn_violation_count INT DEFAULT 0,
     avatar_url TEXT,
     oauth_provider TEXT DEFAULT 'email',
+    stripe_customer_id TEXT,      -- kept for data continuity; new signups use paystack_customer_code
+    stripe_subscription_id TEXT,   -- kept for data continuity; new signups use paystack_subscription_code
+    paystack_customer_code TEXT,
+    paystack_subscription_code TEXT,
+    plan_type TEXT CHECK (plan_type IN ('monthly', 'annual')),
+    signup_source TEXT DEFAULT 'direct',
+    preferences JSONB DEFAULT '{"email": true, "push": true, "side_task": true}'::jsonb,
     ai_usage_count INT DEFAULT 0,
     ai_usage_reset_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Migration: add missing columns if table already existed
+-- 1.2 Freelance Projects Table (For Income Tracking)
+CREATE TABLE IF NOT EXISTS public.freelance_projects (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    client TEXT,
+    amount DECIMAL(10,2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.freelance_projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own freelance projects"
+    ON public.freelance_projects
+    FOR ALL USING (auth.uid() = user_id);
+
+-- Retrofit database checks and columns if profiles already existed
 DO $$ 
 BEGIN 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN
@@ -70,46 +99,39 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='oauth_provider') THEN
         ALTER TABLE public.profiles ADD COLUMN oauth_provider TEXT DEFAULT 'email';
     END IF;
-    -- Tracks which Stripe customer maps to which user, so the
-    -- customer.subscription.deleted webhook can find the right row to downgrade.
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_customer_id') THEN
         ALTER TABLE public.profiles ADD COLUMN stripe_customer_id TEXT;
     END IF;
-    -- Which subscription plan a paid user is on ('monthly' $9/mo or 'annual'
-    -- $90/yr founding rate). NULL for free users.
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='plan_type') THEN
         ALTER TABLE public.profiles ADD COLUMN plan_type TEXT CHECK (plan_type IN ('monthly', 'annual'));
     END IF;
-    -- Where the account was created: 'app' (free signup, can upgrade later)
-    -- or 'sales_funnel' (paid first, then created the account).
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='signup_source') THEN
         ALTER TABLE public.profiles ADD COLUMN signup_source TEXT DEFAULT 'app';
     END IF;
-    -- AI rate limiting columns
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_subscription_id') THEN
+        ALTER TABLE public.profiles ADD COLUMN stripe_subscription_id TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='expiry_warning_sent') THEN
+        ALTER TABLE public.profiles ADD COLUMN expiry_warning_sent BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='paystack_customer_code') THEN
+        ALTER TABLE public.profiles ADD COLUMN paystack_customer_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='paystack_subscription_code') THEN
+        ALTER TABLE public.profiles ADD COLUMN paystack_subscription_code TEXT;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_count') THEN
         ALTER TABLE public.profiles ADD COLUMN ai_usage_count INT DEFAULT 0;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='ai_usage_reset_at') THEN
         ALTER TABLE public.profiles ADD COLUMN ai_usage_reset_at TIMESTAMP WITH TIME ZONE;
     END IF;
-    -- FIX (audit pass): retrofits the wallet_balance >= 0 CHECK constraint
-    -- onto an existing table (the inline CHECK above only applies on a
-    -- fresh CREATE TABLE). Defense-in-depth alongside the atomic
-    -- process_withdrawal_v2() RPC — belt and suspenders against a negative
-    -- balance, even if some future code path bypasses the RPC.
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_wallet_balance_check') THEN
         ALTER TABLE public.profiles ADD CONSTRAINT profiles_wallet_balance_check CHECK (wallet_balance >= 0);
     END IF;
-    -- NOTE: the old "DROP NOT NULL on country" step and the three legacy
-    -- "migrate old column names" UPDATE blocks (tracks_selected,
-    -- registered_country, identity_status) that used to live here have been
-    -- removed. country was never declared NOT NULL above, and those three
-    -- old column names don't exist anywhere in this schema — both blocks
-    -- were already permanently no-ops on your real database, so dropping
-    -- them changes nothing except making this script purely additive.
 END $$;
 
--- 2. JOB REPOSITORY TABLE
+-- 1.2 Job Repository Table
 CREATE TABLE IF NOT EXISTS public.scraped_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
@@ -122,7 +144,7 @@ CREATE TABLE IF NOT EXISTS public.scraped_jobs (
     indexed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 3. USER PINNED JOBS
+-- 1.3 User Pinned Jobs Table
 CREATE TABLE IF NOT EXISTS public.user_pinned_jobs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -132,7 +154,7 @@ CREATE TABLE IF NOT EXISTS public.user_pinned_jobs (
     UNIQUE(user_id, job_id)
 );
 
--- 4. AFFILIATE LOGS
+-- 1.4 Affiliate Logs Table
 CREATE TABLE IF NOT EXISTS public.affiliate_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -144,7 +166,7 @@ CREATE TABLE IF NOT EXISTS public.affiliate_logs (
     processing_timestamp TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 5. WITHDRAWAL REQUESTS
+-- 1.5 Withdrawal Requests Table
 CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -152,27 +174,77 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
     payment_channel TEXT NOT NULL,
     target_address TEXT NOT NULL,
     status TEXT CHECK (status IN ('pending', 'disbursed', 'denied')) DEFAULT 'pending',
+    tier_at_request TEXT DEFAULT 'free',
+    scheduled_payout_date DATE,
     handled_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 6. CLAIMED STRIPE SESSIONS — one row per Stripe Checkout Session that has
--- been used to grant Pro access, so the sales-funnel "pay first, sign up
--- after" flow can't be used to upgrade two different accounts off one
--- payment. Service-role only (see /api/payment/claim-premium in worker).
-CREATE TABLE IF NOT EXISTS public.claimed_stripe_sessions (
-    session_id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    claimed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+-- Retrofit withdrawal_requests columns if table already existed
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='tier_at_request') THEN
+        ALTER TABLE public.withdrawal_requests ADD COLUMN tier_at_request TEXT DEFAULT 'free';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='scheduled_payout_date') THEN
+        ALTER TABLE public.withdrawal_requests ADD COLUMN scheduled_payout_date DATE;
+    END IF;
+END $$;
+
+-- 1.6 Claimed Paystack Sessions Table (replaces claimed_stripe_sessions)
+-- claimed_stripe_sessions is kept in production for historical data but no longer written to.
+CREATE TABLE IF NOT EXISTS public.claimed_paystack_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reference TEXT UNIQUE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- INDEXES
+ALTER TABLE public.claimed_paystack_sessions ENABLE ROW LEVEL SECURITY;
+
+-- 1.7 Interview Sessions Table (New)
+CREATE TABLE IF NOT EXISTS public.interview_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    job_id UUID REFERENCES public.scraped_jobs(id) ON DELETE SET NULL,
+    sector TEXT,
+    tier_at_time TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 1.8 Interview Answers Table (New)
+CREATE TABLE IF NOT EXISTS public.interview_answers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    session_id UUID REFERENCES public.interview_sessions(id) ON DELETE CASCADE NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    score INT,
+    feedback TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 1.9 Sector Trends Table (New)
+CREATE TABLE IF NOT EXISTS public.sector_trends (
+    sector TEXT PRIMARY KEY,
+    trending_skills TEXT[] DEFAULT '{}',
+    recommended_certs TEXT[] DEFAULT '{}',
+    summary TEXT DEFAULT '',
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- ============================================================
+-- 2. INDEXES
+-- ============================================================
 CREATE INDEX IF NOT EXISTS idx_jobs_sector ON public.scraped_jobs(sector);
 CREATE INDEX IF NOT EXISTS idx_jobs_indexed_at ON public.scraped_jobs(indexed_at);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(id_status);
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer ON public.profiles(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_subscription_expiry ON public.profiles(subscription_expiry);
 
 -- ============================================================
--- THE CRITICAL FIX: handle_new_user trigger with safe NULL handling
+-- 3. TRIGGERS AND FUNCTIONS
 -- ============================================================
+
+-- 3.1 handle_new_user Trigger Function
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -231,13 +303,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Atomic create-or-replace — no DROP TRIGGER needed, and no brief gap where
--- a new signup could land without this trigger attached.
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Atomic Credit Function
+-- 3.2 Affiliate Credit RPC
 CREATE OR REPLACE FUNCTION process_affiliate_credit(
     target_user_id UUID, 
     sub_id TEXT, 
@@ -256,41 +326,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- RLS
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_pinned_jobs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.affiliate_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.claimed_stripe_sessions ENABLE ROW LEVEL SECURITY;
-
--- POLICIES
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own profile') THEN
-        CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update own profile') THEN
-        CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own pinned jobs') THEN
-        CREATE POLICY "Users can view their own pinned jobs" ON public.user_pinned_jobs FOR SELECT USING (auth.uid() = user_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage their own pinned jobs') THEN
-        CREATE POLICY "Users can manage their own pinned jobs" ON public.user_pinned_jobs FOR ALL USING (auth.uid() = user_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own withdrawal requests') THEN
-        CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests FOR SELECT USING (auth.uid() = user_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can create withdrawal requests') THEN
-        CREATE POLICY "Users can create withdrawal requests" ON public.withdrawal_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access for jobs') THEN
-        CREATE POLICY "Public read access for jobs" ON public.scraped_jobs FOR SELECT USING (true);
-    END IF;
-END $$;
-
--- 6. ATOMIC WITHDRAWAL FUNCTION
+-- 3.3 Withdrawal Process RPC (Legacy - Paid only)
 CREATE OR REPLACE FUNCTION process_withdrawal(
     p_user_id UUID, p_amount DECIMAL, p_channel TEXT, p_address TEXT
 ) RETURNS VOID AS $$
@@ -317,51 +353,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ============================================================
--- SnipeJob: Withdrawal payout timing
--- Free tier withdrawals are queued for monthly batch payout;
--- Pro tier withdrawals are flagged for immediate processing.
--- Run this AFTER schema.sql.
--- ============================================================
-DO $$
+-- 3.4 Withdrawal Process RPC v2 (Atomic — works for Free and Pro)
+CREATE OR REPLACE FUNCTION process_withdrawal_v2(
+    p_user_id UUID, p_amount DECIMAL, p_channel TEXT, p_address TEXT,
+    p_tier TEXT, p_scheduled_date DATE
+) RETURNS VOID AS $$
+DECLARE
+    v_updated INT;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='tier_at_request') THEN
-        ALTER TABLE public.withdrawal_requests ADD COLUMN tier_at_request TEXT DEFAULT 'free';
+    UPDATE public.profiles
+    SET wallet_balance = wallet_balance - p_amount
+    WHERE id = p_user_id AND wallet_balance >= p_amount;
+
+    GET DIAGNOSTICS v_updated = ROW_COUNT;
+    IF v_updated = 0 THEN
+        RAISE EXCEPTION 'Insufficient balance';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='withdrawal_requests' AND column_name='scheduled_payout_date') THEN
-        ALTER TABLE public.withdrawal_requests ADD COLUMN scheduled_payout_date DATE;
-    END IF;
-END $$;
 
--- ============================================================
--- SUBSCRIPTION EXPIRY TRACKING (run this after the main schema)
--- ============================================================
+    INSERT INTO public.withdrawal_requests
+        (user_id, total_amount, payment_channel, target_address, status, tier_at_request, scheduled_payout_date)
+    VALUES
+        (p_user_id, p_amount, p_channel, p_address, 'pending', p_tier, p_scheduled_date);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Add stripe_subscription_id for webhook cancellation lookups
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='stripe_subscription_id') THEN
-        ALTER TABLE public.profiles ADD COLUMN stripe_subscription_id TEXT;
-    END IF;
-    -- Flag: has a 3-day expiry warning email already been sent this cycle?
-    -- Resets to FALSE on each successful renewal so warnings re-arm automatically.
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='expiry_warning_sent') THEN
-        ALTER TABLE public.profiles ADD COLUMN expiry_warning_sent BOOLEAN DEFAULT FALSE;
-    END IF;
-END $$;
-
--- Index on stripe_customer_id so webhook lookups are fast
-CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer ON public.profiles(stripe_customer_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_subscription_expiry ON public.profiles(subscription_expiry);
-
--- ============================================================
--- SUBSCRIPTION EXPIRY CRON JOB
--- pg_cron and pg_net are now enabled at the top of this script, so this
--- section no longer needs a manual "enable extension in dashboard" step.
--- ============================================================
-
--- Function: find expiring accounts, call Worker to send warning email,
--- and downgrade fully-expired accounts back to free tier.
+-- 3.5 Subscription Expiry Checker RPC
 CREATE OR REPLACE FUNCTION public.check_subscription_expiry()
 RETURNS void AS $$
 DECLARE
@@ -409,14 +425,69 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Store your Worker URL + internal secret as DB settings
--- Run these two lines ONCE with your actual values:
--- ALTER DATABASE postgres SET app.worker_url = 'https://my-sniper-worker.daniellancce1.workers.dev';
--- ALTER DATABASE postgres SET app.worker_internal_secret = 'YOUR_WORKER_INTERNAL_SECRET_VALUE';
+-- ============================================================
+-- 4. ROW LEVEL SECURITY (RLS) & POLICIES
+-- ============================================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_pinned_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.affiliate_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.claimed_stripe_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.interview_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.interview_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sector_trends ENABLE ROW LEVEL SECURITY;
 
--- Schedule the expiry check to run every day at 08:00 UTC.
--- Unschedule any prior run of the same job name first so re-running this
--- script doesn't create duplicate cron jobs.
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own profile') THEN
+        CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update own profile') THEN
+        CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own pinned jobs') THEN
+        CREATE POLICY "Users can view their own pinned jobs" ON public.user_pinned_jobs FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage their own pinned jobs') THEN
+        CREATE POLICY "Users can manage their own pinned jobs" ON public.user_pinned_jobs FOR ALL USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own withdrawal requests') THEN
+        CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can create withdrawal requests') THEN
+        CREATE POLICY "Users can create withdrawal requests" ON public.withdrawal_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access for jobs') THEN
+        CREATE POLICY "Public read access for jobs" ON public.scraped_jobs FOR SELECT USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own interview sessions') THEN
+        CREATE POLICY "Users can view their own interview sessions" ON public.interview_sessions FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can create their own interview sessions') THEN
+        CREATE POLICY "Users can create their own interview sessions" ON public.interview_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view answers in their own sessions') THEN
+        CREATE POLICY "Users can view answers in their own sessions" ON public.interview_answers FOR SELECT USING (
+            EXISTS (SELECT 1 FROM public.interview_sessions s WHERE s.id = session_id AND s.user_id = auth.uid())
+        );
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert answers in their own sessions') THEN
+        CREATE POLICY "Users can insert answers in their own sessions" ON public.interview_answers FOR INSERT WITH CHECK (
+            EXISTS (SELECT 1 FROM public.interview_sessions s WHERE s.id = session_id AND s.user_id = auth.uid())
+        );
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access for sector trends') THEN
+        CREATE POLICY "Public read access for sector trends" ON public.sector_trends FOR SELECT USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own affiliate logs') THEN
+        CREATE POLICY "Users can view their own affiliate logs" ON public.affiliate_logs FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+END $$;
+
+-- ============================================================
+-- 5. CRON SCHEDULING
+-- ============================================================
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'snipejob-subscription-expiry-check') THEN
@@ -429,9 +500,3 @@ SELECT cron.schedule(
     '0 8 * * *',                            -- every day at 08:00 UTC
     'SELECT public.check_subscription_expiry();'
 );
-
--- Worker endpoint for sending expiry emails
--- (Already handled in the Worker src/index.js — POST /api/internal/send-expiry-email)
--- Add to Cloudflare Worker secrets:
---   npx wrangler secret put RESEND_API_KEY
---   npx wrangler secret put WORKER_INTERNAL_SECRET

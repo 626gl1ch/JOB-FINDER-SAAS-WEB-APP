@@ -54,6 +54,51 @@ Do not engage in misinformation, misrepresentation, or misleading activities. Th
 - Facilitating misleading claims related to governmental or democratic processes or harmful health practices, in order to deceive.
 - Misrepresenting the provenance of generated content by claiming it was created solely by a human, in order to deceive.`;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MASTER RESUME RULESET — injected into every resume & career AI endpoint.
+// This forces the AI to always produce premium, client-winning output.
+// ─────────────────────────────────────────────────────────────────────────────
+const RESUME_RULESET = `
+=== SNIPEJOB MASTER RESUME QUALITY RULESET (MANDATORY — FOLLOW EXACTLY) ===
+
+You are SnipeJob's elite AI career coach. Your resumes and career materials must be STUNNING, CLIENT-WINNING, and ATS-optimized. Every output must feel like it was written by a $500/hr executive resume writer. This is non-negotiable.
+
+RESUME STRUCTURE & FORMAT RULES:
+1. Always use ALL-CAPS section headers (PROFESSIONAL SUMMARY, CORE COMPETENCIES, PROFESSIONAL EXPERIENCE, EDUCATION, CERTIFICATIONS).
+2. Use consistent bullet formatting: start every bullet with a strong past-tense power verb (Architected, Spearheaded, Delivered, Engineered, Optimized, Scaled, Drove, Orchestrated, Transformed).
+3. EVERY experience bullet must follow the STAR pattern: action verb + task + quantified result. Example: "Reduced API latency by 47% by implementing Redis caching, improving user retention by 23%."
+4. If the user has not provided numbers, intelligently estimate realistic ranges based on their role/seniority (e.g. "managed 3-5 person team", "served 500+ daily active users", "reduced process time by approximately 30%"). Always use the word "approximately" when estimating.
+5. Professional Summary must be 3-4 sentences: Hook sentence (who they are + years of experience) → Core value proposition → Top 2-3 achievements/strengths → Forward-looking statement.
+6. Core Competencies section: 8-12 skills in a 3-column grid format, each 1-3 words only.
+7. Date format: Month YYYY — Month YYYY (e.g., January 2021 — Present).
+8. Use consistent spacing: double line break between sections, single line break between roles.
+
+ATS OPTIMIZATION RULES:
+9. Every resume must contain at least 8 industry-specific keywords naturally embedded in bullets.
+10. Spell out acronyms on first use: "Search Engine Optimization (SEO)".
+11. Never use tables, columns, or special characters (│, ■, ◆) — ATS parsers cannot read them.
+12. Use standard section names (ATS scans for these exact words).
+13. Include both spelled-out and abbreviated versions of key skills where relevant (JavaScript / JS, UI/UX / User Interface, etc).
+
+TONE MODIFIERS (apply when specified):
+- Professional: Conservative, measured, data-driven. Avoid buzzwords. Emphasize reliability and track record.
+- Creative: Slightly bolder language, lead with impact and innovation. Highlight unique approaches.
+- Technical: Dense with technical specificity — framework versions, methodologies (Agile, Scrum, TDD), architecture patterns.
+- Executive: High-level, P&L focused, leadership-centric. Numbers should reference revenue, headcount, and strategic impact.
+- Entry-Level: Emphasize education, projects, internships, transferable skills, and eagerness to grow. Remove "years of experience" framing.
+- Academic: Research-oriented, publication-ready style. Emphasize methodology, publications, grants, teaching.
+- Casual: Conversational yet professional. Slightly less formal but still clear and impactful.
+
+QUALITY GATES (check before returning ANY resume):
+✓ Does every bullet have a power verb? If no → rewrite it.
+✓ Does every bullet have a measurable outcome or concrete detail? If no → add one.
+✓ Is the professional summary compelling enough to make a hiring manager want to keep reading? If no → rewrite it.
+✓ Does the resume contain any weak filler phrases ("responsible for", "worked on", "helped with", "assisted in")? If yes → replace with specific achievements.
+✓ Is the formatting clean, consistent, and readable in plain text? If no → fix it.
+
+=== END OF RULESET ===
+`;
+
 export default {
   async fetch(request, env) {
     // CORS headers are defined first so the top-level catch can always send them,
@@ -144,7 +189,7 @@ export default {
     // array (for PDF input — see /api/profile/autofill).
     const callGemini = async (promptOrParts) => {
       const parts = typeof promptOrParts === "string" ? [{ text: promptOrParts }] : promptOrParts;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts }] }),
@@ -243,6 +288,8 @@ export default {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+
+
     // 0c. POST /api/profile/autofill (Signup-time resume scan — runs BEFORE
     // the account exists, so this is intentionally unauthenticated. Accepts
     // either resume_text (pasted) or file_base64 (PDF upload, sent straight
@@ -279,6 +326,32 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!result) return new Response("AI returned an unreadable result. Please fill in the fields manually.", { status: 502, headers: corsHeaders });
 
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 0a. GET /api/debug/db
+    if (url.pathname === "/api/debug/db" && method === "GET") {
+      const res = await supabase(`profiles?limit=1`);
+      const text = await res.text();
+      return new Response(JSON.stringify({ status: res.status, text }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 0b. GET /api/debug/models
+    if (url.pathname === "/api/debug/models" && method === "GET") {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`);
+      const data = await res.json();
+      return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 0aa. POST /api/debug/gemini
+    if (url.pathname === "/api/debug/gemini" && method === "POST") {
+      const body = await request.text();
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      });
+      const data = await res.text();
+      return new Response(data, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 0b. GET /api/profile (merged in from my-sniper-worker — that copy is now retired)
@@ -486,7 +559,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!job) return new Response("Job not found", { status: 404, headers: corsHeaders });
 
       // Call Gemini for proposal
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
@@ -553,7 +626,7 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
 
       Structure the output as a clean, ready-to-send text resume with sections for Professional Summary, Skills, Experience (extrapolate based on bio), and Education. Focus on matching keywords from the job description.`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
@@ -578,39 +651,32 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const limitCheck = await checkAiRateLimit(userId);
       if (limitCheck.error) return limitCheck.error;
 
-      const { source, resume_text, manual_data } = await request.json().catch(() => ({}));
+      const body = await request.json().catch(() => ({}));
+      const { source, resume_text, manual_data, tone = "Professional", photo_hint = "" } = body;
       
       let userInfoText = "";
       if (source === "upload") {
-        userInfoText = `Raw Uploaded Resume Content:\n${resume_text}`;
+        userInfoText = `Raw Uploaded Resume Content (rewrite and improve this):\n${resume_text}`;
       } else if (source === "manual") {
         userInfoText = `Manual Onboarding Profile Info:\nName: ${manual_data?.full_name}\nLevel: ${manual_data?.exp_level}\nSkill: ${manual_data?.primary_skill}\nBio: ${manual_data?.bio}\nEducation: ${manual_data?.education}`;
       } else { // profile
         const profileRes = await supabase(`profiles?select=full_name,sectors,exp_level,primary_skill,bio,education&id=eq.${userId}`);
         const profile = (await profileRes.json())[0];
         if (!profile) return new Response("Profile not found", { status: 404, headers: corsHeaders });
-        userInfoText = `Existing User Profile:\nName: ${profile.full_name}\nLevel: ${profile.exp_level}\nSkill: ${profile.primary_skill}\nBio: ${profile.bio}\nEducation: ${profile.education}`;
+        const sectorsStr = Array.isArray(profile.sectors) ? profile.sectors.join(", ") : (profile.sectors || "");
+        userInfoText = `Existing User Profile:\nName: ${profile.full_name}\nExperience Level: ${profile.exp_level}\nPrimary Skill: ${profile.primary_skill}\nIndustry Sectors: ${sectorsStr}\nBackground/Bio: ${profile.bio}\nEducation: ${profile.education}`;
       }
+      const photoNote = photo_hint ? `\n\nNOTE: The user has uploaded a profile photo. In the header/contact section, add a placeholder line: [PHOTO: professional headshot]` : "";
 
-      const prompt = `You are a professional resume writer. Build a polished, complete, and modern resume using the following user details:
-      
-      ${userInfoText}
-      
-      Structure the output as a clean, ready-to-use text resume with standard sections: Contact Info, Professional Summary, Work Experience (elaborate professionally based on bio/profile if needed), Skills, and Education. Focus on strong impact verbs and clear layout. Return ONLY the formatted resume text.`;
+      const prompt = `${RESUME_RULESET}\n\nTASK: Generate a complete, stunning, ATS-optimized resume.\nTONE: ${tone}${photoNote}\n\nUSER INFORMATION:\n${userInfoText}\n\nCRITICAL: Follow the Master Resume Quality Ruleset above EXACTLY. Apply the ${tone} tone modifier throughout. Return ONLY the formatted resume text with no preamble, no explanation, no markdown code fences.`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      const geminiData = await geminiRes.json();
-      const resumeText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!geminiRes.ok || !resumeText) {
+      const result = await callGemini(prompt);
+      if (!result.ok) {
+        console.error("Gemini AI Resume failed:", JSON.stringify(result.raw).slice(0, 500));
         return new Response("AI Resume generation failed.", { status: 502, headers: corsHeaders });
       }
 
-      return new Response(JSON.stringify({ resume: resumeText }), { 
+      return new Response(JSON.stringify({ resume: result.text, tone }), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
@@ -624,31 +690,11 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const { resume_text } = await request.json().catch(() => ({}));
       if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
 
-      const prompt = `Analyze the following resume for ATS (Applicant Tracking System) compatibility, formatting quality, keyword relevance, and content effectiveness.
-      RESUME:
-      ${resume_text}
-      
-      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting (like \`\`\`json):
-      {
-        "ats_score": number (0-100),
-        "formatting_score": number (0-100),
-        "keyword_score": number (0-100),
-        "content_score": number (0-100),
-        "compatibility_feedback": ["list of strings"],
-        "formatting_feedback": ["list of strings"],
-        "keyword_feedback": ["list of strings"],
-        "content_feedback": ["list of strings"]
-      }`;
+      const prompt = `${RESUME_RULESET}\n\nTASK: Perform a comprehensive ATS audit of the following resume. Be brutally honest and specific.\n\nRESUME:\n${resume_text}\n\nReturn a valid JSON object (no markdown fences). Include a letter_grade based on the average score (90-100=A, 80-89=B, 70-79=C, 60-69=D, below 60=F) and a quick_wins array of the 3 most impactful, easiest-to-fix improvements the user can make RIGHT NOW. Be specific — don't say "add keywords", say exactly which keywords to add.\n{\n  "ats_score": number (0-100),\n  "formatting_score": number (0-100),\n  "keyword_score": number (0-100),\n  "content_score": number (0-100),\n  "letter_grade": "A" | "B" | "C" | "D" | "F",\n  "overall_verdict": "One compelling sentence summarizing the resume's biggest strength and biggest weakness.",\n  "quick_wins": ["3 specific, immediately actionable improvements"],\n  "compatibility_feedback": ["3-5 specific ATS compatibility findings"],\n  "formatting_feedback": ["3-5 specific formatting findings"],\n  "keyword_feedback": ["3-5 specific keyword findings — name the missing keywords"],\n  "content_feedback": ["3-5 specific content quality findings with rewrite examples"]\n}`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      const geminiData = await geminiRes.json();
-      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const result = parseGeminiJson(text);
+      const geminiData2 = await callGemini(prompt);
+      if (!geminiData2.ok) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
+      const result = parseGeminiJson(geminiData2.text);
       if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
       return new Response(JSON.stringify(result), { 
@@ -665,32 +711,11 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const { resume_text } = await request.json().catch(() => ({}));
       if (!resume_text) return new Response("Missing resume_text", { status: 400, headers: corsHeaders });
 
-      const prompt = `Recommend specific optimizations for the following resume. Recommends:
-      1. An improved professional summary.
-      2. Better bullet points for experience.
-      3. Better achievements metrics suggestions.
-      4. Stronger overall positioning.
-      
-      RESUME:
-      ${resume_text}
-      
-      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting:
-      {
-        "improved_summary": "string",
-        "better_bullet_points": ["string"],
-        "better_achievements": ["string"],
-        "positioning_suggestions": ["string"]
-      }`;
+      const prompt = `${RESUME_RULESET}\n\nTASK: You are reviewing a resume and must provide SPECIFIC, READY-TO-COPY rewrites — not vague suggestions. Your job is to make this resume employer-ready and ATS-optimized.\n\nRESUME:\n${resume_text}\n\nReturn a valid JSON object (no markdown fences):\n{\n  "improved_summary": "Full rewritten 3-4 sentence professional summary following the Ruleset format (not just suggestions — write the actual new summary)",\n  "better_bullet_points": ["5 specific rewritten bullets using STAR format — copy-pasteable replacements for weak bullets in the resume"],\n  "better_achievements": ["4 achievement-framed bullets with metrics, e.g. Grew X by Y% through Z"],\n  "positioning_suggestions": ["3 strategic positioning tips specific to this person's background and likely target roles"],\n  "headline_suggestion": "A punchy 1-line professional headline (e.g. Senior Product Manager | SaaS Growth | 0-to-1 Builder)"\n}`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      const geminiData = await geminiRes.json();
-      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const result = parseGeminiJson(text);
+      const optResult = await callGemini(prompt);
+      if (!optResult.ok) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
+      const result = parseGeminiJson(optResult.text);
       if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
       return new Response(JSON.stringify(result), { 
@@ -704,34 +729,15 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       const limitCheck = await checkAiRateLimit(userId);
       if (limitCheck.error) return limitCheck.error;
 
-      const { resume_text, job_description } = await request.json().catch(() => ({}));
+      const tailorBody = await request.json().catch(() => ({}));
+      const { resume_text, job_description, tone: tailorTone = "Professional" } = tailorBody;
       if (!resume_text || !job_description) return new Response("Missing parameters", { status: 400, headers: corsHeaders });
 
-      const prompt = `Compare the following resume against the job description opportunity.
-      RESUME:
-      ${resume_text}
-      
-      JOB DESCRIPTION:
-      ${job_description}
-      
-      Identify missing requirements, suggest improvements, and generate a tailored optimized version of the resume.
-      Return a valid JSON object with the following keys. Do not wrap it in markdown formatting:
-      {
-        "comparison_match": number,
-        "missing_requirements": ["string"],
-        "suggested_improvements": ["string"],
-        "tailored_resume": "complete plain text resume string"
-      }`;
+      const prompt = `${RESUME_RULESET}\n\nTASK: You are a world-class resume tailor. Analyze the gap between this resume and the job description, then produce a rewritten resume that maximizes the match score.\nTONE: ${tailorTone}\n\nRESUME:\n${resume_text}\n\nJOB DESCRIPTION:\n${job_description}\n\nReturn a valid JSON object (no markdown fences):\n{\n  "comparison_match": number (0-100, realistic percentage of keyword and requirement match),\n  "missing_requirements": ["Be specific — list the exact skills/experience from the job description that are absent or underrepresented in the resume"],\n  "suggested_improvements": ["4-5 specific, copy-pasteable improvements that would increase the match score"],\n  "tailored_resume": "FULL rewritten resume text following the Master Ruleset, optimized for this specific job description. Must be complete — not a diff, not a summary. Full resume text.",\n  "keywords_added": ["list of keywords from the JD that you embedded into the tailored resume"]\n}`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: AI_SAFETY_POLICY }] }, contents: [{ parts: [{ text: prompt }] }] }),
-      });
-
-      const geminiData = await geminiRes.json();
-      let text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const result = parseGeminiJson(text);
+      const tailorResult = await callGemini(prompt);
+      if (!tailorResult.ok) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
+      const result = parseGeminiJson(tailorResult.text);
       if (!result) return new Response("AI returned an unreadable response.", { status: 502, headers: corsHeaders });
 
       return new Response(JSON.stringify(result), { 
@@ -747,50 +753,35 @@ Return ONLY strict JSON, no markdown: {"full_name": "", "primary_skill": "their 
       if (!userToken || !userId) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
 
       const body = await request.json().catch(() => ({}));
-      const { jobDescription, resumeText } = body;
+      // Support both field name variants sent by the frontend
+      const jobDescription = body.jobDescription || body.job_description || "";
+      const resumeText = body.resumeText || body.resume_text || "";
       if (!jobDescription) {
         return new Response(JSON.stringify({ error: "jobDescription is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Fetch user profile to get name and skills for personalisation
-      const profileRes = await supabase(`profiles?user_id=eq.${userId}&select=full_name,skills,bio,experience_level,current_tier`, { method: "GET" });
+      // Fetch user profile — use current column names (sectors, exp_level)
+      const profileRes = await supabase(`profiles?id=eq.${userId}&select=full_name,sectors,bio,exp_level,current_tier`, { method: "GET" });
       const profiles = await profileRes.json();
       const profile = Array.isArray(profiles) ? profiles[0] : null;
       const isPro = profile?.current_tier === "paid";
       const userName = profile?.full_name || "the applicant";
       const userBio  = profile?.bio || "";
-      const userSkills = Array.isArray(profile?.skills) ? profile.skills.join(", ") : (profile?.skills || "");
+      const userSkills = Array.isArray(profile?.sectors) ? profile.sectors.join(", ") : (profile?.sectors || "");
 
-      const resumeSection = resumeText ? `\n\nApplicant's Resume:\n${resumeText.slice(0, 3000)}` : (userBio ? `\n\nApplicant Background: ${userBio}` : "");
-      const tailorNote    = isPro
-        ? "This is a Pro user — create a highly personalized, detailed cover letter that references specific keywords from the job description to maximize ATS pass rates. Mirror the company's tone and use strong action verbs."
-        : "Generate a professional and compelling cover letter. Keep it concise (3-4 paragraphs).";
+      const resumeSection = resumeText ? `\n\nApplicant's Resume (use for context and skills):\n${resumeText.slice(0, 3000)}` : (userBio ? `\n\nApplicant Background: ${userBio}\nKey Skills: ${userSkills}` : "");
+      const tierNote = isPro
+        ? "This is a Pro user. Create a HIGHLY personalized, compelling cover letter that: (1) references 3-5 specific keywords from the job description naturally, (2) mirrors the company's tone, (3) includes 1-2 quantified achievements, (4) feels genuinely human and enthusiastic — not templated."
+        : "Generate a professional, structured cover letter that clearly communicates the applicant's value and genuine interest in the role.";
 
-      const prompt = `You are an expert career coach and professional writer. ${tailorNote}
+      const clPrompt = `${RESUME_RULESET}\n\nTASK: Write a cover letter. ${tierNote}\n\nApplicant Name: ${userName}\n\nJob Description:\n${jobDescription.slice(0, 4000)}${resumeSection}\n\nCOVER LETTER REQUIREMENTS:\n- Address to "Dear Hiring Manager" (or use name if found in JD)\n- Paragraph 1 (Hook): Open with a compelling statement about why THIS specific company/role excites you — not generic. Show you researched them.\n- Paragraph 2 (Value): Highlight 2-3 specific achievements or skills that directly match the job requirements. Use STAR format with numbers where possible.\n- Paragraph 3 (Fit): Explain why your unique combination of skills makes you the ideal candidate. Reference company culture/mission if evident in the JD.\n- Paragraph 4 (CTA): Confident, enthusiastic close with a clear call to interview. Thank them for their consideration.\n- Tone: warm, confident, professional, human. NOT: robotic, generic, over-formal, buzzword-heavy.\n- Length: 300-400 words\n- Format: Plain text, properly spaced paragraphs, ready to paste into email\n\nReturn ONLY the cover letter text. No preamble, no explanation.`;
 
-Write a cover letter for ${userName} for the following job:
-
-Job Description:
-${jobDescription.slice(0, 4000)}
-${resumeSection}
-
-Requirements:
-- Address it to "Hiring Manager" unless a name is in the job description
-- Opening paragraph: show genuine interest and briefly state why this role is a fit
-- Middle paragraph(s): highlight 2-3 specific achievements or skills that match the job requirements, using quantified results where possible
-- Closing paragraph: confident call to action, express enthusiasm for an interview
-- Tone: professional, confident, human — not robotic or generic
-- Length: 300-400 words
-- Format: Plain text, no markdown headers, ready to send
-
-Return ONLY the cover letter text, nothing else.`;
-
-      const result = await callGemini(prompt);
-      if (!result.ok) {
+      const clResult = await callGemini(clPrompt);
+      if (!clResult.ok) {
         return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      return new Response(JSON.stringify({ coverLetter: result.text }), {
+      return new Response(JSON.stringify({ coverLetter: clResult.text }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -1273,7 +1264,7 @@ Return ONLY the cover letter text, nothing else.`;
       // In a real implementation, you'd upload to Supabase Storage here.
       // For brevity, we pass the image buffer directly to Gemini.
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`, {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" }, // was missing — required by the Gemini API
         body: JSON.stringify({
