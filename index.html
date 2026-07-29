@@ -5105,6 +5105,26 @@ function rhExportDOCX() {
   a.href = url; a.download = 'resume.docx'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   toast('Resume downloaded as DOCX!', 'ti-check');
+}
+
+/* ─── 1-TAP TAILORED RESUME from job card ─── */
+// Creates/reuses a modal to show the tailored resume in-line
+function openAiResume(jobId) {
+  if (!currentProfile || currentProfile.current_tier !== 'paid') {
+    toast('Tailored resume is a Pro feature.', 'ti-lock');
+    go('upgrade');
+    return;
+  }
+  // Build modal if first use
+  let modal = document.getElementById('rh-ai-resume-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'rh-ai-resume-modal';
+    modal.innerHTML = `
+      <div class="rh-preview-modal-inner">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h3 style="font-family:'Syne',sans-serif;margin:0"><i class="ti ti-file-cv" style="color:var(--vlight)"></i> Tailored Resume</h3>
+          <button class="tbtn" onclick="closeAiResume()" title="Close"><i class="ti ti-x"></i></button>
         </div>
         <div id="rh-modal-loading" style="text-align:center;padding:30px">
           <i class="ti ti-loader-2" style="font-size:28px;animation:spin 1s linear infinite;color:var(--vlight)"></i>
