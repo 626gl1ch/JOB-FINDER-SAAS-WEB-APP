@@ -6630,9 +6630,9 @@ async function rhRunCoverLetter() {
   document.getElementById('rh-cl-result').style.display = 'none';
 
   try {
-    const res = await callBackend('/api/ai/cover-letter', 'POST', { job_description: jobdesc });
-    if (res.error) throw new Error(res.error);
-    const data = await res.json();
+    // apiFetch prepends API_URL and attaches the auth token automatically
+    const data = await apiFetch('/ai/cover-letter', { method:'POST', body: JSON.stringify({ jobDescription: jobdesc }) });
+    if (data?.error) throw new Error(data.error);
     
     document.getElementById('rh-cl-output').value = data.coverLetter || '';
     document.getElementById('rh-cl-result').style.display = 'block';
@@ -6648,21 +6648,21 @@ async function rhRunCoverLetter() {
 function rhSendToPreview() {
   const text = document.getElementById('rh-builder-text')?.value||'';
   _rhCurrentResume = text;
+  document.getElementById('rh-preview-content').textContent = text || '← Generate or tailor a resume first, then click "Preview" to see it styled here.';
   rhTab('preview');
-  dTab('resume');
-  document.getElementById('rh-preview-content').textContent = text;
 }
 function rhSendTailoredToPreview() {
   const text = document.getElementById('rh-tailor-output')?.value||'';
   _rhCurrentResume = text;
+  document.getElementById('rh-preview-content').textContent = text || '← Generate or tailor a resume first, then click "Preview" to see it styled here.';
   rhTab('preview');
-  document.getElementById('rh-preview-content').textContent = text;
 }
 function rhSetTemplate(tpl) {
   _rhCurrentTemplate = tpl;
+  // Update preview area class
   const area = document.getElementById('rh-preview-area');
-  if (!area) return;
-  area.className = 'rh-template-preview rh-tpl-'+tpl;
+  if (area) area.className = 'rh-template-preview rh-tpl-'+tpl;
+  // Update Preview tab's toggle buttons
   ['pro','mod','exe'].forEach(id => {
     const b = document.getElementById('rh-tpl-'+id);
     if (b) { b.classList.remove('act'); b.classList.add('jbtn-g'); }
@@ -6670,6 +6670,18 @@ function rhSetTemplate(tpl) {
   const map = {professional:'pro', modern:'mod', executive:'exe'};
   const active = document.getElementById('rh-tpl-'+map[tpl]);
   if (active) { active.classList.add('act'); active.classList.remove('jbtn-g'); }
+  // Update Templates tab's visual card selection
+  document.querySelectorAll('.template-card').forEach(card => {
+    card.style.borderColor = 'var(--border)';
+    card.style.boxShadow = 'none';
+  });
+  const tplIndex = {professional: 0, modern: 1, executive: 2}[tpl];
+  const cards = document.querySelectorAll('.template-card');
+  if (cards[tplIndex]) {
+    cards[tplIndex].style.borderColor = 'var(--violet)';
+    cards[tplIndex].style.boxShadow = '0 0 0 2px var(--violet)';
+  }
+  toast('Template set to ' + tpl.charAt(0).toUpperCase() + tpl.slice(1) + '!', 'ti-layout-grid');
 }
 
 /* ─── COPY helper ─── */
