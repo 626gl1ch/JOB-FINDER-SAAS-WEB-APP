@@ -3780,13 +3780,7 @@ body[data-theme="light"] .tbtn.act {
             <button class="jbtn jbtn-g" id="rh-tpl-exe" onclick="rhSetTemplate('executive')"><i class="ti ti-crown"></i> Executive</button>
           </div>
         </div>
-        <div id="rh-preview-area" class="rh-template-preview rh-tpl-professional" style="background:#fff;color:#111;border-radius:14px;padding:40px 44px;min-height:420px;line-height:1.75;font-size:13.5px;max-height:600px;overflow-y:auto;border:1px solid var(--border)">
-          <!-- Profile photo (shown when user uploads one) -->
-          <div id="rh-preview-photo-wrap" style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <img id="rh-preview-photo" src="" alt="Profile photo" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #e5e5e5">
-          </div>
-          <div id="rh-preview-content" style="white-space:pre-wrap;font-family:Georgia,serif">← Generate or tailor a resume first, then click "Preview" to see it styled here.</div>
-        </div>
+        <iframe id="rh-preview-area" class="rh-template-preview" style="border-radius:14px;min-height:520px;width:100%;border:1px solid var(--border);background:#fff;display:block" sandbox="allow-same-origin"></iframe>
 
         <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
           <button class="jbtn jbtn-v" onclick="rhExportPDF()"><i class="ti ti-file-type-pdf"></i> Export PDF</button>
@@ -6813,24 +6807,258 @@ async function rhRunCoverLetter() {
     btn.innerHTML = '<i class="ti ti-mail"></i> Generate Cover Letter';
   }
 }
+/* ─── RESUME TEMPLATE RENDERER ─── */
+/**
+ * Parses raw AI-generated resume text into structured, beautifully styled HTML
+ * for the selected template. Supports: professional, modern, executive.
+ */
+function resumeTextToHtml(rawText, template, photoBase64) {
+  if (!rawText || !rawText.trim()) return '<p style="color:#888;font-style:italic;padding:40px;text-align:center">← Generate or tailor a resume first, then click Preview.</p>';
+
+  const lines = rawText.split('\n').map(l => l.trimEnd());
+  const photoHtml = photoBase64 ? `<img src="${photoBase64}" alt="Profile" class="rh-photo">` : '';
+
+  /* ── Section heading detection ── */
+  const SECTION_KEYWORDS = /^(PROFESSIONAL SUMMARY|SUMMARY|OBJECTIVE|CORE COMPETENCIES|SKILLS|TECHNICAL SKILLS|KEY SKILLS|EXPERIENCE|PROFESSIONAL EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT|EDUCATION|CERTIFICATIONS?|AWARDS?|ACHIEVEMENTS?|PROJECTS?|PUBLICATIONS?|LANGUAGES?|REFERENCES?|VOLUNTEER|INTERESTS?|ACTIVITIES|HONORS?)/i;
+
+  /* ── Parse into blocks ── */
+  let parsedBlocks = []; // { type: 'header'|'section'|'body', lines: [] }
+  let headerLines = [];
+  let headerDone = false;
+  let currentSection = null;
+  let bodyBuffer = [];
+
+  const flushBody = () => {
+    if (bodyBuffer.length) {
+      if (currentSection) currentSection.lines.push(...bodyBuffer);
+      bodyBuffer = [];
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isEmpty = line.trim() === '';
+    if (!headerDone) {
+      // First non-empty block before first section = header
+      if (!isEmpty) headerLines.push(line);
+      else if (headerLines.length > 0) {
+        // Check if next non-empty line is a section heading
+        let nextNonEmpty = lines.slice(i+1).find(l => l.trim());
+        if (nextNonEmpty && SECTION_KEYWORDS.test(nextNonEmpty.trim())) {
+          headerDone = true;
+          parsedBlocks.push({ type: 'header', lines: headerLines });
+        } else if (headerLines.length > 0) {
+          // Could still be part of header (e.g. contact info on separate line)
+          headerLines.push('');
+        }
+      }
+      continue;
+    }
+    if (SECTION_KEYWORDS.test(line.trim()) && line.trim().length < 60) {
+      flushBody();
+      if (currentSection) parsedBlocks.push(currentSection);
+      currentSection = { type: 'section', heading: line.trim(), lines: [] };
+    } else {
+      if (!currentSection && !isEmpty) {
+        headerDone = true;
+        if (!parsedBlocks.find(b => b.type === 'header')) parsedBlocks.push({ type: 'header', lines: [line] });
+        else parsedBlocks[0].lines.push(line);
+      } else if (currentSection) {
+        currentSection.lines.push(line);
+      }
+    }
+  }
+  if (currentSection) { flushBody(); parsedBlocks.push(currentSection); }
+
+  /* ── Helpers ── */
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const renderLines = (lines) => {
+    let out = '', inBullets = false;
+    for (let l of lines) {
+      const t = l.trim();
+      if (!t) { if (inBullets) { out += '</ul>'; inBullets=false; } out += '<br>'; continue; }
+      if (t.startsWith('•') || t.startsWith('-') || t.startsWith('*') || t.startsWith('◆') || t.startsWith('▪')) {
+        if (!inBullets) { out += '<ul class="rb">'; inBullets=true; }
+        out += `<li>${esc(t.replace(/^[•\-\*◆▪]\s*/,''))}</li>`;
+      } else {
+        if (inBullets) { out += '</ul>'; inBullets=false; }
+        // Bold lines that look like job titles (all caps or has em dash)
+        if (/^[A-Z][A-Z\s,./]+$/.test(t) || t.includes('—') || t.includes('|') || /\d{4}/.test(t)) {
+          out += `<p class="rl">${esc(t)}</p>`;
+        } else {
+          out += `<p class="rb-p">${esc(t)}</p>`;
+        }
+      }
+    }
+    if (inBullets) out += '</ul>';
+    return out;
+  };
+
+  const header = parsedBlocks.find(b => b.type === 'header');
+  const sections = parsedBlocks.filter(b => b.type === 'section');
+
+  // Parse header: first line = name, rest = contact info
+  let nameHtml = '', contactHtml = '';
+  if (header) {
+    const hLines = header.lines.filter(l => l.trim());
+    nameHtml = esc(hLines[0] || '');
+    contactHtml = hLines.slice(1).map(l => `<span>${esc(l)}</span>`).join(' <span class="sep">|</span> ');
+  }
+
+  const sectionsHtml = sections.map(s => `
+    <section>
+      <h2 class="sh">${esc(s.heading)}</h2>
+      <div class="sc">${renderLines(s.lines.filter(l => l !== undefined))}</div>
+    </section>`).join('');
+
+  /* ── Template definitions ── */
+  const templates = {
+    professional: `
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Garamond','Georgia',serif;color:#1a1a2e;background:#fff;padding:0}
+        .rh-resume{max-width:780px;margin:0 auto;padding:48px 52px}
+        .rh-head{margin-bottom:28px;padding-bottom:20px;border-bottom:2.5px solid #1a3a5c;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+        .rh-name{font-size:2rem;font-weight:700;letter-spacing:-.02em;color:#1a3a5c;line-height:1.1;font-family:'Garamond','Georgia',serif}
+        .rh-contact{font-size:12px;color:#555;margin-top:6px;line-height:1.8}
+        .rh-contact .sep{color:#1a3a5c;margin:0 4px}
+        .rh-photo{width:88px;height:88px;border-radius:4px;object-fit:cover;border:2px solid #1a3a5c;flex-shrink:0}
+        section{margin-bottom:24px}
+        h2.sh{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#1a3a5c;font-weight:700;border-bottom:1.5px solid #c9d6e3;padding-bottom:5px;margin-bottom:12px}
+        .rb{padding-left:18px;margin:4px 0}
+        .rb li{font-size:13.5px;line-height:1.7;color:#222;margin-bottom:3px}
+        .rl{font-size:13.5px;font-weight:700;color:#1a3a5c;margin:10px 0 2px;line-height:1.4}
+        .rb-p{font-size:13.5px;color:#333;line-height:1.7;margin-bottom:4px}
+        br{display:block;height:4px}
+      </style>
+      <div class="rh-resume">
+        <div class="rh-head">
+          <div>
+            <div class="rh-name">${nameHtml}</div>
+            <div class="rh-contact">${contactHtml}</div>
+          </div>
+          ${photoHtml ? `<img src="${photoBase64}" class="rh-photo" alt="Photo">` : ''}
+        </div>
+        ${sectionsHtml}
+      </div>`,
+
+    modern: `
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#1e1e2e;background:#fff;padding:0}
+        .rh-resume{max-width:780px;margin:0 auto;display:grid;grid-template-columns:220px 1fr;min-height:100%}
+        .rh-sidebar{background:linear-gradient(160deg,#2d1b69,#1a3a6e);color:#fff;padding:36px 24px;display:flex;flex-direction:column;gap:24px}
+        .rh-main{padding:36px 40px}
+        .rh-photo-wrap{text-align:center;margin-bottom:4px}
+        .rh-photo{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.4)}
+        .rh-name{font-size:1.45rem;font-weight:800;line-height:1.15;color:#fff;margin-bottom:6px;word-break:break-word}
+        .rh-contact{font-size:11px;color:rgba(255,255,255,.75);line-height:2;margin-top:4px}
+        .rh-contact .sep{display:none}
+        .rh-contact span{display:block}
+        h2.sh{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.6)}
+        h2.sh.main{color:#2d1b69;border-bottom:2px solid #e8e0ff;font-size:9.5px}
+        section.main-sec{margin-bottom:22px}
+        section.side-sec h2.sh{color:rgba(255,255,255,.65)}
+        .rb{padding-left:14px;margin:4px 0}
+        .rb li{font-size:12.5px;line-height:1.65;color:rgba(255,255,255,.85);margin-bottom:2px}
+        .rb li.main-li{color:#333}
+        .rl{font-size:13px;font-weight:700;color:rgba(255,255,255,.95);margin:8px 0 2px}
+        .rl.main-rl{color:#2d1b69}
+        .rb-p{font-size:12.5px;line-height:1.7;color:rgba(255,255,255,.8);margin-bottom:3px}
+        .rb-p.main-p{color:#444}
+        br{display:block;height:3px}
+        .dot{width:6px;height:6px;background:rgba(255,255,255,.4);border-radius:50%;display:inline-block;margin-right:6px}
+      </style>
+      <div class="rh-resume">
+        <div class="rh-sidebar">
+          ${photoHtml ? `<div class="rh-photo-wrap"><img src="${photoBase64}" class="rh-photo" alt="Photo"></div>` : ''}
+          <div>
+            <div class="rh-name">${nameHtml}</div>
+            <div class="rh-contact">${contactHtml}</div>
+          </div>
+          ${sections.filter(s => /SKILLS|COMPETENCIES|LANGUAGES?|CERTIFICATIONS?|INTERESTS?/i.test(s.heading)).map(s => `
+          <section class="side-sec">
+            <h2 class="sh">${esc(s.heading)}</h2>
+            <div>${renderLines(s.lines)}</div>
+          </section>`).join('')}
+        </div>
+        <div class="rh-main">
+          ${sections.filter(s => !/SKILLS|COMPETENCIES|LANGUAGES?|CERTIFICATIONS?|INTERESTS?/i.test(s.heading)).map(s => `
+          <section class="main-sec">
+            <h2 class="sh main">${esc(s.heading)}</h2>
+            <div>${renderLines(s.lines).replace(/<li>/g,'<li class="main-li">').replace(/<p class="rl">/g,'<p class="rl main-rl">').replace(/<p class="rb-p">/g,'<p class="rb-p main-p">')}</div>
+          </section>`).join('')}
+        </div>
+      </div>`,
+
+    executive: `
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Palatino Linotype','Palatino','Book Antiqua','Georgia',serif;color:#1c1c1c;background:#fff;padding:0}
+        .rh-resume{max-width:780px;margin:0 auto;padding:0}
+        .rh-banner{background:#0d1b2a;padding:40px 52px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+        .rh-name{font-size:2.2rem;font-weight:400;color:#fff;letter-spacing:.06em;line-height:1.1;text-transform:uppercase}
+        .rh-rule{height:2px;background:linear-gradient(90deg,#c9a84c,#f5d78e,#c9a84c);margin-bottom:0}
+        .rh-contact-bar{background:#162032;padding:10px 52px;display:flex;flex-wrap:wrap;gap:18px}
+        .rh-contact-bar span{font-size:11.5px;color:#a0b4cc;letter-spacing:.03em}
+        .rh-contact-bar .sep{color:#c9a84c;margin:0 4px}
+        .rh-photo{width:88px;height:88px;border-radius:4px;object-fit:cover;border:2.5px solid #c9a84c}
+        .rh-body{padding:36px 52px}
+        section{margin-bottom:26px}
+        h2.sh{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#c9a84c;font-weight:600;border-bottom:1px solid #c9a84c;padding-bottom:6px;margin-bottom:14px}
+        .rb{padding-left:18px;margin:4px 0}
+        .rb li{font-size:13px;line-height:1.75;color:#2c2c2c;margin-bottom:3px}
+        .rl{font-size:13px;font-weight:700;color:#0d1b2a;margin:12px 0 2px;letter-spacing:.03em}
+        .rb-p{font-size:13.5px;color:#333;line-height:1.8;margin-bottom:4px}
+        br{display:block;height:5px}
+      </style>
+      <div class="rh-resume">
+        <div class="rh-banner">
+          <div>
+            <div class="rh-name">${nameHtml}</div>
+          </div>
+          ${photoHtml ? `<img src="${photoBase64}" class="rh-photo" alt="Photo">` : ''}
+        </div>
+        <div class="rh-rule"></div>
+        <div class="rh-contact-bar">${contactHtml}</div>
+        <div class="rh-body">${sectionsHtml}</div>
+      </div>`
+  };
+
+  const body = templates[template] || templates.professional;
+  return `<!DOCTYPE html><html><body style="margin:0;background:#fff">${body}</body></html>`;
+}
+
 /* ─── PREVIEW helpers ─── */
+function rhRenderPreview() {
+  const frame = document.getElementById('rh-preview-area');
+  if (!frame) return;
+  const doc = frame.contentDocument || frame.contentWindow?.document;
+  if (!doc) return;
+  const html = resumeTextToHtml(_rhCurrentResume, _rhCurrentTemplate, _rhPhotoBase64);
+  doc.open(); doc.write(html); doc.close();
+  // Auto-resize iframe
+  setTimeout(() => {
+    try {
+      const h = doc.body?.scrollHeight;
+      if (h && h > 400) frame.style.height = h + 'px';
+    } catch(e){}
+  }, 150);
+}
 function rhSendToPreview() {
   const text = document.getElementById('rh-builder-text')?.value||'';
   _rhCurrentResume = text;
-  document.getElementById('rh-preview-content').textContent = text || '← Generate or tailor a resume first, then click "Preview" to see it styled here.';
+  rhRenderPreview();
   rhTab('preview');
 }
 function rhSendTailoredToPreview() {
   const text = document.getElementById('rh-tailor-output')?.value||'';
   _rhCurrentResume = text;
-  document.getElementById('rh-preview-content').textContent = text || '← Generate or tailor a resume first, then click "Preview" to see it styled here.';
+  rhRenderPreview();
   rhTab('preview');
 }
 function rhSetTemplate(tpl) {
   _rhCurrentTemplate = tpl;
-  // Update preview area class
-  const area = document.getElementById('rh-preview-area');
-  if (area) area.className = 'rh-template-preview rh-tpl-'+tpl;
   // Update Preview tab's toggle buttons
   ['pro','mod','exe'].forEach(id => {
     const b = document.getElementById('rh-tpl-'+id);
@@ -6850,6 +7078,8 @@ function rhSetTemplate(tpl) {
     cards[tplIndex].style.borderColor = 'var(--violet)';
     cards[tplIndex].style.boxShadow = '0 0 0 2px var(--violet)';
   }
+  // Re-render the preview with new template
+  if (_rhCurrentResume) rhRenderPreview();
   toast('Template set to ' + tpl.charAt(0).toUpperCase() + tpl.slice(1) + '!', 'ti-layout-grid');
 }
 
@@ -6867,7 +7097,16 @@ function rhExportPDF() {
   if (!text.trim()) return toast('Generate or tailor a resume first.', 'ti-alert-triangle');
   let root = document.getElementById('rh-print-root');
   if (!root) { root = document.createElement('div'); root.id='rh-print-root'; document.body.appendChild(root); }
-  root.innerHTML = `<div class="rh-print-page ${_rhCurrentTemplate}" style="white-space:pre-wrap">${escapeHtml(text)}</div>`;
+  // Use the styled template HTML for print instead of raw text
+  const styledHtml = resumeTextToHtml(text, _rhCurrentTemplate, _rhPhotoBase64);
+  const parser = new DOMParser();
+  const printDoc = parser.parseFromString(styledHtml, 'text/html');
+  root.innerHTML = printDoc.body.innerHTML;
+  // Extract and inject styles
+  const styleEl = printDoc.querySelector('style');
+  let printStyleEl = document.getElementById('rh-print-style');
+  if (!printStyleEl) { printStyleEl = document.createElement('style'); printStyleEl.id='rh-print-style'; document.head.appendChild(printStyleEl); }
+  printStyleEl.textContent = styleEl ? styleEl.textContent : '';
   root.style.display = 'block';
   window.print();
   setTimeout(() => { root.style.display = 'none'; }, 1500);
