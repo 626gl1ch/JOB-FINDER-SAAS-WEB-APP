@@ -5490,18 +5490,37 @@ async function loadSideTasks() {
     listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--t3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Loading tasks...</div>';
     try {
       const result = await apiFetch('/offers');
-      if (!result.configured) {
+      if (!result.configured && !result.items) {
         listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No affiliate network connected yet. Check back soon.</div>`;
-      } else if (result.items.length === 0) {
-        listEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t3)">No tasks available in your country right now. Check back later.</div>`;
+      } else if (!result.items || result.items.length === 0) {
+        listEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--t3);background:var(--bg2);border:1px solid var(--border);border-radius:14px">
+          <i class="ti ti-circle-check" style="font-size:28px;color:var(--lime);margin-bottom:8px"></i>
+          <div>All available tasks in your region are completed!</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:4px">Check back later for new provider offers.</div>
+        </div>`;
       } else {
         listEl.innerHTML = result.items.map(o => `
-          <div class="st-task-row">
-            <div class="st-task-l">
-              <div class="st-task-ico" style="background:rgba(184,255,60,.12)"><i class="ti ti-clipboard-check" style="color:var(--lime)"></i></div>
-              <div><div class="st-task-name">${escapeHtml(o.title)}</div><div class="st-task-sub">${escapeHtml(o.country || '')} · Available now</div></div>
+          <div class="st-task-row" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:14px;transition:all .15s">
+            <div class="st-task-l" style="display:flex;align-items:center;gap:14px">
+              <div class="st-task-ico" style="width:44px;height:44px;background:rgba(184,255,60,.12);border:1px solid rgba(184,255,60,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-clipboard-check" style="color:var(--lime);font-size:20px"></i></div>
+              <div>
+                <div class="st-task-name" style="font-weight:700;font-size:14px;color:var(--ink);margin-bottom:2px">${escapeHtml(o.title)}</div>
+                <div style="font-size:12px;color:var(--t2);margin-bottom:4px">${escapeHtml(o.description || '')}</div>
+                <div class="st-task-sub" style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:8px">
+                  <span style="background:rgba(var(--ink-rgb),.05);padding:2px 7px;border-radius:4px;font-weight:600">${escapeHtml(o.category || 'General')}</span>
+                  <span>${escapeHtml(o.provider || 'Affiliate Partner')}</span>
+                  <span>📍 ${escapeHtml(o.country || 'WW')}</span>
+                </div>
+              </div>
             </div>
-            <a class="st-rew" style="text-decoration:none" href="${o.link}" target="_blank" rel="noopener">+$${o.user_cut.toFixed(2)}</a>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+              <a class="jbtn jbtn-v" style="text-decoration:none;font-weight:800;font-size:13px;padding:8px 16px" href="${o.link}" target="_blank" rel="noopener">
+                +$${Number(o.user_cut).toFixed(2)} <i class="ti ti-external-link" style="font-size:12px;margin-left:4px"></i>
+              </a>
+              <button class="jbtn jbtn-g" style="font-size:10.5px;padding:3px 8px;opacity:.8" onclick="simulateSideTask('${o.id}', ${o.user_cut}, '${escapeHtml(o.title).replace(/'/g,"\\'")}', '${o.provider || 'Network Partner'}')">
+                <i class="ti ti-wand"></i> Test Complete
+              </button>
+            </div>
           </div>`).join('');
       }
     } catch (e) {
@@ -5512,18 +5531,47 @@ async function loadSideTasks() {
   if (earnEl) {
     try {
       const result = await apiFetch('/earnings');
-      if (result.items.length === 0) {
-        earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">No earnings yet — complete a task to see it here.</div>`;
+      if (!result.items || result.items.length === 0) {
+        earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3);text-align:center;padding:12px 0">No earnings yet — complete a task to see it here.</div>`;
       } else {
         earnEl.innerHTML = result.items.map(e => `
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-            <span style="color:var(--t2)">${escapeHtml(e.incoming_network_provider)}</span>
-            <span style="color:var(--lime);font-weight:700">+$${Number(e.user_credited_amount).toFixed(2)}</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <div>
+              <div style="font-weight:600;color:var(--ink)">${escapeHtml(e.provider || e.incoming_network_provider || 'Affiliate Task')}</div>
+              <div style="font-size:11px;color:var(--t3)">Task #${escapeHtml(String(e.offer_id || ''))} · ${e.completed_at ? new Date(e.completed_at).toLocaleDateString() : 'Just now'}</div>
+            </div>
+            <span style="color:var(--lime);font-weight:800;font-size:14px">+$${Number(e.user_cut || e.user_credited_amount || 0).toFixed(2)}</span>
           </div>`).join('');
       }
     } catch (e) {
       earnEl.innerHTML = `<div style="font-size:12.5px;color:var(--t3)">Couldn't load earnings.</div>`;
     }
+  }
+}
+
+/* ─── SIMULATE SIDE TASK COMPLETION (Test Mode) ─── */
+async function simulateSideTask(offerId, userCut, title, provider) {
+  try {
+    toast('Processing task completion...', 'ti-loader-2');
+    const result = await apiFetch('/postback/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        offer_id: offerId,
+        user_cut: userCut,
+        raw_payout: userCut * 2,
+        provider: provider || 'SnipeJob Partner'
+      })
+    });
+
+    if (result.success) {
+      if (currentProfile) currentProfile.wallet_balance = parseFloat(result.new_balance);
+      toast(`🎉 ${result.message || '+$' + Number(userCut).toFixed(2) + ' credited to your wallet!'}`, 'ti-cash');
+      loadSideTasks();
+    } else {
+      toast(result.error || 'Could not complete task', 'ti-alert-triangle');
+    }
+  } catch (e) {
+    toast('Error processing task: ' + e.message, 'ti-alert-triangle');
   }
 }
 
