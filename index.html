@@ -4455,12 +4455,20 @@ async function apiFetch(path, options = {}, timeoutMs = 15000) {
 let _lastNav = null;
 let _navLockUntil = 0;
 
-function go(pageName) {
+function go(pageName, skipHistory = false) {
   const now = Date.now();
   // Suppress any extension-driven redirect to 'signin' for 3 s after we land on 'dashboard'
   if (pageName === 'signin' && _lastNav === 'dashboard' && now < _navLockUntil) {
     console.warn('[SnipeJob] Redirect to signin suppressed — dashboard lock active.');
     return;
+  }
+
+  if (!skipHistory) {
+    if (pageName === 'home') {
+      window.history.pushState({ page: 'home' }, '', window.location.pathname);
+    } else {
+      window.history.pushState({ page: pageName }, '', '#' + pageName);
+    }
   }
 
   try {
@@ -4494,6 +4502,48 @@ function go(pageName) {
 
   if (pageName === 'dashboard') initDashboard();
 }
+
+window.addEventListener('popstate', (e) => {
+  let hash = window.location.hash.slice(1);
+  const hashBase = hash.split('?')[0];
+  
+  if (!hashBase || hashBase === 'home') {
+    go('home', true);
+  } else if (hashBase.startsWith('dashboard-')) {
+    const tabName = hashBase.substring(10);
+    if (!document.getElementById('pg-dashboard').classList.contains('active')) {
+      go('dashboard', true);
+    }
+    dTab(tabName, true);
+  } else if (hashBase === 'sidetask') {
+    if (!document.getElementById('pg-dashboard').classList.contains('active')) {
+      go('dashboard', true);
+    }
+    dTab('sidetask', true);
+  } else {
+    go(hashBase, true);
+  }
+});
+
+window.addEventListener('load', () => {
+  let hash = window.location.hash.slice(1);
+  const hashBase = hash.split('?')[0];
+  
+  if (hashBase && hashBase !== 'home' && !hash.includes('access_token') && !hash.includes('type=recovery')) {
+    if (hashBase.startsWith('dashboard-')) {
+      const tabName = hashBase.substring(10);
+      go('dashboard', true);
+      setTimeout(() => dTab(tabName, true), 50);
+    } else if (hashBase === 'sidetask') {
+      go('dashboard', true);
+      setTimeout(() => dTab('sidetask', true), 50);
+    } else {
+      go(hashBase, true);
+    }
+  } else if (!hashBase || hashBase === 'home') {
+    window.history.replaceState({ page: 'home' }, '', window.location.pathname);
+  }
+});
 
 /* ─── CURSOR-REACTIVE GRADIENTS ─── */
 (function setupCursorGlow() {
@@ -5577,7 +5627,10 @@ async function simulateSideTask(offerId, userCut, title, provider) {
 }
 
 /* ─── DASHBOARD TABS ─── */
-function dTab(tabName) {
+function dTab(tabName, skipHistory = false) {
+  if (!skipHistory) {
+    window.history.pushState({ page: 'dashboard', tab: tabName }, '', '#dashboard-' + tabName);
+  }
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('act'));
   document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('act'));
   document.querySelectorAll('.snav').forEach(b => b.classList.remove('act'));
