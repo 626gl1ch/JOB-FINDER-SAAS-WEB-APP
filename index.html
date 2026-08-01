@@ -5244,7 +5244,7 @@ function showUpgradeAdPopup() {
         <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5">
           Ads help keep the free version running. Want an ad-free experience?
         </div>
-        <button class="btn-primary" onclick="document.getElementById('ad-modal').remove(); openModal('planModal')" style="width:100%">
+        <button class="btn-primary" onclick="document.getElementById('ad-modal').remove(); go('upgrade')" style="width:100%">
           <i class="ti ti-bolt"></i> Go Pro
         </button>
       </div>
@@ -5290,7 +5290,7 @@ async function loadJobs() {
         <div style="font-size:14px;line-height:1.6;margin-bottom:24px;">
           Access to specific sectors like Data & AI, Design, and Marketing is reserved for SnipeJob Pro members.
         </div>
-        <button class="btn-primary" onclick="openModal('planModal')" style="width:100%"><i class="ti ti-bolt"></i> Upgrade to Pro</button>
+        <button class="btn-primary" onclick="go('upgrade')" style="width:100%"><i class="ti ti-bolt"></i> Upgrade to Pro</button>
       </div>`;
     } else {
       if (listEl) listEl.innerHTML = `<div style="padding:30px;text-align:center;color:var(--t3)">
@@ -5491,7 +5491,7 @@ async function loadRankedJobs() {
     if (e.message && e.message.includes('Upgrade to Pro')) {
       toast('Pro plan required for advanced matching.', 'ti-lock');
       // Show upgrade modal instead of standard toast error
-      openModal('planModal');
+      go('upgrade');
     } else {
       toast(e.message || 'Could not rank jobs right now.', 'ti-alert-triangle');
     }
